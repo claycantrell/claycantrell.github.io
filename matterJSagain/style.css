@@ -1,0 +1,76 @@
+html,
+body {
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+.myNav {
+    position: absolute;
+}
+
+.canvasText {
+    position: absolute;
+    font-size: 4vw;
+    width: 20%;
+    margin-left: 15px;
+
+}
+
+/* .transpB {
+    background-color: rgba(0, 0, 0, 0);
+} */
+
+#mycanvas {
+    position: absolute;
+    touch-action: none;
+}
+
+
+.colorOneB {
+    background-color: #FFE9C6 !important;
+}
+
+.colorOne {
+    color: #FFE9C6 !important;
+}
+
+.colorTwoB {
+    background-color: #CCC08B !important;
+}
+
+.colorThreeB {
+    background-color: #8BCCC8 !important;
+}
+
+
+
+@media only screen and (max-width: 768px) {
+    .btn {
+        display: block !important;
+        margin: 10px !important;
+        width: 90%;
+
+    }
+
+    .canvasText {
+        font-size: 6vw;
+        width: 30%;
+    }
+}
+
+@media only screen and (max-width: 580px) {
+    .btn {
+        display: block !important;
+        margin: 10px !important;
+        width: 80%;
+
+    }
+
+    .canvasText {
+        font-size: 8vw;
+
+    }
+}
