@@ -1,48 +1,762 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Interactive Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black; /* Black background for retro contrast */
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated; /* Ensures the canvas scales without smoothing */
+        }
+        #notification {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+            color: #FFFFFF; /* White text for contrast */
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            font-family: 'Press Start 2P', cursive; /* Retro font */
+            z-index: 20; /* Ensure notification is above other elements */
+        }
+        #audio-icon {
+            position: absolute;
+            bottom: 2%;
+            right: 2%;
+            width: 8%;
+            height: auto;
+            cursor: pointer;
+            z-index: 20; /* Ensure audio icon is above other elements */
+        }
+        /* Importing retro font */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-        <head>
-                <meta charset="utf-8">
-                <meta http-equiv="X-UA-Compatible" content="IE=edge">
-                <meta name="description" content="">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <link rel="stylesheet" href="style.css">
+        /* Instructional Message Styling */
+        #instruction-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 500px;
+            padding: 25px;
+            background-color: rgba(139, 69, 19, 0.95); /* Semi-transparent brown for wooden sign */
+            border: 4px solid #8B4513; /* Dark brown border */
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+            font-family: 'Press Start 2P', cursive; /* Retro font */
+            color: #F5DEB3; /* Wheat color for text */
+            z-index: 30; /* Above all other elements */
+            text-align: center;
+            opacity: 1;
+            transition: opacity 2s ease-in-out;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+        #instruction-message p {
+            margin: 10px 0;
+            font-size: 34px; /* Increased font size for better readability */
+            line-height: 1.5;
+        }
 
-                <title>MatterJS</title>
+        /* NEW CODE: Exit button styling */
+        #exit-button {
+            position: absolute;
+            top: 2%;
+            right: 2%;
+            padding: 15px 30px;
+            background-color: rgba(139, 69, 19, 0.95);
+            color: #F5DEB3;
+            border: 4px solid #8B4513;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 40; /* Above most elements */
+        }
+        #exit-button:hover {
+            background-color: rgba(139, 69, 19, 1);
+        }
 
-                <!-- Compiled and minified CSS -->
-                <link rel="stylesheet"
-                        href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-        </head>
+        /* Adjustments for smaller screens */
+        @media (max-width: 320px) {
+            #instruction-message {
+                width: 90%;
+                padding: 15px;
+            }
+            #instruction-message p {
+                font-size: 12px;
+            }
 
-        <body class="colorOneB">
+            /* NEW CODE: Scale down the exit button */
+            #exit-button {
+                font-size: 12px;
+                padding: 10px 20px;
+            }
+        }
 
-                <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
-                <script type="text/javascript" src="https://unpkg.com/matter-js@0.17.1/build/matter.js"></script>
-                <script src="sketch.js"></script>
-                <script src="circle.js"></script>
-                <script src="boundary.js"></script>
-                <script src="bead.js"></script>
-                <script src="bridge.js"></script>
-                <script src="hue.js"></script>
+        /* NEW CODE: White overlay for fade-out effect */
+        #white-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #FFFFFF;
+            opacity: 0;
+            pointer-events: none; /* So it doesn't block clicks initially */
+            transition: opacity 2s ease; /* 2s fade duration */
+            z-index: 9999; /* On top of everything */
+        }
+    </style>
+</head>
+<body>
+    <div id="notification"></div>
+    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png" alt="Audio Icon">
+    
+    <!-- Instructional Message -->
+    <div id="instruction-message">
+        <p id="instructions">
+            <!-- Instructions will be populated by JavaScript -->
+        </p>
+    </div>
 
-                <div id="sketch-holder">
-                        <h2 class="col s3 canvasText">Hi I'm Clay! <br><br> My portfolio is under construction at the
-                                moment, but please enjoy this playground! <br><br></h2>
-                </div>
+    <!-- NEW CODE: Exit Button -->
+    <button id="exit-button">Go Home</button>
 
-                <div style="position: absolute; top:25px; right:20px;">
-                        <a href="#" class="btn colorThreeB colorOne z-depth-0">Gravity</a>
-                        <a href="#" class="btn colorThreeB colorOne z-depth-0">Marbles</a>
-                        <a href="#" class="btn colorThreeB colorOne z-depth-0">Paint</a>
-                        <a href="Clay_Cantrell_Resume.pdf" class="btn colorThreeB colorOne z-depth-0"
-                                download="Clay_Cantrell_Resume" target="_blank">Resume/CV</a>
-                        <a href="https://www.linkedin.com/in/clay-cantrell-808676202/"
-                                class="btn colorThreeB colorOne z-depth-0" target="_blank">linkedin</a>
-                </div>
+    <!-- Include Three.js library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include FontLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/loaders/FontLoader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/geometries/TextGeometry.min.js"></script>
 
+    <!-- Main JavaScript code -->
+    <script>
+        // Variables
+        let scene, camera, renderer;
+        let character;
+        let moveForward = false,
+            moveBackward = false,
+            rotateLeft = false,
+            rotateRight = false;
+        let prevTime = performance.now();
+        const velocity = new THREE.Vector3();
+        const portals = [];
+        const objects = [];
 
-                <script src="UI.js"></script>
-        </body>
+        // Notification element
+        const notification = document.getElementById('notification');
+        let notificationTimeout;
 
+        // Font Loader for retro text
+        let font;
+
+        // Audio elements
+        let audio, listener, audioLoader;
+        let isAudioPlaying = false; // Start with audio not playing
+        const audioIcon = document.getElementById('audio-icon');
+
+        // Instructional Message Elements
+        const instructionMessage = document.getElementById('instruction-message');
+        const instructionsParagraph = document.getElementById('instructions');
+
+        // Pixelation Effect Variables
+        let pixelRatio;
+
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            // On mobile devices
+            pixelRatio = 0.09;
+        } else {
+            // On other devices
+            pixelRatio = 0.25;
+        }
+
+        // NEW CODE: Flag to prevent multiple fades
+        let portalActivated = false;
+
+        // Load Retro Font
+        const loader = new THREE.FontLoader();
+        loader.load('https://threejs.org/examples/fonts/droid/droid_sans_mono_regular.typeface.json', function (loadedFont) {
+            font = loadedFont;
+            // Instructions are set before initialization
+            setInstructions();
+            init();
+            // Start the animation loop
+            animate();
+            // After 3 seconds, fade out the instructional message
+            setTimeout(() => {
+                instructionMessage.style.opacity = '0';
+            }, 3000);
+        });
+
+        // Function to set instructions based on device
+        function setInstructions() {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                instructionsParagraph.innerHTML = `
+                    Touch edges of screen to rotate right or left.<br>
+                    Touch bottom and top of screen to move<br>
+                    forward and backward.
+                `;
+            } else {
+                instructionsParagraph.innerHTML = `
+                    Use Arrow Keys or WASD to move and rotate.
+                `;
+            }
+        }
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x191970); // Midnight blue background
+            scene.fog = new THREE.Fog(0x000000, 50, 200); // Linear fog with black color
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                1,
+                1000
+            );
+            camera.position.set(0, 6, -15);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.domElement.style.imageRendering = 'pixelated';
+            renderer.setPixelRatio(window.devicePixelRatio * pixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            // Ground with Flat Shading
+            const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x004d00, flatShading: true });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+
+            // Character setup
+            character = createCharacter();
+            character.position.set(-180, 1, -180);
+            character.rotation.y = Math.PI / 4;
+            scene.add(character);
+
+            // Create Portals
+            createPortals();
+
+            // Create more complex trees
+            createMoreComplexTrees();
+
+            // Audio setup
+            listener = new THREE.AudioListener();
+            camera.add(listener);
+
+            audio = new THREE.Audio(listener);
+
+            audioLoader = new THREE.AudioLoader();
+            // Load background audio (ensure 'background.mp3' is placed correctly)
+            audioLoader.load('background.mp3', function(buffer) {
+                audio.setBuffer(buffer);
+                audio.setLoop(true);
+                audio.setVolume(0.5);
+                // Do not autoplay to comply with mobile browser policies
+            }, undefined, function(err) {
+                console.error('An error happened while loading the audio.');
+            });
+
+            // Audio Icon Event Listener
+            audioIcon.addEventListener('click', toggleAudio);
+
+            // NEW CODE: Exit Button -> Home
+            document.getElementById('exit-button').addEventListener('click', () => {
+                window.location.href = 'home.html';
+            });
+
+            // Event Listeners for user interactions
+            document.addEventListener('keydown', onKeyDown, false);
+            document.addEventListener('keyup', onKeyUp, false);
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Touch Controls for Mobile Only
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                createTouchControls();
+            }
+
+            // Ensure audio context is resumed on user interaction
+            document.body.addEventListener('click', resumeAudioContext, false);
+            document.body.addEventListener('touchstart', resumeAudioContext, false);
+        }
+
+        // Function to create character
+        function createCharacter() {
+            const group = new THREE.Group();
+
+            // Body with Flat Shading
+            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 6);
+            const bodyMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFF0000,
+                flatShading: true
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            group.add(body);
+
+            // Head with Flat Shading
+            const headGeometry = new THREE.SphereGeometry(0.5, 6, 6);
+            const headMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFFFF00,
+                flatShading: true
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.5;
+            group.add(head);
+
+            // Cone Hat with Flat Shading
+            const hatGeometry = new THREE.ConeGeometry(0.6, 1, 4);
+            const hatMaterial = new THREE.MeshBasicMaterial({ color: 0x0000FF, flatShading: true });
+            const hat = new THREE.Mesh(hatGeometry, hatMaterial);
+            hat.position.y = 2.3;
+            group.add(hat);
+
+            group.position.y = 1;
+
+            // Add to objects for collision detection
+            objects.push(group);
+
+            return group;
+        }
+
+        // Function to create portals
+        function createPortals() {
+            const portalNames = ['WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME'];
+            const radius = 19.5;
+            const angleIncrement = (Math.PI * 2) / 6;
+            const portalColors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x8B00FF];
+
+            for (let i = 0; i < 6; i++) {
+                const angle = angleIncrement * i;
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+                const position = new THREE.Vector3(x, 0, z);
+
+                const portalGroup = new THREE.Group();
+
+                // Portal Frame with Flat Shading
+                const frameGeometry = new THREE.BoxGeometry(5.2, 10.4, 0.65);
+                const frameMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, flatShading: true });
+                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                frame.position.y = 4;
+                portalGroup.add(frame);
+
+                // Inner Portal with Flat Shading
+                const innerGeometry = new THREE.PlaneGeometry(4.55, 9.75);
+                const innerMaterial = new THREE.MeshBasicMaterial({
+                    color: portalColors[i],
+                    flatShading: true
+                });
+                const innerPortal = new THREE.Mesh(innerGeometry, innerMaterial);
+                innerPortal.position.y = 4;
+                innerPortal.position.z = 0.35;
+                portalGroup.add(innerPortal);
+
+                portalGroup.position.copy(position);
+
+                // Calculate angle to face outward
+                portalGroup.lookAt(0, 0, 0);
+                portalGroup.rotateY(Math.PI);
+
+                // Add label with Retro Font
+                if (font) {
+                    const textGeometry = new THREE.TextGeometry(portalNames[i], {
+                        font: font,
+                        size: 1.04,
+                        height: 0.1,
+                    });
+                    const textMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xFFFFFF,
+                        flatShading: true
+                    });
+                    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+                    // Center the text
+                    textGeometry.computeBoundingBox();
+                    const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
+                    textMesh.position.set(-textWidth / 2, 11.7, 0);
+                    textMesh.rotation.y = 0;
+
+                    portalGroup.add(textMesh);
+
+                    // Add floating animation to the label
+                    portals.push({
+                        group: portalGroup,
+                        name: portalNames[i],
+                        innerPortal: innerPortal,
+                        labelMesh: textMesh,
+                        labelStartY: textMesh.position.y,
+                    });
+                } else {
+                    portals.push({
+                        group: portalGroup,
+                        name: portalNames[i],
+                        innerPortal: innerPortal,
+                    });
+                }
+
+                scene.add(portalGroup);
+                // Add to objects for collision detection
+                objects.push(portalGroup);
+            }
+        }
+
+        // Function to create more complex trees
+        function createMoreComplexTrees() {
+            const treeCount = 500;
+            const treeRadius = 1000;
+            const minDistanceFromCenter = 30;
+
+            for (let i = 0; i < treeCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = minDistanceFromCenter + Math.random() * (treeRadius - minDistanceFromCenter);
+                const x = distance * Math.cos(angle);
+                const z = distance * Math.sin(angle);
+
+                const tree = new THREE.Group();
+
+                // Trunk
+                const trunkHeight = 25 + Math.random() * 10;
+                const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, trunkHeight, 8);
+                const trunkMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513, flatShading: true });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.y = trunkHeight / 2;
+                tree.add(trunk);
+
+                // Foliage - Multiple Layers of Leaves
+                const foliageColors = [0x006400, 0x008000, 0x228B22];
+                let foliageHeight = trunkHeight;
+
+                for (let j = 0; j < 3; j++) {
+                    const foliageGeometry = new THREE.ConeGeometry(6 - j, 9, 5);
+                    const foliageMaterial = new THREE.MeshBasicMaterial({ color: foliageColors[j], flatShading: true });
+                    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+                    foliage.position.y = foliageHeight + 1;
+                    tree.add(foliage);
+                    foliageHeight += 4;
+                }
+
+                tree.position.set(x, 0, z);
+                scene.add(tree);
+                objects.push(tree);
+            }
+        }
+
+        // Function to handle key down events for character movement
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'ArrowDown':
+                case 'KeyS':
+                    moveForward = true;
+                    break;
+                case 'ArrowLeft':
+                case 'KeyA':
+                    rotateLeft = true;
+                    break;
+                case 'ArrowUp':
+                case 'KeyW':
+                    moveBackward = true;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    rotateRight = true;
+                    break;
+            }
+        }
+
+        // Function to handle key up events to stop character movement
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'ArrowDown':
+                case 'KeyS':
+                    moveForward = false;
+                    break;
+                case 'ArrowLeft':
+                case 'KeyA':
+                    rotateLeft = false;
+                    break;
+                case 'ArrowUp':
+                case 'KeyW':
+                    moveBackward = false;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    rotateRight = false;
+                    break;
+            }
+        }
+
+        // Function to handle window resize event
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Function to create touch controls for mobile
+        function createTouchControls() {
+            const controlZones = {
+                top: document.createElement('div'),
+                bottom: document.createElement('div'),
+                left: document.createElement('div'),
+                right: document.createElement('div')
+            };
+
+            // Style touch zones
+            Object.keys(controlZones).forEach(zone => {
+                const element = controlZones[zone];
+                element.style.position = 'absolute';
+                element.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+                element.style.zIndex = '10';
+                element.style.touchAction = 'none';
+                document.body.appendChild(element);
+            });
+
+            // Define sizes and positions based on screen orientation
+            function adjustTouchZones() {
+                const isLandscape = window.innerWidth > window.innerHeight;
+                if (isLandscape) {
+                    // Landscape layout
+                    controlZones.left.style.left = '0';
+                    controlZones.left.style.top = '0';
+                    controlZones.left.style.width = '20%';
+                    controlZones.left.style.height = '100%';
+
+                    controlZones.right.style.right = '0';
+                    controlZones.right.style.top = '0';
+                    controlZones.right.style.width = '20%';
+                    controlZones.right.style.height = '100%';
+
+                    controlZones.top.style.top = '0';
+                    controlZones.top.style.left = '20%';
+                    controlZones.top.style.width = '60%';
+                    controlZones.top.style.height = '20%';
+
+                    controlZones.bottom.style.bottom = '0';
+                    controlZones.bottom.style.left = '20%';
+                    controlZones.bottom.style.width = '60%';
+                    controlZones.bottom.style.height = '20%';
+                } else {
+                    // Portrait layout
+                    controlZones.top.style.top = '0';
+                    controlZones.top.style.left = '0';
+                    controlZones.top.style.width = '100%';
+                    controlZones.top.style.height = '20%';
+
+                    controlZones.bottom.style.bottom = '0';
+                    controlZones.bottom.style.left = '0';
+                    controlZones.bottom.style.width = '100%';
+                    controlZones.bottom.style.height = '20%';
+
+                    controlZones.left.style.left = '0';
+                    controlZones.left.style.top = '20%';
+                    controlZones.left.style.width = '20%';
+                    controlZones.left.style.height = '60%';
+
+                    controlZones.right.style.right = '0';
+                    controlZones.right.style.top = '20%';
+                    controlZones.right.style.width = '20%';
+                    controlZones.right.style.height = '60%';
+                }
+            }
+
+            // Initial adjustment
+            adjustTouchZones();
+            window.addEventListener('resize', adjustTouchZones, false);
+
+            // Touch event listeners
+            // Bottom Control => Move Backward
+            controlZones.bottom.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                moveBackward = true;
+            }, { passive: false });
+            controlZones.bottom.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                moveBackward = false;
+            }, { passive: false });
+
+            // Top Control => Move Forward
+            controlZones.top.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                moveForward = true;
+            }, { passive: false });
+            controlZones.top.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                moveForward = false;
+            }, { passive: false });
+
+            // Left Control => Rotate Left
+            controlZones.left.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                rotateLeft = true;
+            }, { passive: false });
+            controlZones.left.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                rotateLeft = false;
+            }, { passive: false });
+
+            // Right Control => Rotate Right
+            controlZones.right.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                rotateRight = true;
+            }, { passive: false });
+            controlZones.right.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                rotateRight = false;
+            }, { passive: false });
+        }
+
+        // Function to toggle audio on/off
+        function toggleAudio() {
+            resumeAudioContext(); // Ensure audio context is resumed
+            if (isAudioPlaying) {
+                audio.pause();
+                audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/mute.png';
+            } else {
+                audio.play();
+                audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png';
+            }
+            isAudioPlaying = !isAudioPlaying;
+        }
+
+        // Function to resume audio context
+        function resumeAudioContext() {
+            if (audio.context && audio.context.state === 'suspended') {
+                audio.context.resume();
+            }
+        }
+
+        // NEW CODE: Fade out function
+        function fadeOutToWhite() {
+            const overlay = document.getElementById('white-overlay');
+            overlay.style.opacity = '1';  // start fading in
+            // After the transition, redirect to home.html
+            setTimeout(() => {
+                window.location.href = 'home.html';
+            }, 2000);
+        }
+
+        // Main animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const currentTime = performance.now();
+            const delta = (currentTime - prevTime) / 1000;
+
+            // Implement frame rate control (20 FPS => 50ms per frame)
+            const desiredFPS = 20;
+            const frameInterval = 1000 / desiredFPS;
+            if (currentTime - prevTime < frameInterval) {
+                return;
+            }
+
+            prevTime = currentTime;
+
+            // Movement calculations
+            velocity.x = 0;
+            velocity.z = 0;
+            const rotationSpeed = 2.0;
+            const moveSpeed = 20.0;
+
+            // Rotate character
+            if (rotateLeft) {
+                character.rotation.y += rotationSpeed * delta;
+            }
+            if (rotateRight) {
+                character.rotation.y -= rotationSpeed * delta;
+            }
+
+            // Move character forward/backward
+            if (moveForward) {
+                velocity.z = -moveSpeed * delta;
+            }
+            if (moveBackward) {
+                velocity.z = moveSpeed * delta;
+            }
+
+            // Calculate movement direction
+            const forward = new THREE.Vector3(0, 0, 1);
+            forward.applyQuaternion(character.quaternion);
+            forward.normalize();
+
+            const moveX = forward.x * velocity.z;
+            const moveZ = forward.z * velocity.z;
+
+            // Update character's position based on movement
+            character.position.x += moveX;
+            character.position.z += moveZ;
+
+            // Collision with ground boundaries
+            const boundary = 100;
+            character.position.x = Math.max(-boundary, Math.min(boundary, character.position.x));
+            character.position.z = Math.max(-boundary, Math.min(boundary, character.position.z));
+
+            // Update camera position to follow character
+            const cameraOffset = new THREE.Vector3(0, 7, -15);
+            const offsetPosition = cameraOffset.clone().applyQuaternion(character.quaternion);
+            camera.position.copy(character.position.clone().add(offsetPosition));
+            camera.lookAt(character.position.x, 7, character.position.z);
+
+            // Portal interaction and label animation
+            portals.forEach(portalObj => {
+                const portal = portalObj.group;
+                const distance = character.position.distanceTo(portal.position);
+                
+                if (distance < 5) {
+                    // Show notification if close to portal
+                    showNotification(`Portal to ${portalObj.name} Triggered`);
+
+                    // Visual effect: Change portal color for interaction
+                    const primaryColors = [0xFF0000, 0x00FF00, 0x0000FF];
+                    const randomColor = primaryColors[Math.floor(Math.random() * primaryColors.length)];
+                    portalObj.innerPortal.material.color.setHex(randomColor);
+
+                    // NEW CODE: Trigger fade out to white (only once)
+                    if (!portalActivated) {
+                        portalActivated = true;
+                        fadeOutToWhite();
+                    }
+                } else {
+                    // Restore default color if not near portal
+                    portalObj.innerPortal.material.color.setHex(0xFFFFFF);
+                }
+
+                // Floating label animation
+                if (portalObj.labelMesh) {
+                    portalObj.labelMesh.position.y = 
+                        portalObj.labelStartY + Math.sin(currentTime * 0.002 + portalObj.group.position.x) * 0.2;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Function to show notifications on screen
+        function showNotification(message) {
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+            }
+            notification.textContent = message;
+            notification.style.opacity = '1';
+            notificationTimeout = setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 2000);
+        }
+    </script>
+
+    <!-- NEW CODE: White Overlay for fade-out effect -->
+    <div id="white-overlay"></div>
+</body>
 </html>
