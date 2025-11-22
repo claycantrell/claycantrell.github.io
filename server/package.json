@@ -1,0 +1,20 @@
+{
+  "name": "3d-demo-multiplayer-server",
+  "version": "1.0.0",
+  "description": "Lightweight WebSocket server for 3D demo multiplayer",
+  "main": "multiplayer-server.js",
+  "scripts": {
+    "start": "node multiplayer-server.js",
+    "dev": "nodemon multiplayer-server.js"
+  },
+  "keywords": ["websocket", "multiplayer", "threejs"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+

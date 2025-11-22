@@ -50,6 +50,18 @@ These are accessible across all modules:
 - `audio`, `listener`, `audioLoader` - Audio system
 - `pixelRatio` - Device-specific pixel ratio
 
+## Multiplayer Support
+
+The demo includes optional lightweight multiplayer support:
+
+1. **Server**: Simple WebSocket server in `server/multiplayer-server.js`
+2. **Client**: `multiplayer.js` and `other-players.js` handle connections and rendering
+3. **Setup**: See `MULTIPLAYER_PLAN.md` for details
+
+To enable multiplayer:
+- Start the server: `cd server && npm install && npm start`
+- The client automatically connects (works without server too - graceful degradation)
+
 ## How to Extract
 
 To extract this demo to a standalone project:
@@ -58,6 +70,7 @@ To extract this demo to a standalone project:
 2. Copy `assets/css/3d-demo.css`
 3. Copy `assets/media/audio/background.mp3`
 4. Copy `pages/3d-demo.html` (update paths to be relative to new structure)
+5. (Optional) Copy `server/` folder for multiplayer support
 5. Ensure Three.js CDN links are still valid
 
 ## Future Expansion

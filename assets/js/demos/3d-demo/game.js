@@ -19,6 +19,10 @@ function animate() {
     // Update character movement
     updateCharacterMovement(delta);
 
+    // Update multiplayer (send position, receive others, interpolate)
+    updateMultiplayer();
+    interpolateOtherPlayers(delta);
+
     // Portal interaction and label animation
     portals.forEach(portalObj => {
         const portal = portalObj.group;

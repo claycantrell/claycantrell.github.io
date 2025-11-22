@@ -105,6 +105,13 @@ function init() {
 
     // Initialize UI
     initUI();
+
+    // Initialize multiplayer (optional - game works without it)
+    // Change server URL to your production WebSocket server
+    const serverUrl = window.location.hostname === 'localhost' 
+        ? 'ws://localhost:8080' 
+        : 'wss://your-server.com'; // Use wss:// for production
+    initMultiplayer(serverUrl);
 }
 
 // Load Retro Font and start the game
