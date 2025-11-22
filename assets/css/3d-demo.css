@@ -1,0 +1,135 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: black;
+    /* Black background for retro contrast */
+}
+
+canvas {
+    display: block;
+    image-rendering: pixelated;
+    /* Ensures the canvas scales without smoothing */
+}
+
+#notification {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 24px;
+    color: #FFFFFF;
+    /* White text for contrast */
+    opacity: 0;
+    transition: opacity 2s ease-in-out;
+    font-family: 'Press Start 2P', cursive;
+    /* Retro font */
+    z-index: 20;
+    /* Ensure notification is above other elements */
+}
+
+#audio-icon {
+    position: absolute;
+    bottom: 2%;
+    right: 2%;
+    width: 8%;
+    height: auto;
+    cursor: pointer;
+    z-index: 20;
+    /* Ensure audio icon is above other elements */
+}
+
+/* Importing retro font */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* Instructional Message Styling */
+#instruction-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 500px;
+    padding: 25px;
+    background-color: rgba(139, 69, 19, 0.95);
+    /* Semi-transparent brown for wooden sign */
+    border: 4px solid #8B4513;
+    /* Dark brown border */
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    font-family: 'Press Start 2P', cursive;
+    /* Retro font */
+    color: #F5DEB3;
+    /* Wheat color for text */
+    z-index: 30;
+    /* Above all other elements */
+    text-align: center;
+    opacity: 1;
+    transition: opacity 2s ease-in-out;
+    pointer-events: none;
+    /* Allow clicks to pass through */
+}
+
+#instruction-message p {
+    margin: 10px 0;
+    font-size: 34px;
+    /* Increased font size for better readability */
+    line-height: 1.5;
+}
+
+/* Exit button styling */
+#exit-button {
+    position: absolute;
+    top: 2%;
+    right: 2%;
+    padding: 15px 30px;
+    background-color: rgba(139, 69, 19, 0.95);
+    color: #F5DEB3;
+    border: 4px solid #8B4513;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    font-family: 'Press Start 2P', cursive;
+    font-size: 32px;
+    cursor: pointer;
+    z-index: 40;
+    /* Above most elements */
+}
+
+#exit-button:hover {
+    background-color: rgba(139, 69, 19, 1);
+}
+
+/* Adjustments for smaller screens */
+@media (max-width: 480px) {
+    #instruction-message {
+        width: 90%;
+        padding: 15px;
+    }
+
+    #instruction-message p {
+        font-size: 62px;
+    }
+
+    /* Scale down the exit button */
+    #exit-button {
+        font-size: 62px;
+        padding: 10px 20px;
+    }
+}
+
+/* White overlay for fade-out effect */
+#white-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #FFFFFF;
+    opacity: 0;
+    pointer-events: none;
+    /* So it doesn't block clicks initially */
+    transition: opacity 2s ease;
+    /* 2s fade duration */
+    z-index: 9999;
+    /* On top of everything */
+}
+

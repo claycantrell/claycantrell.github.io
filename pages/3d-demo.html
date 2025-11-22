@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>3D Interactive Demo</title>
+    <link rel="stylesheet" href="../assets/css/3d-demo.css">
+</head>
+
+<body>
+    <div id="notification"></div>
+    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png" alt="Audio Icon">
+
+    <!-- Instructional Message -->
+    <div id="instruction-message">
+        <p id="instructions">
+            <!-- Instructions will be populated by JavaScript -->
+        </p>
+    </div>
+
+    <!-- Exit Button -->
+    <button id="exit-button">Go Home</button>
+
+    <!-- Include Three.js library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include FontLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/loaders/FontLoader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/geometries/TextGeometry.min.js"></script>
+
+    <!-- 3D Demo JavaScript Modules (load order is important) -->
+    <script src="../assets/js/demos/3d-demo/core.js"></script>
+    <script src="../assets/js/demos/3d-demo/character.js"></script>
+    <script src="../assets/js/demos/3d-demo/world.js"></script>
+    <script src="../assets/js/demos/3d-demo/controls.js"></script>
+    <script src="../assets/js/demos/3d-demo/audio.js"></script>
+    <script src="../assets/js/demos/3d-demo/ui.js"></script>
+    <script src="../assets/js/demos/3d-demo/game.js"></script>
+
+    <!-- White Overlay for fade-out effect -->
+    <div id="white-overlay"></div>
+</body>
+
+</html>
