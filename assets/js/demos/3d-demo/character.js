@@ -83,9 +83,10 @@ function updateCharacterMovement(delta) {
     character.position.z = Math.max(-boundary, Math.min(boundary, character.position.z));
 
     // Camera follows character and rotates with character's view
-    // Original camera setup: closer to character, looking at fixed height
+    // 90s style: More rigid camera, less smooth interpolation
     const cameraOffset = new THREE.Vector3(0, 7, -15);
     cameraOffset.applyQuaternion(character.quaternion);
+    // Direct position update (no smoothing - 90s games had rigid cameras)
     camera.position.copy(character.position).add(cameraOffset);
     camera.lookAt(character.position.x, 7, character.position.z);
 }

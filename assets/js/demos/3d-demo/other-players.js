@@ -117,24 +117,36 @@ function removeOtherPlayer(id) {
 }
 
 // Interpolate other players' positions (call from game loop)
+// 90s style: Less smooth, more direct movement (snappier)
 function interpolateOtherPlayers(delta) {
-    const interpolationSpeed = 10.0; // How fast to catch up to target
+    const interpolationSpeed = 25.0; // Faster, less smooth (more 90s-like)
     
     otherPlayers.forEach((player, id) => {
         const mesh = player.mesh;
         const target = player.targetPosition;
         
-        // Smoothly interpolate position
-        mesh.position.lerp(target, interpolationSpeed * delta);
+        // More direct movement (less smooth interpolation)
+        const distance = mesh.position.distanceTo(target);
+        if (distance > 0.1) {
+            // Move directly toward target (snappier, less smooth)
+            mesh.position.lerp(target, Math.min(1.0, interpolationSpeed * delta));
+        } else {
+            // Snap to position if very close (90s games did this)
+            mesh.position.copy(target);
+        }
         
-        // Smoothly interpolate rotation
+        // Snappier rotation (less smooth)
         const rotationDiff = player.targetRotation - mesh.rotation.y;
-        // Normalize rotation difference to shortest path
         let normalizedDiff = rotationDiff;
         if (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
         if (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
         
-        mesh.rotation.y += normalizedDiff * interpolationSpeed * delta;
+        // More direct rotation (snap if close enough)
+        if (Math.abs(normalizedDiff) < 0.1) {
+            mesh.rotation.y = player.targetRotation;
+        } else {
+            mesh.rotation.y += normalizedDiff * interpolationSpeed * delta;
+        }
         
         // Remove stale players (no updates for 5 seconds)
         const timeSinceUpdate = (performance.now() - player.lastUpdate) / 1000;

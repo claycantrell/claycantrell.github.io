@@ -37,6 +37,9 @@ function animate() {
         updateSpriteBillboards();
     }
 
+    // Update NPC behavior
+    updateNPC(delta);
+
     // Portal interaction and label animation
     portals.forEach(portalObj => {
         const portal = portalObj.group;
@@ -61,10 +64,12 @@ function animate() {
             portalObj.innerPortal.material.color.setHex(0xFFFFFF);
         }
 
-        // Floating label animation
+        // Floating label animation (more choppy, less smooth - 90s style)
         if (portalObj.labelMesh) {
+            // Use frame-based animation instead of smooth sine wave
+            const frame = Math.floor(currentTime / 100); // Update every 100ms (choppier)
             portalObj.labelMesh.position.y =
-                portalObj.labelStartY + Math.sin(currentTime * 0.002 + portalObj.group.position.x) * 0.2;
+                portalObj.labelStartY + Math.sin(frame * 0.2 + portalObj.group.position.x) * 0.2;
         }
     });
 

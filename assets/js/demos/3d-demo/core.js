@@ -89,7 +89,8 @@ function init() {
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.domElement.style.imageRendering = 'pixelated';
-    renderer.setPixelRatio(window.devicePixelRatio * pixelRatio);
+    // 90s games ran at lower resolution - cap pixel ratio for retro feel
+    renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
     
     // Disable expensive features
     renderer.shadowMap.enabled = false; // No shadows
@@ -118,6 +119,9 @@ function init() {
 
     // Create more complex trees
     createMoreComplexTrees();
+
+    // Initialize NPC
+    initNPC();
 
     // Initialize audio (audio.js will handle setup)
     initAudio();
