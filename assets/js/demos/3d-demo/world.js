@@ -44,11 +44,16 @@ function createPortals() {
             const textGeometry = new THREE.TextGeometry(portalNames[i], {
                 font: font,
                 size: 1.04,
-                height: 0.1,
+                depth: 0.1, // Extrusion depth (was using wrong parameter name 'height')
+                bevelEnabled: false, // Disable bevel to keep it flat
+                bevelThickness: 0,
+                bevelSize: 0,
+                curveSegments: 4, // Reduce curve segments for performance
             });
             const textMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFFFFF,
-                flatShading: true
+                flatShading: true,
+                side: THREE.DoubleSide // Render both sides for flat text
             });
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 

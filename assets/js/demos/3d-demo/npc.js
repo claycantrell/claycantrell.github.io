@@ -152,6 +152,10 @@ function updateNPC(delta) {
             npcState = 'wandering';
             npcIsNearby = false;
             npcHasGreeted = false; // Reset greeting for next encounter
+            // Clear conversation history when player leaves
+            if (typeof clearNPCConversationHistory === 'function') {
+                clearNPCConversationHistory();
+            }
             // Pick new wander target (prefer near portal area)
             const preferNearPortals = Math.random() < 0.7;
             let targetX, targetZ;

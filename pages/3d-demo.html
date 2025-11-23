@@ -32,11 +32,32 @@
         </div>
     </div>
 
-    <!-- Include Three.js library from CDN -->
+    <!-- Import map to resolve 'three' module for ES6 imports -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://threejs.org/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <!-- Include Three.js library from CDN (UMD build for global THREE) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Include FontLoader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/loaders/FontLoader.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/geometries/TextGeometry.min.js"></script>
+    
+    <!-- Include FontLoader and TextGeometry as ES6 modules and make them available globally -->
+    <script type="module">
+        // Use threejs.org examples CDN with import map for 'three' dependency
+        import { FontLoader } from 'https://threejs.org/examples/jsm/loaders/FontLoader.js';
+        import { TextGeometry } from 'https://threejs.org/examples/jsm/geometries/TextGeometry.js';
+        // Make them available globally on THREE namespace
+        window.THREE.FontLoader = FontLoader;
+        window.THREE.TextGeometry = TextGeometry;
+        // Signal that modules are loaded
+        window.THREE_MODULES_LOADED = true;
+        // Dispatch event to notify other scripts
+        window.dispatchEvent(new Event('threeModulesLoaded'));
+    </script>
 
     <!-- 3D Demo JavaScript Modules (load order is important) -->
     <script src="../assets/js/demos/3d-demo/performance.js"></script>

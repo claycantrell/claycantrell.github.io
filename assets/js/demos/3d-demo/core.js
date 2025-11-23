@@ -146,17 +146,33 @@ function init() {
 }
 
 // Load Retro Font and start the game
-const loader = new THREE.FontLoader();
-loader.load('https://threejs.org/examples/fonts/droid/droid_sans_mono_regular.typeface.json', function (loadedFont) {
-    font = loadedFont;
-    // Instructions are set before initialization
-    setInstructions();
-    init();
-    // Start the animation loop
-    animate();
-    // After 3 seconds, fade out the instructional message
-    setTimeout(() => {
-        instructionMessage.style.opacity = '0';
-    }, 3000);
-});
+// Wait for FontLoader to be available (loaded as ES6 module)
+function startGame() {
+    if (!window.THREE || !window.THREE.FontLoader) {
+        // Wait for modules to load
+        window.addEventListener('threeModulesLoaded', startGame, { once: true });
+        return;
+    }
+    
+    const loader = new THREE.FontLoader();
+    loader.load('https://threejs.org/examples/fonts/droid/droid_sans_mono_regular.typeface.json', function (loadedFont) {
+        font = loadedFont;
+        // Instructions are set before initialization
+        setInstructions();
+        init();
+        // Start the animation loop
+        animate();
+        // After 3 seconds, fade out the instructional message
+        setTimeout(() => {
+            instructionMessage.style.opacity = '0';
+        }, 3000);
+    });
+}
+
+// Start the game when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startGame);
+} else {
+    startGame();
+}
 

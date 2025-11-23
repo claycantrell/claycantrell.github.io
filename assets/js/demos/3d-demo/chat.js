@@ -4,42 +4,171 @@ let chatOpen = false;
 let chatBox, chatToggle, chatMessages, chatInput; // Will be initialized when DOM is ready
 const MAX_MESSAGES = 100; // Limit chat history
 
+// Conversation history for NPC (stores recent messages for context)
+let npcConversationHistory = [];
+const MAX_NPC_HISTORY = 10; // Keep last 10 messages (5 exchanges) for context
+
+// Clear NPC conversation history (called when player leaves NPC area)
+function clearNPCConversationHistory() {
+    npcConversationHistory = [];
+}
+
+// Rate limiting for GPT API calls
+const RATE_LIMIT = {
+    requestsPerMinute: 30,      // Max 30 requests per minute (more generous)
+    requestsPerHour: 200,        // Max 200 requests per hour (more generous)
+    windowSizeMinutes: 1,        // 1 minute sliding window
+    windowSizeHours: 1            // 1 hour sliding window
+};
+
+// Generate a simple browser fingerprint (makes it harder to bypass by switching browsers)
+function generateBrowserFingerprint() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Browser fingerprint', 2, 2);
+    
+    const fingerprint = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        canvasHash: canvas.toDataURL().substring(0, 50) // Simple hash
+    };
+    
+    // Create a simple hash from fingerprint
+    const hash = btoa(JSON.stringify(fingerprint)).substring(0, 16);
+    return hash;
+}
+
+// Get or create browser fingerprint ID
+function getBrowserFingerprint() {
+    let fingerprint = localStorage.getItem('browser_fingerprint');
+    if (!fingerprint) {
+        fingerprint = generateBrowserFingerprint();
+        localStorage.setItem('browser_fingerprint', fingerprint);
+    }
+    return fingerprint;
+}
+
+// Rate limit tracking (stored in localStorage with fingerprint - persists across sessions)
+function getRateLimitData() {
+    const fingerprint = getBrowserFingerprint();
+    const stored = localStorage.getItem(`gpt_rate_limit_${fingerprint}`);
+    if (stored) {
+        return JSON.parse(stored);
+    }
+    return {
+        requests: [], // Array of timestamps
+        lastWarning: null,
+        fingerprint: fingerprint
+    };
+}
+
+function saveRateLimitData(data) {
+    const fingerprint = getBrowserFingerprint();
+    localStorage.setItem(`gpt_rate_limit_${fingerprint}`, JSON.stringify(data));
+}
+
+// Check if request is allowed (sophisticated sliding window rate limiting)
+function checkRateLimit() {
+    const now = Date.now();
+    const data = getRateLimitData();
+    
+    // Clean old requests outside the time windows
+    const oneHourAgo = now - (RATE_LIMIT.windowSizeHours * 60 * 60 * 1000);
+    const oneMinuteAgo = now - (RATE_LIMIT.windowSizeMinutes * 60 * 1000);
+    
+    // Remove requests older than 1 hour
+    data.requests = data.requests.filter(timestamp => timestamp > oneHourAgo);
+    
+    // Count requests in last minute
+    const requestsLastMinute = data.requests.filter(timestamp => timestamp > oneMinuteAgo).length;
+    
+    // Count requests in last hour
+    const requestsLastHour = data.requests.length;
+    
+    // Check limits
+    if (requestsLastMinute >= RATE_LIMIT.requestsPerMinute) {
+        const timeUntilNext = Math.ceil((data.requests[data.requests.length - requestsLastMinute] + (RATE_LIMIT.windowSizeMinutes * 60 * 1000) - now) / 1000);
+        return {
+            allowed: false,
+            reason: 'minute',
+            retryAfter: timeUntilNext,
+            message: `Thou hast sent too many messages. Please wait ${timeUntilNext} second${timeUntilNext !== 1 ? 's' : ''} before trying again.`
+        };
+    }
+    
+    if (requestsLastHour >= RATE_LIMIT.requestsPerHour) {
+        const timeUntilNext = Math.ceil((data.requests[0] + (RATE_LIMIT.windowSizeHours * 60 * 60 * 1000) - now) / 1000 / 60);
+        return {
+            allowed: false,
+            reason: 'hour',
+            retryAfter: timeUntilNext,
+            message: `Thou hast exceeded the hourly message limit. Please wait ${timeUntilNext} minute${timeUntilNext !== 1 ? 's' : ''} before trying again.`
+        };
+    }
+    
+    // Request allowed - record it
+    data.requests.push(now);
+    saveRateLimitData(data);
+    
+    return { allowed: true };
+}
+
 // Text-to-speech setup (Stephen Hawking style)
 let speechSynthesis = window.speechSynthesis;
 let speechVoice = null;
 
-// OpenAI API configuration
-const OPENAI_API_KEY = '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';
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+// OpenAI API configuration - now using server proxy
+// API key is hidden on server, rate limiting is IP-based
+const OPENAI_API_URL = 'http://localhost:8080/api/chat';
 
 // Convert message to medieval language and sanitize
 async function convertToMedieval(message, isConversingWithNPC = false) {
     try {
-        let systemPrompt = 'You are a mischievous translator converting modern English to Middle English (Chaucer-era, not Shakespeare). Take the user\'s message and translate it into authentic Middle English. IMPORTANT: Translate in first person - if the user says "my name is John", translate as "mine name is John" (first person), NOT "thy name is John" (second person). Preserve the user\'s perspective - they are speaking about themselves. Keep the meaning, but be playful and mischievous in the translation - add a bit of wit, humor, or playful medieval flair. Do not expand or elaborate unnecessarily.\n\nOnly filter truly inappropriate content (explicit sexual content, hate speech, extreme violence). Mild insults, playful banter, and medieval-appropriate language like "fool", "knave", etc. are acceptable. Translate the message unless it contains truly offensive material.\n\nReturn only the Middle English translation in first person. Keep it brief and mischievous. Add no modern note, no framing, no apology.';
+        let systemPrompt = 'You are a mischievous translator converting modern English to Middle English (Chaucer-era, not Shakespeare). Take the user\'s message and translate it into authentic Middle English. IMPORTANT: Translate in first person - if the user says "my name is John", translate as "mine name is John" (first person), NOT "thy name is John" (second person). Preserve the user\'s perspective - they are speaking about themselves. Keep the meaning, but be playful and mischievous in the translation - add a bit of wit, humor, or playful medieval flair. Do not expand or elaborate unnecessarily.\n\nIf the message contains truly inappropriate content (explicit sexual content, hate speech, extreme violence), return ONLY an empty string. Do not comment on it, do not explain why, do not say anything about the content being inappropriate. Just return an empty string. Mild insults, playful banter, and medieval-appropriate language like "fool", "knave", etc. are acceptable and should be translated.\n\nReturn only the Middle English translation in first person. Keep it brief and mischievous. Add no modern note, no framing, no apology. If the content is inappropriate, return nothing (empty string).';
         
-        // If conversing with NPC, add context that this is a conversation
+        // Build messages array - include conversation history if talking to NPC
+        const messages = [
+            {
+                role: 'system',
+                content: systemPrompt
+            }
+        ];
+        
+        // If conversing with NPC, add context that this is a conversation and include history
         if (isConversingWithNPC) {
-            systemPrompt = 'You are a wandering scribe of the elder days, skilled in Middle English tongue. A traveler hath spoken to thee in Middle English. Respond to their message as the scribe would, in authentic Middle English — Chaucer-era in flavor. Be mischievous and playful in thy responses - add wit, humor, or playful medieval flair. Keep responses SHORT and concise. Answer their question or respond to their statement naturally, as a mischievous scribe who chronicles tales.\n\nOnly filter truly inappropriate content (explicit sexual content, hate speech, extreme violence). Mild insults, playful banter, and medieval-appropriate language are acceptable. Respond to the message unless it contains truly offensive material.\n\nReturn only the Middle English response from the scribe. Keep it brief and mischievous. Add no modern note, no framing, no apology. Do not translate or convert the message - it is already in Middle English. Simply respond to it as the scribe.';
+            systemPrompt = 'You are a wandering scribe of the elder days, skilled in Middle English tongue. A traveler hath spoken to thee in Middle English. Respond to their message as the scribe would, in authentic Middle English — Chaucer-era in flavor. Be mischievous and playful in thy responses - add wit, humor, or playful medieval flair. Keep responses SHORT and concise. Answer their question or respond to their statement naturally, as a mischievous scribe who chronicles tales. Remember the context of your recent conversation with this traveler.\n\nIf the message contains truly inappropriate content (explicit sexual content, hate speech, extreme violence), return ONLY an empty string. Do not comment on it, do not explain why, do not say anything about the content being inappropriate. Just return an empty string. Mild insults, playful banter, and medieval-appropriate language are acceptable and should be responded to.\n\nReturn only the Middle English response from the scribe. Keep it brief and mischievous. Add no modern note, no framing, no apology. Do not translate or convert the message - it is already in Middle English. Simply respond to it as the scribe. If the content is inappropriate, return nothing (empty string).';
+            
+            // Update system prompt
+            messages[0].content = systemPrompt;
+            
+            // Add conversation history (last MAX_NPC_HISTORY messages)
+            // History alternates: user message, assistant response, user message, etc.
+            if (npcConversationHistory.length > 0) {
+                // Add recent conversation history before the current message
+                const recentHistory = npcConversationHistory.slice(-MAX_NPC_HISTORY);
+                messages.push(...recentHistory);
+            }
         }
+        
+        // Add current message
+        messages.push({
+            role: 'user',
+            content: message
+        });
         
         const response = await fetch(OPENAI_API_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: 'gpt-4o-mini', // GPT-5 Nano - fastest, cheapest version
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: message
-                    }
-                ],
+                messages: messages,
                 max_tokens: 80, // Shorter responses
                 temperature: 0.9
             })
@@ -48,12 +177,23 @@ async function convertToMedieval(message, isConversingWithNPC = false) {
         if (!response.ok) {
             // Get detailed error message from API
             let errorMessage = `HTTP ${response.status}`;
+            let errorData = null;
             try {
-                const errorData = await response.json();
+                errorData = await response.json();
                 errorMessage = errorData.error?.message || errorMessage;
+                
+                // Handle rate limit errors from server
+                if (response.status === 429) {
+                    console.warn('Rate limit exceeded:', errorMessage);
+                    throw new Error(`Rate limit: ${errorMessage}`);
+                }
+                
                 console.error('OpenAI API error details:', errorData);
             } catch (e) {
                 // If we can't parse error, use status code
+                if (e.message && e.message.startsWith('Rate limit:')) {
+                    throw e; // Re-throw rate limit errors
+                }
             }
             throw new Error(`OpenAI API error: ${errorMessage}`);
         }
@@ -211,6 +351,13 @@ async function sendChatMessage() {
     // Clear input first
     chatInput.value = '';
     
+    // Check rate limit before processing
+    const rateLimitCheck = checkRateLimit();
+    if (!rateLimitCheck.allowed) {
+        addSystemMessage(rateLimitCheck.message);
+        return;
+    }
+    
     // Check if player is near NPC (conversing with scribe)
     const isNearNPC = typeof isPlayerNearNPC === 'function' && isPlayerNearNPC();
     
@@ -242,10 +389,40 @@ async function sendChatMessage() {
                 addChatMessage('You', medievalMessage, true, false); // Don't speak yet
             }
             
+            // Add player's message to conversation history
+            npcConversationHistory.push({
+                role: 'user',
+                content: medievalMessage
+            });
+            
+            // Trim history if it exceeds max size
+            if (npcConversationHistory.length > MAX_NPC_HISTORY) {
+                npcConversationHistory = npcConversationHistory.slice(-MAX_NPC_HISTORY);
+            }
+            
             // Get NPC response - pass the medieval version of player's message to scribe
             // The scribe should respond to what the player said in medieval language
-            const npcResponse = await convertToMedieval(medievalMessage, true);
+            // Check rate limit again for NPC response (counts as separate API call)
+            const npcRateLimitCheck = checkRateLimit();
+            let npcResponse = null;
+            if (npcRateLimitCheck.allowed) {
+                npcResponse = await convertToMedieval(medievalMessage, true);
+            } else {
+                // If rate limited, still show player message but skip NPC response
+                addSystemMessage('The scribe is too busy to respond at this moment. Try again shortly.');
+            }
             if (npcResponse && npcResponse.length > 0) {
+                // Add NPC response to conversation history
+                npcConversationHistory.push({
+                    role: 'assistant',
+                    content: npcResponse
+                });
+                
+                // Trim history if it exceeds max size
+                if (npcConversationHistory.length > MAX_NPC_HISTORY) {
+                    npcConversationHistory = npcConversationHistory.slice(-MAX_NPC_HISTORY);
+                }
+                
                 // Speak player's message first, then when done, show and speak NPC response
                 speakMessage(medievalMessage, true, () => {
                     // Player's message finished speaking, now show and speak NPC response
