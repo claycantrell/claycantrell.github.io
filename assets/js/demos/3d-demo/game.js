@@ -40,6 +40,11 @@ function animate() {
     // Update NPC behavior
     updateNPC(delta);
 
+    // Update Deer behavior (if function exists)
+    if (typeof updateDeer === 'function') {
+        updateDeer(delta);
+    }
+
     // Portal interaction and label animation
     portals.forEach(portalObj => {
         const portal = portalObj.group;

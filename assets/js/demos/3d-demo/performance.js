@@ -57,6 +57,23 @@ function initSharedMaterials() {
         color: 0x228B22, 
         flatShading: true 
     });
+    // New Autumn Oak Materials
+    sharedMaterials.oakTrunk = new THREE.MeshBasicMaterial({
+        color: 0x4A3728, // Darker wood
+        flatShading: true
+    });
+    sharedMaterials.oakFoliage1 = new THREE.MeshBasicMaterial({
+        color: 0x004d00, // Dark Green
+        flatShading: true
+    });
+    sharedMaterials.oakFoliage2 = new THREE.MeshBasicMaterial({
+        color: 0x006400, // Slightly lighter Dark Green
+        flatShading: true
+    });
+    sharedMaterials.oakFoliage3 = new THREE.MeshBasicMaterial({
+        color: 0x2E8B57, // Sea Green (darkish)
+        flatShading: true
+    });
     sharedMaterials.ground = new THREE.MeshBasicMaterial({ 
         color: 0x004d00, 
         flatShading: true 

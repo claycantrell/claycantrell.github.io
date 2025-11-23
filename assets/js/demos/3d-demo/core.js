@@ -75,7 +75,8 @@ function init() {
     if (typeof createCharacter !== 'function' ||
         typeof createHillyGround !== 'function' ||
         typeof createPortals !== 'function' ||
-        typeof createMoreComplexTrees !== 'function') {
+        typeof createMoreComplexTrees !== 'function' ||
+        typeof initDeer !== 'function') {
         console.log('Waiting for dependencies to load...');
         setTimeout(init, 100); // Try again in 100ms
         return;
@@ -186,6 +187,9 @@ function init() {
     
     // Initialize NPC, ensuring it spawns on the new terrain
     initNPC();
+
+    // Initialize Deer Herd
+    initDeer();
 
     // Initialize audio (audio.js will handle setup)
     initAudio();
