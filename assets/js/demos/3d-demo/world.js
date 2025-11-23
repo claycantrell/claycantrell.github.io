@@ -93,9 +93,9 @@ function createPortals() {
 function create3DTree(x, z, detail) {
     const tree = new THREE.Group();
     
-    // Trunk - Reduced segments
+    // Trunk - Hexagonal base (6 segments)
     const trunkHeight = 25 + Math.random() * 10;
-    const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, trunkHeight, detail.trunkSegments);
+    const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, trunkHeight, 6); // 6 segments = hexagon
     const trunk = new THREE.Mesh(trunkGeometry, sharedMaterials.trunk);
     trunk.position.y = trunkHeight / 2;
     tree.add(trunk);

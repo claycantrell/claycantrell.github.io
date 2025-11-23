@@ -48,6 +48,9 @@ function updateCharacterMovement(delta) {
     velocity.z = 0;
     const rotationSpeed = 2.0;
     const moveSpeed = 20.0;
+    const flySpeed = 15.0; // Vertical speed when flying
+    const gravity = 25.0; // Gravity force pulling down
+    const groundLevel = 1.0; // Ground Y position
 
     // Rotate character
     if (rotateLeft) {
@@ -77,6 +80,19 @@ function updateCharacterMovement(delta) {
     character.position.x += moveX;
     character.position.z += moveZ;
 
+    // Flying mechanics: spacebar to go up, gravity pulls down
+    if (isFlying) {
+        // Spacebar pressed - fly up
+        character.position.y += flySpeed * delta;
+    } else {
+        // Not flying - apply gravity
+        character.position.y -= gravity * delta;
+        // Prevent going below ground
+        if (character.position.y < groundLevel) {
+            character.position.y = groundLevel;
+        }
+    }
+
     // Collision with ground boundaries
     const boundary = 100;
     character.position.x = Math.max(-boundary, Math.min(boundary, character.position.x));
@@ -88,6 +104,7 @@ function updateCharacterMovement(delta) {
     cameraOffset.applyQuaternion(character.quaternion);
     // Direct position update (no smoothing - 90s games had rigid cameras)
     camera.position.copy(character.position).add(cameraOffset);
-    camera.lookAt(character.position.x, 7, character.position.z);
+    // Camera looks at character's position (follows Y when flying)
+    camera.lookAt(character.position.x, character.position.y + 1, character.position.z);
 }
 

@@ -12,7 +12,7 @@ function onKeyDown(event) {
     }
     
     // Prevent default for game keys to avoid browser shortcuts
-    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(event.code)) {
         event.preventDefault();
     }
     
@@ -35,6 +35,9 @@ function onKeyDown(event) {
         case 'ArrowRight':
         case 'KeyD':
             rotateRight = true;
+            break;
+        case 'Space':
+            isFlying = true;
             break;
     }
 }
@@ -69,6 +72,9 @@ function onKeyUp(event) {
         case 'ArrowRight':
         case 'KeyD':
             rotateRight = false;
+            break;
+        case 'Space':
+            isFlying = false;
             break;
     }
 }
@@ -230,6 +236,7 @@ function resetMovementFlags() {
     moveBackward = false;
     rotateLeft = false;
     rotateRight = false;
+    isFlying = false;
     activeKeys.clear();
 }
 
