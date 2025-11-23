@@ -9,7 +9,7 @@
 
 <body>
     <div id="notification"></div>
-    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png" alt="Audio Icon">
+    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/mute.png" alt="Audio Icon">
 
     <!-- Instructional Message -->
     <div id="instruction-message">
@@ -21,6 +21,17 @@
     <!-- Exit Button -->
     <button id="exit-button">Go Home</button>
 
+    <!-- Chat System (RuneScape style) -->
+    <div id="chat-container">
+        <div id="chat-toggle">Chat</div>
+        <div id="chat-box" class="chat-closed">
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="100">
+            </div>
+        </div>
+    </div>
+
     <!-- Include Three.js library from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Include FontLoader -->
@@ -28,12 +39,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/jsm/geometries/TextGeometry.min.js"></script>
 
     <!-- 3D Demo JavaScript Modules (load order is important) -->
+    <script src="../assets/js/demos/3d-demo/performance.js"></script>
     <script src="../assets/js/demos/3d-demo/core.js"></script>
     <script src="../assets/js/demos/3d-demo/character.js"></script>
     <script src="../assets/js/demos/3d-demo/world.js"></script>
     <script src="../assets/js/demos/3d-demo/controls.js"></script>
     <script src="../assets/js/demos/3d-demo/audio.js"></script>
     <script src="../assets/js/demos/3d-demo/ui.js"></script>
+    <script src="../assets/js/demos/3d-demo/chat.js"></script>
     <script src="../assets/js/demos/3d-demo/multiplayer.js"></script>
     <script src="../assets/js/demos/3d-demo/other-players.js"></script>
     <script src="../assets/js/demos/3d-demo/game.js"></script>

@@ -2,6 +2,23 @@
 
 // Function to handle key down events for character movement
 function onKeyDown(event) {
+    // Check if chat input is focused - if so, don't handle movement keys
+    const chatInput = document.getElementById('chat-input');
+    const isChatFocused = chatInput && document.activeElement === chatInput;
+    
+    // If chat is focused, allow WASD to be used for typing (don't prevent default or handle movement)
+    if (isChatFocused && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+        return; // Let the input handle these keys
+    }
+    
+    // Prevent default for game keys to avoid browser shortcuts
+    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+        event.preventDefault();
+    }
+    
+    // Track active key
+    activeKeys.add(event.code);
+    
     switch (event.code) {
         case 'ArrowDown':
         case 'KeyS':
@@ -24,6 +41,18 @@ function onKeyDown(event) {
 
 // Function to handle key up events to stop character movement
 function onKeyUp(event) {
+    // Check if chat input is focused - if so, don't handle movement keys
+    const chatInput = document.getElementById('chat-input');
+    const isChatFocused = chatInput && document.activeElement === chatInput;
+    
+    // If chat is focused, don't process movement key releases
+    if (isChatFocused && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
+        return; // Let the input handle these keys
+    }
+    
+    // Remove from active keys
+    activeKeys.delete(event.code);
+    
     switch (event.code) {
         case 'ArrowDown':
         case 'KeyS':
@@ -122,46 +151,96 @@ function createTouchControls() {
     adjustTouchZones();
     window.addEventListener('resize', adjustTouchZones, false);
 
-    // Touch event listeners
+    // Touch event listeners with better error handling
     // Bottom Control => Move Backward
     controlZones.bottom.addEventListener('touchstart', function (event) {
         event.preventDefault();
         moveBackward = true;
+        activeKeys.add('TouchBottom');
     }, { passive: false });
     controlZones.bottom.addEventListener('touchend', function (event) {
         event.preventDefault();
         moveBackward = false;
+        activeKeys.delete('TouchBottom');
+    }, { passive: false });
+    controlZones.bottom.addEventListener('touchcancel', function (event) {
+        event.preventDefault();
+        moveBackward = false;
+        activeKeys.delete('TouchBottom');
     }, { passive: false });
 
     // Top Control => Move Forward
     controlZones.top.addEventListener('touchstart', function (event) {
         event.preventDefault();
         moveForward = true;
+        activeKeys.add('TouchTop');
     }, { passive: false });
     controlZones.top.addEventListener('touchend', function (event) {
         event.preventDefault();
         moveForward = false;
+        activeKeys.delete('TouchTop');
+    }, { passive: false });
+    controlZones.top.addEventListener('touchcancel', function (event) {
+        event.preventDefault();
+        moveForward = false;
+        activeKeys.delete('TouchTop');
     }, { passive: false });
 
     // Left Control => Rotate Left
     controlZones.left.addEventListener('touchstart', function (event) {
         event.preventDefault();
         rotateLeft = true;
+        activeKeys.add('TouchLeft');
     }, { passive: false });
     controlZones.left.addEventListener('touchend', function (event) {
         event.preventDefault();
         rotateLeft = false;
+        activeKeys.delete('TouchLeft');
+    }, { passive: false });
+    controlZones.left.addEventListener('touchcancel', function (event) {
+        event.preventDefault();
+        rotateLeft = false;
+        activeKeys.delete('TouchLeft');
     }, { passive: false });
 
     // Right Control => Rotate Right
     controlZones.right.addEventListener('touchstart', function (event) {
         event.preventDefault();
         rotateRight = true;
+        activeKeys.add('TouchRight');
     }, { passive: false });
     controlZones.right.addEventListener('touchend', function (event) {
         event.preventDefault();
         rotateRight = false;
+        activeKeys.delete('TouchRight');
     }, { passive: false });
+    controlZones.right.addEventListener('touchcancel', function (event) {
+        event.preventDefault();
+        rotateRight = false;
+        activeKeys.delete('TouchRight');
+    }, { passive: false });
+}
+
+// Track active keys to prevent stuck controls
+const activeKeys = new Set();
+
+// Function to reset all movement flags (safety mechanism)
+function resetMovementFlags() {
+    moveForward = false;
+    moveBackward = false;
+    rotateLeft = false;
+    rotateRight = false;
+    activeKeys.clear();
+}
+
+// Handle window blur (user switches tabs/windows) - reset controls
+function onWindowBlur() {
+    resetMovementFlags();
+}
+
+// Handle window focus - ensure clean state
+function onWindowFocus() {
+    resetMovementFlags();
 }
 
 // Initialize controls
@@ -170,11 +249,33 @@ function initControls() {
     document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('resize', onWindowResize, false);
+    
+    // Reset controls when window loses/gains focus (prevents stuck keys)
+    window.addEventListener('blur', onWindowBlur, false);
+    window.addEventListener('focus', onWindowFocus, false);
+    
+    // Also handle visibility change (tab switching)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            resetMovementFlags();
+        }
+    });
 
     // Touch Controls for Mobile Only
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
         createTouchControls();
     }
+    
+    // Safety check: periodically verify controls aren't stuck
+    // This catches edge cases where events are missed
+    setInterval(() => {
+        // If flags are true but no keys are active, reset them
+        if ((moveForward || moveBackward || rotateLeft || rotateRight) && activeKeys.size === 0) {
+            // Only reset if we haven't received a key event in a while
+            // This prevents false positives during normal gameplay
+            resetMovementFlags();
+        }
+    }, 1000); // Check every second
 }
 

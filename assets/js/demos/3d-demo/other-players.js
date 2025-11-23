@@ -2,36 +2,67 @@
 
 const otherPlayers = new Map(); // id -> {mesh, group}
 
-// Create a visual representation of another player
+// Shared geometries for other players (reuse to save memory)
+let sharedOtherPlayerGeometries = null;
+let sharedOtherPlayerMaterials = null;
+
+// Initialize shared geometries and materials
+function initOtherPlayerAssets() {
+    if (sharedOtherPlayerGeometries) return; // Already initialized
+    
+    const detail = PERFORMANCE.characterDetail;
+    
+    // Create shared geometries (reused for all other players)
+    sharedOtherPlayerGeometries = {
+        body: new THREE.CylinderGeometry(0.5, 0.5, 2, detail.bodySegments),
+        head: new THREE.SphereGeometry(0.5, detail.headSegments, detail.headSegments),
+        hat: new THREE.ConeGeometry(0.6, 1, detail.hatSegments)
+    };
+    
+    // Create shared materials (reused for all other players)
+    sharedOtherPlayerMaterials = {
+        body: new THREE.MeshBasicMaterial({
+            color: 0x00FF00, // Green for other players
+            flatShading: true
+        }),
+        head: new THREE.MeshBasicMaterial({
+            color: 0xFFFF00,
+            flatShading: true
+        }),
+        hat: new THREE.MeshBasicMaterial({ 
+            color: 0x0000FF, 
+            flatShading: true 
+        })
+    };
+}
+
+// Create a visual representation of another player (optimized)
 function createOtherPlayerMesh() {
+    // Initialize shared assets if needed
+    initOtherPlayerAssets();
+    
     const group = new THREE.Group();
 
-    // Body with Flat Shading (different color to distinguish)
-    const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 6);
-    const bodyMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00FF00, // Green for other players
-        flatShading: true
-    });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    // Body - use shared geometry and material
+    const body = new THREE.Mesh(
+        sharedOtherPlayerGeometries.body,
+        sharedOtherPlayerMaterials.body
+    );
     group.add(body);
 
-    // Head with Flat Shading
-    const headGeometry = new THREE.SphereGeometry(0.5, 6, 6);
-    const headMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFFFF00,
-        flatShading: true
-    });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
+    // Head - use shared geometry and material
+    const head = new THREE.Mesh(
+        sharedOtherPlayerGeometries.head,
+        sharedOtherPlayerMaterials.head
+    );
     head.position.y = 1.5;
     group.add(head);
 
-    // Cone Hat with Flat Shading
-    const hatGeometry = new THREE.ConeGeometry(0.6, 1, 4);
-    const hatMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x0000FF, 
-        flatShading: true 
-    });
-    const hat = new THREE.Mesh(hatGeometry, hatMaterial);
+    // Hat - use shared geometry and material
+    const hat = new THREE.Mesh(
+        sharedOtherPlayerGeometries.hat,
+        sharedOtherPlayerMaterials.hat
+    );
     hat.position.y = 2.3;
     group.add(hat);
 
@@ -79,8 +110,8 @@ function removeOtherPlayer(id) {
     if (otherPlayers.has(id)) {
         const player = otherPlayers.get(id);
         scene.remove(player.mesh);
-        player.mesh.geometry.dispose();
-        player.mesh.material.dispose();
+        // Don't dispose geometries/materials - they're shared!
+        // Just remove the mesh
         otherPlayers.delete(id);
     }
 }

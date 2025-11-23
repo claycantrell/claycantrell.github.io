@@ -2,6 +2,9 @@
 // Global variables accessible across all modules
 let scene, camera, renderer;
 let character;
+
+// Shared materials (declared here, initialized in performance.js)
+let sharedMaterials = {};
 let moveForward = false,
     moveBackward = false,
     rotateLeft = false,
@@ -22,6 +25,9 @@ let font;
 let audio, listener, audioLoader;
 let isAudioPlaying = false;
 const audioIcon = document.getElementById('audio-icon');
+
+// Tree data for LOD system (Level of Detail - 2D sprites for distant trees)
+let treeData = [];
 
 // Instructional Message Elements
 const instructionMessage = document.getElementById('instruction-message');
@@ -61,7 +67,11 @@ function init() {
     // Scene setup
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x191970); // Midnight blue background
+    // Fog adds overhead - can disable for even lower load
     scene.fog = new THREE.Fog(0x000000, 50, 200); // Linear fog with black color
+    
+    // Disable automatic matrix updates for static objects (performance)
+    scene.autoUpdate = true; // Keep true for now, but can optimize further
 
     // Camera setup
     camera = new THREE.PerspectiveCamera(
@@ -71,23 +81,35 @@ function init() {
         1000
     );
 
-    // Renderer setup
-    renderer = new THREE.WebGLRenderer({ antialias: false });
+    // Renderer setup - Optimized for low-end hardware
+    renderer = new THREE.WebGLRenderer({ 
+        antialias: false,
+        powerPreference: "low-power", // Prefer battery saving
+        precision: "lowp" // Lower precision shaders (if supported)
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.domElement.style.imageRendering = 'pixelated';
     renderer.setPixelRatio(window.devicePixelRatio * pixelRatio);
+    
+    // Disable expensive features
+    renderer.shadowMap.enabled = false; // No shadows
+    renderer.sortObjects = false; // Disable sorting for performance
+    
     document.body.appendChild(renderer.domElement);
 
-    // Ground with Flat Shading
+    // Initialize shared materials
+    initSharedMaterials();
+
+    // Ground with Flat Shading - Use shared material
     const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
-    const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x004d00, flatShading: true });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    const ground = new THREE.Mesh(groundGeometry, sharedMaterials.ground);
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Character setup
+    // Character setup - position will be set by multiplayer spawn or default
     character = createCharacter();
-    character.position.set(-180, 1, -180);
+    // Default spawn position (used if multiplayer not available)
+    character.position.set(-50, 1, -50);
     character.rotation.y = Math.PI / 4;
     scene.add(character);
 
@@ -105,6 +127,11 @@ function init() {
 
     // Initialize UI
     initUI();
+
+    // Initialize other player assets (for multiplayer)
+    if (typeof initOtherPlayerAssets === 'function') {
+        initOtherPlayerAssets();
+    }
 
     // Initialize multiplayer (optional - game works without it)
     // Change server URL to your production WebSocket server

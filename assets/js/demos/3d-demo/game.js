@@ -1,5 +1,8 @@
 // Main game loop and game logic
 
+// LOD update throttling
+let lastLODUpdate = 0;
+
 // Main animation loop
 function animate() {
     requestAnimationFrame(animate);
@@ -22,6 +25,17 @@ function animate() {
     // Update multiplayer (send position, receive others, interpolate)
     updateMultiplayer();
     interpolateOtherPlayers(delta);
+
+    // Update tree LOD (throttled for performance)
+    if (PERFORMANCE.rendering.lodEnabled) {
+        // Update LOD state (which trees are 3D vs 2D) - throttled
+        if (currentTime - lastLODUpdate > PERFORMANCE.rendering.lodUpdateInterval) {
+            updateTreeLOD();
+            lastLODUpdate = currentTime;
+        }
+        // Update sprite billboard rotation every frame (cheap operation)
+        updateSpriteBillboards();
+    }
 
     // Portal interaction and label animation
     portals.forEach(portalObj => {
@@ -54,6 +68,9 @@ function animate() {
         }
     });
 
-    renderer.render(scene, camera);
+    // Only render if camera is valid (performance check)
+    if (camera && scene) {
+        renderer.render(scene, camera);
+    }
 }
 

@@ -28,8 +28,12 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
         };
 
         socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            handleServerMessage(data);
+            try {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            } catch (error) {
+                console.error('Error parsing server message:', error, event.data);
+            }
         };
 
         socket.onclose = () => {
@@ -81,6 +85,18 @@ function handleServerMessage(data) {
     switch (data.type) {
         case 'connected':
             playerId = data.id;
+            
+            // Set character spawn position from server
+            if (data.spawnPosition && data.spawnRotation && character) {
+                character.position.set(
+                    data.spawnPosition.x,
+                    data.spawnPosition.y,
+                    data.spawnPosition.z
+                );
+                character.rotation.y = data.spawnRotation.y;
+                console.log(`Spawned at (${data.spawnPosition.x}, ${data.spawnPosition.z})`);
+            }
+            
             // Initialize other players that already exist
             if (data.allPlayers) {
                 data.allPlayers.forEach(player => {
@@ -93,6 +109,9 @@ function handleServerMessage(data) {
 
         case 'playerJoined':
             // Another player joined - they'll send their position in first update
+            if (typeof addSystemMessage === 'function') {
+                addSystemMessage('A player joined the game');
+            }
             break;
 
         case 'playerUpdate':
@@ -101,6 +120,22 @@ function handleServerMessage(data) {
 
         case 'playerLeft':
             removeOtherPlayer(data.id);
+            if (typeof addSystemMessage === 'function') {
+                addSystemMessage('A player left the game');
+            }
+            break;
+
+        case 'chat':
+            // Handle incoming chat message
+            if (typeof addChatMessage === 'function') {
+                const isOwnMessage = data.playerId === playerId;
+                // Skip our own messages - we already showed them optimistically
+                if (!isOwnMessage) {
+                    addChatMessage(data.playerName || 'Player', data.message, false);
+                }
+            } else {
+                console.error('addChatMessage function not available');
+            }
             break;
     }
 }
@@ -139,6 +174,42 @@ function sendPlayerUpdate() {
 function updateMultiplayer() {
     if (isConnected) {
         sendPlayerUpdate();
+    }
+}
+
+// Send chat message to server
+function sendChatToServer(message) {
+    if (!isConnected || !socket || !playerId) {
+        console.warn('Cannot send chat: not connected to server');
+        if (typeof addSystemMessage === 'function') {
+            addSystemMessage('Not connected to server - chat unavailable');
+        }
+        return false;
+    }
+
+    if (socket.readyState !== WebSocket.OPEN) {
+        console.warn('Socket not open, readyState:', socket.readyState);
+        if (typeof addSystemMessage === 'function') {
+            addSystemMessage('Connection not ready - please wait');
+        }
+        return false;
+    }
+
+    try {
+        const chatData = {
+            type: 'chat',
+            id: playerId,
+            message: message
+        };
+        socket.send(JSON.stringify(chatData));
+        console.log('Chat sent:', message);
+        return true;
+    } catch (error) {
+        console.error('Error sending chat message:', error);
+        if (typeof addSystemMessage === 'function') {
+            addSystemMessage('Error sending message: ' + error.message);
+        }
+        return false;
     }
 }
 

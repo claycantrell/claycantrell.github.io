@@ -6,6 +6,11 @@ function initUI() {
     document.getElementById('exit-button').addEventListener('click', () => {
         window.location.href = 'home.html';
     });
+    
+    // Initialize chat system
+    if (typeof initChat === 'function') {
+        initChat();
+    }
 }
 
 // Function to show notifications on screen
