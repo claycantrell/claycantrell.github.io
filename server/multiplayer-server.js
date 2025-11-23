@@ -256,6 +256,8 @@ let nextSpawnIndex = 0; // Round-robin spawn point assignment
 function getNextSpawnPoint() {
     const spawn = SPAWN_POINTS[nextSpawnIndex % SPAWN_POINTS.length];
     nextSpawnIndex++;
+    // Adjust spawn height to terrain
+    spawn.y = getTerrainHeightAt(spawn.x, spawn.z) + 1.0;
     return spawn;
 }
 

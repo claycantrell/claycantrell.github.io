@@ -77,7 +77,7 @@ function initNPC() {
 
 // Update NPC behavior
 function updateNPC(delta) {
-    if (!npc || !character) return;
+    if (!npc || !character || !isTerrainReady) return; // Also wait for terrain
 
     const distanceToPlayer = npc.position.distanceTo(character.position);
 
@@ -121,7 +121,7 @@ function updateNPC(delta) {
                         targetZ = Math.sin(angle) * distance;
                     } else {
                         // Wander anywhere on map (up to boundary)
-                        const boundary = 90; // Match character boundary
+                        const boundary = 110; // Match character boundary
                         targetX = (Math.random() - 0.5) * boundary * 2;
                         targetZ = (Math.random() - 0.5) * boundary * 2;
                     }
@@ -129,20 +129,16 @@ function updateNPC(delta) {
                     npcWanderTarget.set(targetX, 1, targetZ);
                 } else {
                     // Move toward target
-                    const direction = new THREE.Vector3();
-                    direction.subVectors(npcWanderTarget, npc.position);
-                    direction.y = 0;
-                    direction.normalize();
-                    
-                    // Move NPC
-                    npc.position.x += direction.x * npcWanderSpeed * delta;
-                    npc.position.z += direction.z * npcWanderSpeed * delta;
-                    
-                    // Rotate NPC to face movement direction
-                    if (direction.length() > 0.1) {
-                        const angle = Math.atan2(direction.x, direction.z);
-                        npc.rotation.y = angle;
-                    }
+                    const direction = new THREE.Vector3().subVectors(npcWanderTarget, npc.position).normalize();
+                    npc.position.addScaledVector(direction, npcWanderSpeed * delta);
+
+                    // Update NPC height to follow terrain
+                    const terrainHeight = getTerrainHeightAt(npc.position.x, npc.position.z);
+                    npc.position.y = terrainHeight + 1.0;
+
+                    // Rotate to face wander target
+                    const targetAngle = Math.atan2(direction.x, direction.z);
+                    npc.rotation.y = targetAngle;
                 }
             }
         }
@@ -166,7 +162,7 @@ function updateNPC(delta) {
                 targetX = Math.cos(angle) * distance;
                 targetZ = Math.sin(angle) * distance;
             } else {
-                const boundary = 90;
+                const boundary = 110;
                 targetX = (Math.random() - 0.5) * boundary * 2;
                 targetZ = (Math.random() - 0.5) * boundary * 2;
             }

@@ -27,6 +27,9 @@ let audio, listener, audioLoader;
 let isAudioPlaying = false;
 const audioIcon = document.getElementById('audio-icon');
 
+// Flag to indicate when terrain is ready
+var isTerrainReady = false;
+
 // Tree data for LOD system (Level of Detail - 2D sprites for distant trees)
 let treeData = [];
 
@@ -64,13 +67,75 @@ function setInstructions() {
     }
 }
 
+// Global flag to track when terrain is ready
+// isTerrainReady declared at top of file
+
 function init() {
+    // Wait for all required functions to be available
+    if (typeof createCharacter !== 'function' ||
+        typeof createHillyGround !== 'function' ||
+        typeof createPortals !== 'function' ||
+        typeof createMoreComplexTrees !== 'function') {
+        console.log('Waiting for dependencies to load...');
+        setTimeout(init, 100); // Try again in 100ms
+        return;
+    }
+
     // Scene setup
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x191970); // Midnight blue background
+    scene.background = new THREE.Color(0x191970); // Black background for infinite dark void
     // Fog adds overhead - can disable for even lower load
-    scene.fog = new THREE.Fog(0x000000, 50, 200); // Linear fog with black color
+    // Exponential fog to fade into darkness seamlessly
+    // Initial fog density
+    const minFogDensity = 0.008;
+    const maxFogDensity = 0.034;
+    const fogCycleDuration = 2 * 60 * 1000; // 2 minutes in milliseconds
     
+    scene.fog = new THREE.FogExp2(0x000000, minFogDensity); // Black exponential fog
+
+    // Start fog density transition loop
+    const fogStartTime = Date.now();
+    
+    // Add fog update to animation loop via a hook or interval
+    // Since we can't easily modify the main loop from here without restructuring,
+    // we'll use a setInterval to update the fog density independently
+    // 30 FPS update for fog is plenty smooth
+    setInterval(() => {
+        const elapsedTime = Date.now() - fogStartTime;
+        // Calculate phase (0 to 1) within the cycle
+        // Use sine wave to oscillate between min and max
+        // (elapsedTime / fogCycleDuration) * Math.PI * 2 -> full cycle 0->1->0 every 2 mins?
+        // No, user wants transition *between* them every 2 minutes. 
+        // Assuming they mean a full cycle (min -> max -> min) or just oscillation.
+        // Let's do a smooth sine wave oscillation with a 2 minute period.
+        
+        const phase = (Math.sin((elapsedTime / fogCycleDuration) * Math.PI * 2) + 1) / 2; // Normalize to 0-1
+        const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * phase;
+        
+        if (scene && scene.fog) {
+            scene.fog.density = currentDensity;
+
+            // Interpolate background color (Sky)
+            // Phase 1 (max density/foggy) -> Midnight Blue (0x191970)
+            // Phase 0 (min density/clear) -> Light Blue (0x87CEEB)
+            // Note: User requested Midnight Blue at foggiest.
+            
+            // Midnight Blue RGB: (25, 25, 112)
+            // Light Blue RGB: (135, 206, 235)
+            
+            // Interpolate based on phase (0 to 1)
+            // When phase is 1 (foggiest), we want Midnight Blue (25, 25, 112)
+            // When phase is 0 (clearest), we want Light Blue (135, 206, 235)
+            
+            const r = (135 + (25 - 135) * phase) / 255;
+            const g = (206 + (25 - 206) * phase) / 255;
+            const b = (235 + (112 - 235) * phase) / 255;
+            
+            // ONLY update the background color, NOT the fog color
+            scene.background.setRGB(r, g, b);
+        }
+    }, 33);
+
     // Disable automatic matrix updates for static objects (performance)
     scene.autoUpdate = true; // Keep true for now, but can optimize further
 
@@ -102,26 +167,24 @@ function init() {
     // Initialize shared materials
     initSharedMaterials();
 
-    // Ground with Flat Shading - Use shared material
-    const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
-    const ground = new THREE.Mesh(groundGeometry, sharedMaterials.ground);
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
+    // Ground with Flat Shading - now generated with hills
+    createHillyGround();
 
     // Character setup - position will be set by multiplayer spawn or default
     character = createCharacter();
     // Default spawn position (used if multiplayer not available)
-    character.position.set(-50, 1, -50);
+    const spawnHeight = getTerrainHeightAt(-50, -50) + 1.0;
+    character.position.set(-50, spawnHeight, -50);
     character.rotation.y = Math.PI / 4;
     scene.add(character);
 
-    // Create Portals
+    // Create Portals (place them on the terrain)
     createPortals();
 
     // Create more complex trees
     createMoreComplexTrees();
-
-    // Initialize NPC
+    
+    // Initialize NPC, ensuring it spawns on the new terrain
     initNPC();
 
     // Initialize audio (audio.js will handle setup)

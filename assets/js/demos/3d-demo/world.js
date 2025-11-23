@@ -1,5 +1,150 @@
 // World/environment creation (portals, trees, ground)
 
+// Terrain generation using Simplex Noise - Minecraft/Runescape style
+const simplex = new SimplexNoise('skyrim'); // Use a seed for consistent terrain
+const terrainSize = 800;
+const terrainSegments = 200;
+let terrainHeightmap = null; // 2D array storing height at each grid point
+
+// Smoothstep function for blending
+function smoothstep(min, max, value) {
+    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    return x * x * (3 - 2 * x);
+}
+
+function getTerrainHeightAt(x, z) {
+    // Convert world coordinates to heightmap grid coordinates
+    const gridX = (x + terrainSize/2) / (terrainSize / terrainSegments);
+    const gridZ = (z + terrainSize/2) / (terrainSize / terrainSegments);
+
+    // Get integer and fractional parts for bilinear interpolation
+    const x0 = Math.floor(gridX);
+    const z0 = Math.floor(gridZ);
+    const x1 = Math.min(terrainSegments, x0 + 1);
+    const z1 = Math.min(terrainSegments, z0 + 1);
+    
+    // Fraction of the way across the grid cell (0.0 to 1.0)
+    const dx = Math.max(0, Math.min(1, gridX - x0));
+    const dz = Math.max(0, Math.min(1, gridZ - z0));
+
+    // Clamp to valid grid bounds
+    const clampedX0 = Math.max(0, Math.min(terrainSegments, x0));
+    const clampedZ0 = Math.max(0, Math.min(terrainSegments, z0));
+    const clampedX1 = Math.max(0, Math.min(terrainSegments, x1));
+    const clampedZ1 = Math.max(0, Math.min(terrainSegments, z1));
+
+    // Ensure heightmap is loaded
+    if (!terrainHeightmap) return 0;
+
+    // Get heights of the four corners
+    // Handle edge cases where indices might be out of bounds (though clamping should prevent this)
+    const h00 = terrainHeightmap[clampedZ0] && terrainHeightmap[clampedZ0][clampedX0] !== undefined ? terrainHeightmap[clampedZ0][clampedX0] : 0;
+    const h10 = terrainHeightmap[clampedZ0] && terrainHeightmap[clampedZ0][clampedX1] !== undefined ? terrainHeightmap[clampedZ0][clampedX1] : h00;
+    const h01 = terrainHeightmap[clampedZ1] && terrainHeightmap[clampedZ1][clampedX0] !== undefined ? terrainHeightmap[clampedZ1][clampedX0] : h00;
+    const h11 = terrainHeightmap[clampedZ1] && terrainHeightmap[clampedZ1][clampedX1] !== undefined ? terrainHeightmap[clampedZ1][clampedX1] : h00;
+
+    // Bilinear interpolation
+    // First interpolate along X axis
+    const h0 = h00 * (1 - dx) + h10 * dx;
+    const h1 = h01 * (1 - dx) + h11 * dx;
+    
+    // Then interpolate along Z axis
+    return h0 * (1 - dz) + h1 * dz;
+}
+
+function calculateTerrainHeight(x, z) {
+    const scale = 0.02;
+    const octaves = 4;
+    const persistence = 0.5;
+    const lacunarity = 2.0;
+
+    let total = 0;
+    let frequency = 1;
+    let amplitude = 1;
+    let maxValue = 0;
+
+    for (let i = 0; i < octaves; i++) {
+        total += simplex.noise2D(x * frequency * scale, z * frequency * scale) * amplitude;
+        maxValue += amplitude;
+        amplitude *= persistence;
+        frequency *= lacunarity;
+    }
+
+    const hillHeight = 4;
+    let height = (total / maxValue) * hillHeight;
+
+    const plateauRadius = 30;
+    const distanceToCenter = Math.sqrt(x * x + z * z);
+    
+    // Create plateau at center
+    if (distanceToCenter < plateauRadius) {
+        const blendFactor = smoothstep(0, 1, distanceToCenter / plateauRadius);
+        height *= blendFactor;
+    }
+    
+    // Mountain generation for distant terrain
+    const mountainStartRadius = 110; // Start raising terrain outside playable area
+    if (distanceToCenter > mountainStartRadius) {
+        // Calculate transition factor (0 at boundary, increases outwards)
+        // Transition region over 150 units
+        const transition = Math.min(1, Math.max(0, (distanceToCenter - mountainStartRadius) / 150));
+        
+        // Add large scale mountain noise
+        const mountainScale = 0.01;
+        // Use different offset to avoid correlation with ground detail
+        const mountainNoise = simplex.noise2D(x * mountainScale + 1000, z * mountainScale + 1000);
+        
+        // Map -1..1 to 0..1 roughly, but we want mountains to go up
+        // Height increase: up to 120 units
+        const mountainHeight = (mountainNoise * 0.5 + 0.5) * 120 * transition; 
+        
+        // Blend it in
+        height += mountainHeight;
+    }
+
+    return height;
+}
+
+function createHillyGround() {
+    // Precompute heightmap for entire terrain (like Minecraft chunks)
+    terrainHeightmap = [];
+    for (let z = 0; z <= terrainSegments; z++) {
+        terrainHeightmap[z] = [];
+        for (let x = 0; x <= terrainSegments; x++) {
+            // Convert grid coordinates to world coordinates
+            const worldX = (x / terrainSegments - 0.5) * terrainSize;
+            const worldZ = (z / terrainSegments - 0.5) * terrainSize;
+            terrainHeightmap[z][x] = calculateTerrainHeight(worldX, worldZ);
+        }
+    }
+
+    // Create terrain geometry using the precomputed heightmap
+    const groundGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
+
+    const vertices = groundGeometry.attributes.position.array;
+    for (let i = 0; i < vertices.length; i += 3) {
+        const vertexIndex = i / 3;
+        const x = vertexIndex % (terrainSegments + 1);
+        const z = Math.floor(vertexIndex / (terrainSegments + 1));
+
+        vertices[i + 2] = terrainHeightmap[z][x]; // Set Y height from heightmap
+    }
+
+    groundGeometry.attributes.position.needsUpdate = true;
+    groundGeometry.computeVertexNormals();
+
+    const ground = new THREE.Mesh(groundGeometry, sharedMaterials.ground);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // Signal that terrain is ready globally
+    isTerrainReady = true;
+    if (typeof window !== 'undefined') {
+        window.isTerrainReady = true;
+    }
+}
+
+
 // Function to create portals
 function createPortals() {
     const portalNames = ['WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME'];
@@ -9,9 +154,9 @@ function createPortals() {
 
     for (let i = 0; i < 6; i++) {
         const angle = angleIncrement * i;
-        const x = radius * Math.cos(angle);
-        const z = radius * Math.sin(angle);
-        const position = new THREE.Vector3(x, 0, z);
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const y = getTerrainHeightAt(x, z); // Portals are now placed on the flat plateau
 
         const portalGroup = new THREE.Group();
 
@@ -33,7 +178,8 @@ function createPortals() {
         innerPortal.position.z = 0.35;
         portalGroup.add(innerPortal);
 
-        portalGroup.position.copy(position);
+        portalGroup.position.set(x, y + 1.0, z); // Add 1.0 to prevent z-fighting with ground
+        portalGroup.rotation.y = -angle;
 
         // Calculate angle to face outward
         portalGroup.lookAt(0, 0, 0);
@@ -90,7 +236,7 @@ function createPortals() {
 // Tree data for LOD management is declared globally in core.js
 
 // Function to create a single 3D tree
-function create3DTree(x, z, detail) {
+function create3DTree(x, z, detail) { // The y-pos will be set by the Group
     const tree = new THREE.Group();
     
     // Trunk - Hexagonal base (6 segments)
@@ -113,7 +259,14 @@ function create3DTree(x, z, detail) {
         foliageHeight += 4;
     }
 
-    tree.position.set(x, 0, z);
+    tree.position.set(x, 0, z); // Set base position, parent group will have y-pos
+
+    // Store absolute collision height for flying
+    tree.userData.isTree = true;
+    // Store height relative to the tree's base, which will be on the terrain
+    tree.userData.treeHeight = trunkHeight + 14; 
+    console.log(`Tree created at (${x}, ${z}) with height ${tree.userData.treeHeight}, total objects: ${objects.length}`);
+
     return tree;
 }
 
@@ -196,8 +349,8 @@ function createMoreComplexTrees() {
     }
 
     const treeCount = PERFORMANCE.treeCount;
-    const treeRadius = 1000;
-    const minDistanceFromCenter = 30;
+    const treeRadius = 380; // Increased radius to place trees on the extended terrain
+    const minDistanceFromCenter = 35; // Keep trees outside the flattened portal area
     const detail = PERFORMANCE.treeDetail;
     const lodDistance = PERFORMANCE.rendering.lodDistance;
 
@@ -205,28 +358,46 @@ function createMoreComplexTrees() {
     treeData = [];
 
     for (let i = 0; i < treeCount; i++) {
+        // Distribute trees in a circular area, avoiding the center
         const angle = Math.random() * Math.PI * 2;
         const distance = minDistanceFromCenter + Math.random() * (treeRadius - minDistanceFromCenter);
-        const x = distance * Math.cos(angle);
-        const z = distance * Math.sin(angle);
-
-        const position = new THREE.Vector3(x, 0, z);
+        const x = Math.cos(angle) * distance;
+        const z = Math.sin(angle) * distance;
         
+        // Set tree's y position based on terrain height
+        const y = getTerrainHeightAt(x, z);
+
+        const position = new THREE.Vector3(x, y, z);
+
         // Calculate distance from character (or origin if character not ready)
         const charPos = character ? character.position : new THREE.Vector3(0, 0, 0);
         const distFromChar = position.distanceTo(charPos);
 
         let treeGroup, sprite;
+        // Keep trees 3D if they are close, regardless of height
+        // OR if they are far but NOT on the huge distant mountains
+        // Actually, we want sprites everywhere in the distance. 
+        // The issue is likely that sprites aren't being added to the scene correctly or are being culled?
+        // Wait, the user said "trees not generating as sprites... just pop up as 3d right now if i get close enough"
+        // This implies they are INVISIBLE until close enough to be 3D.
+        // This means sprites are NOT VISIBLE.
+        
         let is3D = distFromChar < lodDistance;
 
         if (is3D) {
             // Create full 3D tree
             treeGroup = create3DTree(x, z, detail);
+            treeGroup.position.y = y; // Set the group's height to the terrain height
             scene.add(treeGroup);
             objects.push(treeGroup);
+
+            // Manually update treeData with the absolute height
+            treeGroup.userData.absoluteTreeHeight = y + treeGroup.userData.treeHeight;
         } else {
             // Create 2D sprite for distant trees
             sprite = create2DSprite(x, z);
+            // Ensure sprite is positioned correctly on the heightmap
+            sprite.position.y = y; 
             scene.add(sprite);
         }
 
@@ -261,6 +432,8 @@ function updateTreeLOD() {
                 }
                 if (!tree.group) {
                     tree.group = create3DTree(tree.position.x, tree.position.z, PERFORMANCE.treeDetail);
+                    tree.group.position.y = getTerrainHeightAt(tree.position.x, tree.position.z);
+                    tree.group.userData.absoluteTreeHeight = tree.group.position.y + tree.group.userData.treeHeight;
                     scene.add(tree.group);
                     objects.push(tree.group);
                 }
@@ -277,6 +450,11 @@ function updateTreeLOD() {
                 }
                 if (!tree.sprite) {
                     tree.sprite = create2DSprite(tree.position.x, tree.position.z);
+                    // Critical fix: Set the Y position for the sprite!
+                    // Previously it defaulted to 0 or whatever create2DSprite set (which was just trunk height offset)
+                    // It needs to be on the terrain!
+                    const y = getTerrainHeightAt(tree.position.x, tree.position.z);
+                    tree.sprite.position.y = y;
                     scene.add(tree.sprite);
                 }
                 tree.is3D = false;

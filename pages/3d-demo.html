@@ -45,6 +45,9 @@
     <!-- Include Three.js library from CDN (UMD build for global THREE) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
+    <!-- Noise library for terrain generation -->
+    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
+
     <!-- Include FontLoader and TextGeometry as ES6 modules and make them available globally -->
     <script type="module">
         // Use threejs.org examples CDN with import map for 'three' dependency
@@ -61,10 +64,10 @@
 
     <!-- 3D Demo JavaScript Modules (load order is important) -->
     <script src="../assets/js/demos/3d-demo/performance.js"></script>
-    <script src="../assets/js/demos/3d-demo/core.js"></script>
     <script src="../assets/js/demos/3d-demo/character.js"></script>
     <script src="../assets/js/demos/3d-demo/world.js"></script>
     <script src="../assets/js/demos/3d-demo/npc.js"></script>
+    <script src="../assets/js/demos/3d-demo/core.js"></script>
     <script src="../assets/js/demos/3d-demo/controls.js"></script>
     <script src="../assets/js/demos/3d-demo/audio.js"></script>
     <script src="../assets/js/demos/3d-demo/ui.js"></script>

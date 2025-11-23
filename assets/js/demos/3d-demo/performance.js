@@ -3,8 +3,8 @@
 
 // Performance configuration
 const PERFORMANCE = {
-    // Tree count - restored to original
-    treeCount: 500,
+    // Tree count - increased for larger map
+    treeCount: 700,
     
     // Reduce tree detail (keeping some optimizations but restoring foliage layers)
     treeDetail: {
@@ -29,7 +29,7 @@ const PERFORMANCE = {
     
     // Rendering optimizations
     rendering: {
-        maxDrawDistance: 150,   // Don't render trees beyond this
+        maxDrawDistance: 300,   // Increased draw distance for larger map
         frustumCulling: true,   // Only render visible objects
         materialSharing: true,  // Share materials to reduce draw calls
         lodEnabled: true,       // Enable Level of Detail (2D sprites for distant trees)
