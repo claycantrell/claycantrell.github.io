@@ -45,6 +45,16 @@ function animate() {
         updateDeer(delta);
     }
 
+    // Update Bunny behavior (if function exists)
+    if (typeof updateBunnies === 'function') {
+        updateBunnies(delta);
+    }
+
+    // Update Bird behavior (if function exists)
+    if (typeof updateBirds === 'function') {
+        updateBirds(delta);
+    }
+
     // Portal interaction and label animation
     portals.forEach(portalObj => {
         const portal = portalObj.group;

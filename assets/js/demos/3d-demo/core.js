@@ -76,7 +76,9 @@ function init() {
         typeof createHillyGround !== 'function' ||
         typeof createPortals !== 'function' ||
         typeof createMoreComplexTrees !== 'function' ||
-        typeof initDeer !== 'function') {
+        typeof initDeer !== 'function' ||
+        typeof initBunnies !== 'function' ||
+        typeof initBirds !== 'function') {
         console.log('Waiting for dependencies to load...');
         setTimeout(init, 100); // Try again in 100ms
         return;
@@ -190,6 +192,12 @@ function init() {
 
     // Initialize Deer Herd
     initDeer();
+
+    // Initialize Bunnies
+    initBunnies();
+
+    // Initialize Birds
+    initBirds();
 
     // Initialize audio (audio.js will handle setup)
     initAudio();

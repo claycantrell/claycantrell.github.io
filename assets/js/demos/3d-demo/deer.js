@@ -2,7 +2,7 @@
 // Handles creation, animation, and behavior of deer entities
 
 let deerList = [];
-const DEER_COUNT = 25; // Number of deer to spawn
+const DEER_COUNT = 12; // Number of deer to spawn
 
 // Create a single deer entity
 function createDeer(x, z) {
@@ -167,7 +167,12 @@ function updateDeer(delta) {
         // --- Behavior State Machine ---
         
         // Flee State overrides everything
-        if (distToPlayer < 35) {
+        // Only flee if player is moving (moveForward, moveBackward, or flying)
+        const isPlayerMoving = (typeof moveForward !== 'undefined' && moveForward) || 
+                               (typeof moveBackward !== 'undefined' && moveBackward) || 
+                               (typeof isFlying !== 'undefined' && isFlying);
+
+        if (distToPlayer < 35 && isPlayerMoving) {
             deer.state = 'RUN';
             deer.timer = 2.0; // Run for at least 2 seconds
         }
