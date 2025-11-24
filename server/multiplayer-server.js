@@ -691,7 +691,7 @@ wss.on('connection', (ws) => {
                 // Broadcast to ALL clients (including sender to confirm receipt)
                 wss.clients.forEach((client) => {
                     if (client.readyState === WebSocket.OPEN) {
-                        client.send(JSON.stringify(chatMessage));
+                            client.send(JSON.stringify(chatMessage));
                     }
                 });
             }

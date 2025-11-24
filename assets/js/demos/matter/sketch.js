@@ -19,6 +19,12 @@ var ground;
 
 var mConstraint;
 
+var fridgeImg;
+
+function preload() {
+    fridgeImg = loadImage('../assets/image-from-rawpixel-id-15570520-png.png');
+}
+
 function setup() {
     var canvas = createCanvas(window.innerWidth, window.innerHeight);
     canvas.id('mycanvas');
@@ -30,12 +36,32 @@ function setup() {
 
     boundaries.push(new Boundary(width / 2, height, width, 1, 0, true, false));
 
-    //Bridge(width / 2, height / 6, 10, 40);
+    // Fridge Dimensions
+    let fWidth = width / 14; 
+    let fHeight = fWidth * 1.8; 
 
-    let stack = Composites.stack(width / 2, height - (width / 2.9), 4, 4, width / 10, width / 10, function (x, y) {
-        boundaries.push(new Boundary(x, y, width / 10, width / 10, 0, false, true));
+    // We use Composites.stack for layout
+    // (xx, yy, columns, rows, columnGap, rowGap, callback)
+    // We remove gaps (0, 0) so they stack flush
+    // We set startY so they sit on the floor
+    let startY = height - (4 * fHeight) - 50;
+
+    let stack = Composites.stack(width / 2, startY, 4, 4, 0, 0, function (x, y) {
+        let b = new Boundary(x, y, fWidth, fHeight, 0, false, true);
+        boundaries.push(b);
+        // CRITICAL: We MUST return the body for the stack to work, 
+        // BUT Boundary() adds it to World. Stack adds it to World.
+        // This causes double-add.
+        // FIX: The Boundary class adds it to World. 
+        // So we return UNDEFINED here so stack is empty but positions are calculated.
+        // OR we just use the stack for positioning and don't add the stack to the world.
+        
+        // Let's return the body so stack has references, but NOT add stack to world.
+        return b.body;
     });
-    World.add(world, stack);
+    
+    // DO NOT add stack to world, because Boundary constructor already added bodies to world.
+    // World.add(world, stack); 
 
     var canvasmouse = Mouse.create(canvas.elt);
     canvasmouse.pixelRatio = pixelDensity();

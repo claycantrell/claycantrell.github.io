@@ -37,3 +37,77 @@
     pointer-events: none;
     z-index: 10;
 }
+
+/* Brushed Stainless Steel Background - Image Based */
+body.colorOneB {
+    background-color: #8c8c8c; /* Fallback color */
+    background-image: url('../Stainless-Steel-shutterstock_661808035-1-700x560.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.3); /* Subtle vignette for depth */
+}
+
+/* Ensure no overlays block the image */
+body.colorOneB::before {
+    display: none;
+}
+
+/* Nav Buttons Container */
+.nav-buttons-container {
+    position: absolute;
+    top: 25px;
+    right: 20px;
+    display: flex;
+    flex-direction: row; /* Default: Horizontal row */
+    gap: 10px; /* Space between buttons */
+    flex-wrap: wrap; /* Allow wrapping if screen is narrow */
+    justify-content: flex-end; /* Align to right */
+    z-index: 100; /* Above magnets */
+}
+
+.nav-buttons-container .btn {
+    margin: 0 !important;
+    background-color: #fdfdfd !important; /* Magnet background */
+    color: #222 !important; /* Magnet text color */
+    font-family: 'Courier New', Courier, monospace !important; /* Magnet font */
+    font-weight: bold !important;
+    border: 1px solid #ddd !important; /* Magnet border */
+    border-radius: 2px !important; /* Magnet corners */
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.2) !important; /* Magnet shadow */
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    transition: box-shadow 0.1s ease, transform 0.1s ease !important;
+}
+
+.nav-buttons-container .btn:hover {
+    box-shadow: 3px 4px 6px rgba(0,0,0,0.3) !important;
+    transform: translateY(-1px);
+    background-color: #fff !important;
+}
+
+/* Mobile Nav Adjustments */
+@media (max-width: 768px) {
+    .nav-buttons-container {
+        flex-direction: row; /* KEEP HORIZONTAL on mobile, vertical takes too much vertical space */
+        flex-wrap: wrap; /* Wrap if needed, but prefer single line */
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px; /* Tighter gap */
+        top: 15px; /* Closer to top */
+        right: 15px;
+        width: auto;
+        max-width: 70%; /* Limit width to avoid overlapping left content */
+    }
+
+    .nav-buttons-container .btn {
+        font-size: 0.75rem; /* Slightly smaller text */
+        padding: 0 10px;    /* Reduced padding */
+        height: 32px;       /* Shorter height */
+        line-height: 30px;  /* Center text */
+        min-width: auto;    /* Allow button to shrink to content */
+        letter-spacing: 0.5px; /* Tighter spacing */
+    }
+}

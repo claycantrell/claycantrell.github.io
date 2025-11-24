@@ -12,22 +12,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const initialLayout = [
         // Desktop Layout (Spread out)
-        { x: 100, y: 100 }, { x: 200, y: 100 }, { x: 300, y: 100 },
-        { x: 100, y: 200 }, { x: 250, y: 200 }, { x: 400, y: 200 },
-        { x: 100, y: 300 }, { x: 250, y: 300 }, { x: 400, y: 300 },
-        { x: 100, y: 400 }, { x: 300, y: 400 }
+        { x: 100, y: 150 }, { x: 200, y: 150 }, { x: 300, y: 150 },
+        { x: 100, y: 250 }, { x: 250, y: 250 }, { x: 400, y: 250 },
+        { x: 100, y: 350 }, { x: 250, y: 350 }, { x: 400, y: 350 },
+        { x: 100, y: 450 }, { x: 300, y: 450 }
     ];
 
     // Mobile Column Layout Overrides
     const isMobile = window.innerWidth <= 768; // Standard tablet/mobile breakpoint
     if (isMobile) {
-        // Stack them in a column on the left side
-        const leftOffset = 60; // Distance from left edge (reduced from 80 for smaller screens)
-        const startY = 80;
-        const gapY = 40; // Tighter vertical spacing
-        
+        // Create a staggered grid layout with some rows having 2 magnets
+        const leftOffset = 60; // Distance from left edge
+        const startY = 160; // Moved down even more (was 120)
+        const gapY = 40; // Vertical spacing
+        const gapX = 120; // Horizontal spacing for side-by-side magnets
+
+        // Custom layout: mix single and double rows
+        const mobileLayout = [
+            // Row 1: Single
+            { x: leftOffset, y: startY },
+            // Row 2: Two side by side
+            { x: leftOffset, y: startY + gapY },
+            { x: leftOffset + gapX, y: startY + gapY },
+            // Row 3: Single
+            { x: leftOffset, y: startY + (gapY * 2) },
+            // Row 4: Two side by side
+            { x: leftOffset, y: startY + (gapY * 3) },
+            { x: leftOffset + gapX, y: startY + (gapY * 3) },
+            // Row 5: Single
+            { x: leftOffset, y: startY + (gapY * 4) },
+            // Row 6: Two side by side
+            { x: leftOffset, y: startY + (gapY * 5) },
+            { x: leftOffset + gapX, y: startY + (gapY * 5) },
+            // Row 7: Single
+            { x: leftOffset, y: startY + (gapY * 6) },
+            // Row 8: Two side by side
+            { x: leftOffset, y: startY + (gapY * 7) },
+            { x: leftOffset + gapX, y: startY + (gapY * 7) }
+        ];
+
+        // Apply the custom mobile layout
         words.forEach((_, i) => {
-            initialLayout[i] = { x: leftOffset, y: startY + (i * gapY) };
+            if (mobileLayout[i]) {
+                initialLayout[i] = mobileLayout[i];
+            }
         });
     }
 
@@ -126,22 +154,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     World.add(world, mouseConstraint);
 
-    // Track mouse
-    window.addEventListener('mousemove', (e) => {
-        // Move the anchor point to mouse position
-        Body.setPosition(mouseAnchor, { x: e.clientX, y: e.clientY });
+    // Track mouse and TOUCH events
+    const updateCursor = (x, y) => {
+        // Move the anchor point to input position
+        Body.setPosition(mouseAnchor, { x: x, y: y });
         
         // Wake up nearby bodies
         const buffer = 100;
-        const x = e.clientX;
-        const y = e.clientY;
         const bounds = { 
             min: { x: x - buffer, y: y - buffer }, 
             max: { x: x + buffer, y: y + buffer } 
         };
         const bodies = Matter.Query.region(magnets.map(m => m.body), bounds);
         bodies.forEach(body => Body.setAwake(body, true));
+    };
+
+    window.addEventListener('mousemove', (e) => {
+        updateCursor(e.clientX, e.clientY);
     });
+
+    // Add Touch Support
+    window.addEventListener('touchmove', (e) => {
+        // Prevent default to stop scrolling while interacting
+        // e.preventDefault(); // Commented out to allow scrolling if needed, or selectively prevent
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            updateCursor(touch.clientX, touch.clientY);
+        }
+    }, { passive: false });
+    
+    // Also update on touchstart to snap cursor to finger immediately
+    window.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            updateCursor(touch.clientX, touch.clientY);
+        }
+    }, { passive: false });
 
     // Boundary Enforcement (Fallback if they tunnel through walls)
     Events.on(engine, 'beforeUpdate', function() {

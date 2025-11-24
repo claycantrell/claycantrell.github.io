@@ -178,8 +178,8 @@ function handleServerMessage(data) {
              // Handle authoritative world state from server
              if (typeof handleAnimalUpdate === 'function') {
                  handleAnimalUpdate(data);
-             }
-             break;
+            }
+            break;
     }
 }
 
