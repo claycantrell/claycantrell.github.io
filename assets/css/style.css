@@ -1,89 +1,39 @@
-/* Existing CSS */
-
-html,
-body {
-    margin: 0px;
-    padding: 0px;
-    border: 0px;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-}
-
-.myNav {
+.magnet {
     position: absolute;
+    background-color: #fdfdfd;
+    color: #222;
+    padding: 0.5rem 1rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.5rem;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.2);
+    cursor: default;
+    user-select: none;
+    pointer-events: none;
+    transition: box-shadow 0.1s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    will-change: transform, left, top;
+    transform-origin: center center; 
 }
 
-.canvasText {
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .magnet {
+        font-size: 0.85rem; /* Smaller font for mobile */
+        padding: 0.25rem 0.5rem; /* Smaller padding */
+        box-shadow: 1px 2px 3px rgba(0,0,0,0.2); 
+    }
+}
+
+#magnet-container {
     position: absolute;
-    font-size: 4vw;
-    width: 20%;
-    margin-left: 15px;
-}
-
-/* .transpB {
-    background-color: rgba(0, 0, 0, 0);
-} */
-
-#mycanvas {
-    position: absolute;
-    touch-action: none;
-}
-
-.colorOneB {
-    background-color: #FFE9C6 !important;
-}
-
-.colorOne {
-    color: #FFE9C6 !important;
-}
-
-.colorTwoB {
-    background-color: #CCC08B !important;
-}
-
-.colorThreeB {
-    background-color: #8BCCC8 !important;
-}
-
-/* New Additions for Button Interaction */
-
-/* Transition for buttons */
-.btn.colorThreeB.colorOne {
-    transition: background-color 0.2s ease, filter 0.2s ease;
-}
-
-/* Hover state (optional customization) */
-.btn.colorThreeB.colorOne:hover {
-    filter: brightness(95%);
-}
-
-/* Active (clicked) state */
-.btn.colorThreeB.colorOne:active {
-    filter: brightness(90%);
-}
-
-/* Responsive Design */
-@media only screen and (max-width: 768px) {
-    .btn {
-        display: block !important;
-        margin: 10px !important;
-        width: 90%;
-    }
-
-    .canvasText {
-        font-size: 6vw;
-        width: 30%;
-    }
-}
-
-@media only screen and (max-width: 580px) {
-    .btn {
-        display: block !important;
-        margin: 10px !important;
-        width: 80%;
-    }
-
-    .canvasText {
-        font-size: 8vw;
-    }
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
 }

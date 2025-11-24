@@ -62,3 +62,4 @@ Player connected: player_1763945599687_w16fur7q3 (1/20) at (-30, -30)
 [HTTP] POST /api/chat
 [HTTP] POST /api/chat
 [HTTP] POST /api/chat
+Player disconnected: player_1763945599687_w16fur7q3

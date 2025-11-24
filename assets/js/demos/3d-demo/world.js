@@ -244,7 +244,7 @@ function create3DTree(x, z, detail, isOak = false) { // The y-pos will be set by
     const foliageColors = isOak ? 
         [sharedMaterials.oakFoliage1, sharedMaterials.oakFoliage2, sharedMaterials.oakFoliage3] : 
         [sharedMaterials.foliage1, sharedMaterials.foliage2, sharedMaterials.foliage3];
-
+    
     // Trunk - Hexagonal base (6 segments)
     const trunkHeight = 25 + Math.random() * 10;
     
@@ -284,21 +284,21 @@ function create3DTree(x, z, detail, isOak = false) { // The y-pos will be set by
         
         const trunkGeometry = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBottom, trunkHeight, 6);
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.y = trunkHeight / 2;
-        tree.add(trunk);
+    trunk.position.y = trunkHeight / 2;
+    tree.add(trunk);
 
-        // Foliage - Reduced layers and segments
-        let foliageHeight = trunkHeight;
-        const foliageLayers = detail.foliageLayers;
+    // Foliage - Reduced layers and segments
+    let foliageHeight = trunkHeight;
+    const foliageLayers = detail.foliageLayers;
 
-        for (let j = 0; j < foliageLayers; j++) {
+    for (let j = 0; j < foliageLayers; j++) {
             // Use 6 segments for hexagonal leaves (honeycomb style)
             const radiusBase = 6 - j; 
             const foliageGeometry = new THREE.ConeGeometry(radiusBase, 9, 6); // 6 segments = hexagon
-            const foliage = new THREE.Mesh(foliageGeometry, foliageColors[j]);
-            foliage.position.y = foliageHeight + 1;
-            tree.add(foliage);
-            foliageHeight += 4;
+        const foliage = new THREE.Mesh(foliageGeometry, foliageColors[j]);
+        foliage.position.y = foliageHeight + 1;
+        tree.add(foliage);
+        foliageHeight += 4;
         }
         
         // Set height relative to base
@@ -321,7 +321,7 @@ function create2DSprite(x, z, isOak = false) {
     // Choose colors based on tree type
     const trunkColor = isOak ? 0x4A3728 : 0x8B4513;
     const foliageColors = isOak ? [0x004d00, 0x006400, 0x2E8B57] : [0x006400, 0x008000, 0x228B22];
-
+    
     // Match exact 3D tree dimensions
     const trunkHeight = isOak ? (15 + Math.random() * 5) : (25 + Math.random() * 10);
     
@@ -378,33 +378,33 @@ function create2DSprite(x, z, isOak = false) {
         
     } else {
         // Pine Sprite: Create foliage layers (matching 3D tree structure with 3 layers)
-        let foliageY = trunkHeight;
+    let foliageY = trunkHeight;
+    
+    // Create 3 foliage layers (cones represented as triangles)
+    for (let j = 0; j < 3; j++) {
+        const coneRadius = 6 - j; // Decreasing radius per layer (6, 5, 4) matching 3D
+        const coneHeight = 9; // Height of each cone layer
         
-        // Create 3 foliage layers (cones represented as triangles)
-        for (let j = 0; j < 3; j++) {
-            const coneRadius = 6 - j; // Decreasing radius per layer (6, 5, 4) matching 3D
-            const coneHeight = 9; // Height of each cone layer
-            
-            const foliageMaterial = new THREE.MeshBasicMaterial({
-                color: foliageColors[j],
-                transparent: true,
-                opacity: 0.85,
-                side: THREE.DoubleSide
-            });
-            
-            // Create triangle shape for cone (point at top, wide at bottom)
-            const foliageShape = new THREE.Shape();
-            foliageShape.moveTo(0, coneHeight / 2); // Top point
-            foliageShape.lineTo(coneRadius, -coneHeight / 2); // Bottom right
-            foliageShape.lineTo(-coneRadius, -coneHeight / 2); // Bottom left
-            foliageShape.lineTo(0, coneHeight / 2); // Back to top
-            
-            const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
-            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-            foliage.position.y = foliageY + 1; // Match 3D positioning
-            spriteGroup.add(foliage);
-            
-            foliageY += 4; // Stack layers (matching 3D tree spacing)
+        const foliageMaterial = new THREE.MeshBasicMaterial({
+            color: foliageColors[j],
+            transparent: true,
+            opacity: 0.85,
+            side: THREE.DoubleSide
+        });
+        
+        // Create triangle shape for cone (point at top, wide at bottom)
+        const foliageShape = new THREE.Shape();
+        foliageShape.moveTo(0, coneHeight / 2); // Top point
+        foliageShape.lineTo(coneRadius, -coneHeight / 2); // Bottom right
+        foliageShape.lineTo(-coneRadius, -coneHeight / 2); // Bottom left
+        foliageShape.lineTo(0, coneHeight / 2); // Back to top
+        
+        const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
+        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+        foliage.position.y = foliageY + 1; // Match 3D positioning
+        spriteGroup.add(foliage);
+        
+        foliageY += 4; // Stack layers (matching 3D tree spacing)
         }
     }
     

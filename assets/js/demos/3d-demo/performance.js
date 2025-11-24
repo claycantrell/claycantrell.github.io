@@ -72,7 +72,7 @@ function initSharedMaterials() {
     });
     sharedMaterials.oakFoliage3 = new THREE.MeshBasicMaterial({
         color: 0x2E8B57, // Sea Green (darkish)
-        flatShading: true
+        flatShading: true 
     });
     sharedMaterials.ground = new THREE.MeshBasicMaterial({ 
         color: 0x004d00, 
