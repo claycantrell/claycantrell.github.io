@@ -253,7 +253,7 @@ function initServerEntities() {
     console.log("Initializing server-side entities...");
     
     // Deer
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 18; i++) { // Increased by 50% (was 12)
         const angle = seededRandom() * Math.PI * 2;
         const dist = 60 + seededRandom() * 300;
         ENTITIES.deer.push({

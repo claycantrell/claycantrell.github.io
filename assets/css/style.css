@@ -1,10 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&display=swap');
+
 .magnet {
     position: absolute;
     background-color: #fdfdfd;
     color: #222;
     padding: 0.5rem 1rem;
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
+    /* Replaced Courier New with Crimson Text (Minion Pro alternative) */
+    font-family: 'Crimson Text', 'Times New Roman', serif; 
+    font-weight: 600; /* Slightly bolder for readability */
     font-size: 1.5rem;
     border: 1px solid #ddd;
     border-radius: 2px;
@@ -13,8 +16,8 @@
     user-select: none;
     pointer-events: none;
     transition: box-shadow 0.1s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    text-transform: none; /* Removed uppercase */
+    letter-spacing: 0.5px;
     will-change: transform, left, top;
     transform-origin: center center; 
 }
@@ -38,23 +41,6 @@
     z-index: 10;
 }
 
-/* Brushed Stainless Steel Background - Image Based */
-body.colorOneB {
-    background-color: #8c8c8c; /* Fallback color */
-    background-image: url('../Stainless-Steel-shutterstock_661808035-1-700x560.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    position: relative;
-    box-shadow: inset 0 0 150px rgba(0,0,0,0.3); /* Subtle vignette for depth */
-}
-
-/* Ensure no overlays block the image */
-body.colorOneB::before {
-    display: none;
-}
-
 /* Nav Buttons Container */
 .nav-buttons-container {
     position: absolute;
@@ -72,13 +58,15 @@ body.colorOneB::before {
     margin: 0 !important;
     background-color: #fdfdfd !important; /* Magnet background */
     color: #222 !important; /* Magnet text color */
-    font-family: 'Courier New', Courier, monospace !important; /* Magnet font */
-    font-weight: bold !important;
+    /* Replaced Courier New with Crimson Text */
+    font-family: 'Crimson Text', 'Times New Roman', serif !important; 
+    font-weight: 600 !important;
+    font-size: 1.1rem !important; /* Ensure readable size */
     border: 1px solid #ddd !important; /* Magnet border */
     border-radius: 2px !important; /* Magnet corners */
     box-shadow: 2px 3px 5px rgba(0,0,0,0.2) !important; /* Magnet shadow */
-    text-transform: uppercase !important;
-    letter-spacing: 1px !important;
+    text-transform: none !important; /* Removed uppercase */
+    letter-spacing: 0.5px !important;
     transition: box-shadow 0.1s ease, transform 0.1s ease !important;
 }
 
@@ -103,11 +91,28 @@ body.colorOneB::before {
     }
 
     .nav-buttons-container .btn {
-        font-size: 0.75rem; /* Slightly smaller text */
+        font-size: 0.75rem !important; /* Slightly smaller text */
         padding: 0 10px;    /* Reduced padding */
         height: 32px;       /* Shorter height */
         line-height: 30px;  /* Center text */
         min-width: auto;    /* Allow button to shrink to content */
         letter-spacing: 0.5px; /* Tighter spacing */
     }
+}
+
+/* Brushed Stainless Steel Background - Image Based */
+body.colorOneB {
+    background-color: #8c8c8c; /* Fallback color */
+    background-image: url('../Stainless-Steel-shutterstock_661808035-1-700x560.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.3); /* Subtle vignette for depth */
+}
+
+/* Ensure no overlays block the image */
+body.colorOneB::before {
+    display: none;
 }

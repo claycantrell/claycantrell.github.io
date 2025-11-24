@@ -2,7 +2,7 @@
 // Receives state from server, updates visual models.
 
 let deerList = [];
-const DEER_COUNT = 12; // Must match server
+const DEER_COUNT = 18; // Increased by 50% (was 12)
 
 // Create a single deer visual entity
 function createDeer(id, x, z) {
