@@ -1,6 +1,8 @@
 // Rendering and managing other players in the scene
 
-const otherPlayers = new Map(); // id -> {mesh, group}
+window.otherPlayers = new Map(); // id -> {mesh, group}
+// Alias for local use if needed, though window.otherPlayers is clearer
+const otherPlayers = window.otherPlayers; 
 
 // Shared geometries for other players (reuse to save memory)
 let sharedOtherPlayerGeometries = null;

@@ -68,8 +68,12 @@ function initNPC() {
     // Spawn NPC near the welcome doors (portals are at radius ~19.5)
     // Spawn within a decent range of portals but can wander anywhere
     const portalRadius = 19.5;
-    const spawnRadius = portalRadius + 10 + Math.random() * 20; // 10-30 units from portal circle
-    const spawnAngle = Math.random() * Math.PI * 2;
+    
+    // Use seeded random for consistent spawn
+    const seedOffset = 9999;
+    const spawnRadius = portalRadius + 10 + seededRandom(seedOffset) * 20; 
+    const spawnAngle = seededRandom(seedOffset + 1) * Math.PI * 2;
+    
     const spawnX = Math.cos(spawnAngle) * spawnRadius;
     const spawnZ = Math.sin(spawnAngle) * spawnRadius;
     npc = createNPC(spawnX, spawnZ);
@@ -77,6 +81,33 @@ function initNPC() {
 
 // Update NPC behavior
 function updateNPC(delta) {
+    // If we are NOT the host and multiplayer is active, skip update logic (let sync handle it)
+    // Check global isAnimalHost flag from animal-sync.js
+    if (typeof isAnimalHost !== 'undefined' && !isAnimalHost && typeof isConnected !== 'undefined' && isConnected) {
+        // Update distance/nearby status for CHAT even if movement is synced
+        // This allows non-hosts to interact with Scribe chat
+        const dist = npc.position.distanceTo(character.position);
+        npcIsNearby = dist < npcDetectionDistance;
+        
+        if (npcIsNearby && !npcHasGreeted && typeof addChatMessage === 'function') {
+             const greetings = [
+                'Hail, traveler! I am a wandering scribe of the elder days. What tidings dost thou bring?',
+                'Greetings, wayfarer! I am a scribe who wandereth these lands. Speak, and I shall hear thy words.',
+                'Well met, stranger! I am a scribe of old, keeper of tales. What wouldst thou share with me?',
+                'Hark! A traveler approacheth. I am a wandering scribe. What news dost thou bear?'
+            ];
+            const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+            addChatMessage('Wandering Scribe', greeting, false);
+            npcHasGreeted = true;
+        }
+        // Reset greeted if far away
+        if (dist > npcLeaveDistance) {
+            npcHasGreeted = false;
+            npcIsNearby = false;
+        }
+        return;
+    }
+
     if (!npc || !character || !isTerrainReady) return; // Also wait for terrain
 
     const distanceToPlayer = npc.position.distanceTo(character.position);

@@ -6,9 +6,9 @@ function onKeyDown(event) {
     const chatInput = document.getElementById('chat-input');
     const isChatFocused = chatInput && document.activeElement === chatInput;
     
-    // If chat is focused, allow WASD to be used for typing (don't prevent default or handle movement)
-    if (isChatFocused && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
-        return; // Let the input handle these keys
+    // If chat is focused, ignore ALL game inputs to allow typing
+    if (isChatFocused) {
+        return; 
     }
     
     // Prevent default for game keys to avoid browser shortcuts
@@ -44,14 +44,13 @@ function onKeyDown(event) {
 
 // Function to handle key up events to stop character movement
 function onKeyUp(event) {
-    // Check if chat input is focused - if so, don't handle movement keys
+    // Check if chat input is focused
     const chatInput = document.getElementById('chat-input');
     const isChatFocused = chatInput && document.activeElement === chatInput;
     
-    // If chat is focused, don't process movement key releases
-    if (isChatFocused && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(event.code)) {
-        return; // Let the input handle these keys
-    }
+    // We intentionally process keyup events even if chat is focused
+    // This ensures that if the user was holding a movement key and then focused chat,
+    // releasing the key will stop the movement (preventing stuck keys).
     
     // Remove from active keys
     activeKeys.delete(event.code);

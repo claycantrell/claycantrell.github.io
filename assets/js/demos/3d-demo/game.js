@@ -55,6 +55,11 @@ function animate() {
         updateBirds(delta);
     }
 
+    // Animal Sync (Pack and send updates if host)
+    if (typeof sendAnimalUpdates === 'function') {
+        sendAnimalUpdates();
+    }
+
     // Portal interaction and label animation
     portals.forEach(portalObj => {
         const portal = portalObj.group;

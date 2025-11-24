@@ -25,6 +25,12 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
             console.log('✅ Connected to multiplayer server');
             isConnected = true;
             reconnectAttempts = 0;
+            
+            // Determine host status (simplified logic)
+            // Ideally server tells us if we are host or gives us a list
+            // For now, assume not host until told otherwise, OR check if we are first
+            // But we don't have that info yet.
+            // Let's rely on server sending 'host: true' in 'connected' message if we want to be robust
         };
 
         socket.onmessage = (event) => {
@@ -86,6 +92,25 @@ function handleServerMessage(data) {
         case 'connected':
             playerId = data.id;
             
+            // Set world seed for deterministic randomness
+            if (data.worldSeed && typeof setWorldSeed === 'function') {
+                setWorldSeed(data.worldSeed);
+            }
+            
+            // Check if we are the host (server should ideally send this)
+            // If data.isHost is present, set it
+            if (data.isHost) {
+                isAnimalHost = true;
+                console.log("You are the animal host.");
+            } else if (data.playerCount === 1) {
+                // Fallback: if we are the only player, we are host
+                isAnimalHost = true;
+                console.log("Only player connected. You are the animal host.");
+            } else {
+                isAnimalHost = false;
+                console.log("Joined existing game. Waiting for animal updates.");
+            }
+            
             // Set character spawn position from server
             if (data.spawnPosition && data.spawnRotation && character) {
                 character.position.set(
@@ -137,6 +162,24 @@ function handleServerMessage(data) {
                 console.error('addChatMessage function not available');
             }
             break;
+
+        case 'timeSync':
+             // Sync time with server if message received
+             if (typeof setServerTime === 'function') {
+                 setServerTime(data.serverTimestamp);
+             }
+             break;
+
+        case 'animalUpdate':
+             // Deprecated: old client-to-client updates
+             break;
+
+        case 'worldState':
+             // Handle authoritative world state from server
+             if (typeof handleAnimalUpdate === 'function') {
+                 handleAnimalUpdate(data);
+             }
+             break;
     }
 }
 

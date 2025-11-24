@@ -97,22 +97,23 @@ function init() {
     scene.fog = new THREE.FogExp2(0x000000, minFogDensity); // Black exponential fog
 
     // Start fog density transition loop
-    const fogStartTime = Date.now();
+    // Use the shared time system for synchronization
     
     // Add fog update to animation loop via a hook or interval
     // Since we can't easily modify the main loop from here without restructuring,
     // we'll use a setInterval to update the fog density independently
     // 30 FPS update for fog is plenty smooth
     setInterval(() => {
-        const elapsedTime = Date.now() - fogStartTime;
-        // Calculate phase (0 to 1) within the cycle
-        // Use sine wave to oscillate between min and max
-        // (elapsedTime / fogCycleDuration) * Math.PI * 2 -> full cycle 0->1->0 every 2 mins?
-        // No, user wants transition *between* them every 2 minutes. 
-        // Assuming they mean a full cycle (min -> max -> min) or just oscillation.
-        // Let's do a smooth sine wave oscillation with a 2 minute period.
-        
-        const phase = (Math.sin((elapsedTime / fogCycleDuration) * Math.PI * 2) + 1) / 2; // Normalize to 0-1
+        // Use shared phase calculation
+        let phase;
+        if (typeof getDayNightPhase === 'function') {
+            phase = getDayNightPhase();
+        } else {
+             // Fallback if time-sync.js not loaded
+             const elapsedTime = Date.now() - fogStartTime;
+             phase = (Math.sin((elapsedTime / fogCycleDuration) * Math.PI * 2) + 1) / 2;
+        }
+
         const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * phase;
         
         if (scene && scene.fog) {
@@ -215,9 +216,13 @@ function init() {
 
     // Initialize multiplayer (optional - game works without it)
     // Change server URL to your production WebSocket server
-    const serverUrl = window.location.hostname === 'localhost' 
-        ? 'ws://localhost:8080' 
-        : 'wss://your-server.com'; // Use wss:// for production
+    let serverUrl;
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
+        serverUrl = 'ws://localhost:8080';
+    } else {
+        serverUrl = 'wss://your-server.com'; // Use wss:// for production
+    }
+    console.log('Connecting to multiplayer server at:', serverUrl);
     initMultiplayer(serverUrl);
 }
 

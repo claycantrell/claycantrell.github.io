@@ -1,0 +1,64 @@
+Initializing server-side entities...
+Initialized 12 deer, 20 bunnies, 30 birds.
+Multiplayer server running on ws://localhost:8080
+OpenAI API proxy available at http://localhost:8080/api/chat
+Maximum players: 20
+Spawn points: 20
+⚠️  WARNING: OPENAI_API_KEY not set in environment, using hardcoded key
+   To set it: export OPENAI_API_KEY=your-key-here
+Player connected: player_1763944855460_bewsyrp2t (1/20) at (-50, -50)
+Player disconnected: player_1763944855460_bewsyrp2t
+Player connected: player_1763944860867_jovh7kkvi (1/20) at (50, -50)
+Player disconnected: player_1763944860867_jovh7kkvi
+Player connected: player_1763944866768_pzjle2roa (1/20) at (50, 50)
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+Player disconnected: player_1763944866768_pzjle2roa
+Player connected: player_1763945069569_lu9ug9gf7 (1/20) at (-50, 50)
+Player disconnected: player_1763945069569_lu9ug9gf7
+Player connected: player_1763945079408_mtz9smf2a (1/20) at (0, -70)
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+Player disconnected: player_1763945079408_mtz9smf2a
+Player connected: player_1763945188814_onog2dpfj (1/20) at (70, 0)
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+Player disconnected: player_1763945188814_onog2dpfj
+Player connected: player_1763945462032_42q5fs5vi (1/20) at (0, 70)
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+Player disconnected: player_1763945462032_42q5fs5vi
+Player connected: player_1763945592479_dtqm0thwm (1/20) at (-70, 0)
+Player disconnected: player_1763945592479_dtqm0thwm
+Player connected: player_1763945599687_w16fur7q3 (1/20) at (-30, -30)
+[HTTP] OPTIONS /api/chat
+[HTTP] Handling OPTIONS preflight request
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
+[HTTP] POST /api/chat
