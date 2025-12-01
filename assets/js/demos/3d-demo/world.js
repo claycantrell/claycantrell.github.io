@@ -136,6 +136,9 @@ function createHillyGround() {
     const ground = new THREE.Mesh(groundGeometry, sharedMaterials.ground);
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
+    
+    // Expose ground mesh globally for raycasting/building
+    window.groundMesh = ground;
 
     // Signal that terrain is ready globally
     isTerrainReady = true;

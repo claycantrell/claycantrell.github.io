@@ -79,6 +79,25 @@ function updateCharacterMovement(delta) {
     character.position.x += moveX;
     character.position.z += moveZ;
 
+    // Check for collision with objects
+    for (let i = 0; i < objects.length; i++) {
+        const obj = objects[i];
+        
+        // Skip ground plane and portals
+        if (obj.geometry && obj.geometry.type === 'PlaneGeometry') continue;
+        // Also check if it's a build object (MeshStandardMaterial)
+        
+        // Simple bounding box/distance check
+        const dist = character.position.distanceTo(obj.position);
+        
+        // If it's a build object (approximate radius check)
+        if (dist < 3.0) { // Collision radius
+            // Simple push-back
+            const dir = new THREE.Vector3().subVectors(character.position, obj.position).normalize();
+            character.position.add(dir.multiplyScalar(0.5));
+        }
+    }
+
     // Use heightmap to find exact ground height (much faster and reliable than raycasting)
     let groundY = 0;
     if (typeof getTerrainHeightAt === 'function') {

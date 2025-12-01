@@ -2,7 +2,7 @@
 // Syncs local game time with server time to ensure consistent day/night cycles
 
 let serverTimeOffset = 0;
-const FOG_CYCLE_DURATION = 2 * 60 * 1000; // 2 minutes
+const FOG_CYCLE_DURATION = 4 * 60 * 1000; // 4 minutes (twice as long)
 
 // Function to calculate shared game time
 function getSharedTime() {
@@ -18,18 +18,20 @@ function getSharedTime() {
 }
 
 // Function to get current fog/day-night phase (0.0 to 1.0)
+// Modified to have longer days and shorter nights using a smooth function
 function getDayNightPhase() {
     const time = getSharedTime();
     // Use a fixed epoch so everyone is on same cycle
-    // (time / duration) % 1.0 gives a value 0..1
     const rawPhase = (time % FOG_CYCLE_DURATION) / FOG_CYCLE_DURATION;
-    
-    // We want oscillation: 0 -> 1 -> 0
-    // sin((rawPhase * PI * 2) + PI/2) -> starts at 1, goes to -1, back to 1?
-    // Let's use the existing formula: (sin(time * factor) + 1) / 2
-    
-    // (time / FOG_CYCLE_DURATION) * Math.PI * 2 gives 0..2PI over the duration
-    const phase = (Math.sin((time / FOG_CYCLE_DURATION) * Math.PI * 2) + 1) / 2;
+
+    // Use a modified sine wave that's asymmetric
+    // This creates a smoother transition but spends more time in lower values (day)
+    // The power function makes the transition asymmetric
+    const adjustedPhase = Math.pow(rawPhase, 0.8); // Power < 1 makes it spend more time at lower values
+
+    // Apply sine wave to the adjusted phase for smooth transitions
+    const phase = (Math.sin(adjustedPhase * Math.PI * 2) + 1) / 2;
+
     return phase;
 }
 

@@ -4,7 +4,7 @@
 function initUI() {
     // Exit Button -> Home
     document.getElementById('exit-button').addEventListener('click', () => {
-        window.location.href = 'home.html';
+        window.location.href = '/pages/home.html';
     });
     
     // Initialize chat system
@@ -31,7 +31,7 @@ function fadeOutToWhite() {
     overlay.style.opacity = '1';  // start fading in
     // After the transition, redirect to home.html
     setTimeout(() => {
-        window.location.href = 'home.html';
+        window.location.href = '/pages/home.html';
     }, 2000);
 }
 

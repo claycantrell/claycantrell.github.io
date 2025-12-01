@@ -92,7 +92,7 @@ function init() {
     // Initial fog density - extended range for brighter times
     const minFogDensity = 0.003; // Even less fog for brightest times
     const maxFogDensity = 0.034;
-    const fogCycleDuration = 2 * 60 * 1000; // 2 minutes in milliseconds
+    const fogCycleDuration = 4 * 60 * 1000; // 4 minutes in milliseconds (twice as long)
     
     scene.fog = new THREE.FogExp2(0x000000, minFogDensity); // Black exponential fog
 
@@ -109,9 +109,13 @@ function init() {
         if (typeof getDayNightPhase === 'function') {
             phase = getDayNightPhase();
         } else {
-             // Fallback if time-sync.js not loaded
+             // Fallback if time-sync.js not loaded - use same smooth asymmetric calculation
              const elapsedTime = Date.now() - fogStartTime;
-             phase = (Math.sin((elapsedTime / fogCycleDuration) * Math.PI * 2) + 1) / 2;
+             const rawPhase = (elapsedTime % fogCycleDuration) / fogCycleDuration;
+
+             // Same asymmetric calculation as time-sync.js
+             const adjustedPhase = Math.pow(rawPhase, 0.8);
+             phase = (Math.sin(adjustedPhase * Math.PI * 2) + 1) / 2;
         }
 
         const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * phase;
@@ -150,6 +154,16 @@ function init() {
         1,
         1000
     );
+
+    // Add ambient light for general illumination
+    // Reduced intensity slightly to let directional light provide contrast
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
+    scene.add(ambientLight);
+
+    // Add directional light (sun/moon)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Stronger directional light
+    directionalLight.position.set(50, 100, 50);
+    scene.add(directionalLight);
 
     // Renderer setup - Optimized for low-end hardware
     renderer = new THREE.WebGLRenderer({ 
@@ -208,6 +222,11 @@ function init() {
 
     // Initialize UI
     initUI();
+
+    // Initialize Build System
+    if (typeof initBuildSystem === 'function') {
+        initBuildSystem();
+    }
 
     // Initialize other player assets (for multiplayer)
     if (typeof initOtherPlayerAssets === 'function') {
