@@ -23,9 +23,9 @@ function serveStaticFile(req, res) {
     // Get the file path from the URL
     let filePath = req.url;
 
-    // Default to index.html for root requests
+    // Default to 3D demo for root requests
     if (filePath === '/' || filePath === '') {
-        filePath = '/index.html';
+        filePath = '/pages/3d-demo.html';
     }
 
     // Remove leading slash and construct full path
