@@ -107,7 +107,7 @@ For production hosting:
    - Go to your project dashboard
    - Variables tab → Add Variable
    - Key: `OPENAI_API_KEY`
-   - Value: `sk-your-actual-openai-key-here`
+   - Value: `your-actual-openai-api-key-here`
 
 4. **Deploy:**
    - Railway automatically deploys when you push to main branch
@@ -172,7 +172,7 @@ npm start
 
 2. **Set environment variables:**
    ```bash
-   OPENAI_API_KEY=sk-your-actual-openai-key
+   OPENAI_API_KEY=your-actual-openai-api-key
    PORT=8080  # Usually set automatically by platform
    ```
 
@@ -224,7 +224,7 @@ The server runs without an OpenAI API key, but chat features will be disabled. *
 2. **Edit `.env` and add your OpenAI API key:**
    ```bash
    # Get your key from: https://platform.openai.com/api-keys
-   OPENAI_API_KEY=sk-your-actual-key-here
+   OPENAI_API_KEY=your-actual-openai-api-key-here
    ```
 
 3. **Load the environment and start the server:**
