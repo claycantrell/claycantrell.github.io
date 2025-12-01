@@ -4,6 +4,8 @@
 const WebSocket = require('ws');
 const http = require('http');
 const https = require('https');
+const path = require('path');
+const fs = require('fs');
 
 // OpenAI API proxy with IP-based rate limiting
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -15,6 +17,55 @@ const RATE_LIMIT = {
     requestsPerHour: 200,
     cleanupInterval: 60000 // Clean up old data every minute
 };
+
+// Static file serving
+function serveStaticFile(req, res) {
+    // Get the file path from the URL
+    let filePath = req.url;
+
+    // Default to index.html for root requests
+    if (filePath === '/' || filePath === '') {
+        filePath = '/index.html';
+    }
+
+    // Remove leading slash and construct full path
+    // Since we're in server/ directory, go up one level to find static files
+    const fullPath = path.join(__dirname, '..', filePath);
+
+    // Check if file exists
+    fs.access(fullPath, fs.constants.F_OK, (err) => {
+        if (err) {
+            res.writeHead(404);
+            res.end('File not found');
+            return;
+        }
+
+        // Get file extension for content type
+        const ext = path.extname(fullPath).toLowerCase();
+        const contentType = {
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml'
+        }[ext] || 'text/plain';
+
+        // Read and serve the file
+        fs.readFile(fullPath, (err, data) => {
+            if (err) {
+                res.writeHead(500);
+                res.end('Server error');
+                return;
+            }
+
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(data);
+        });
+    });
+}
 
 // Clean up old rate limit data periodically
 setInterval(() => {
@@ -111,6 +162,12 @@ const server = http.createServer((req, res) => {
         return;
     }
     
+    // Serve static files for GET requests
+    if (req.method === 'GET') {
+        serveStaticFile(req, res);
+        return;
+    }
+
     // Handle OpenAI API proxy endpoint
     if (req.url === '/api/chat' && req.method === 'POST') {
         // Set CORS headers for API endpoint
@@ -219,12 +276,12 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Reject other HTTP requests (WebSocket-only for non-API endpoints)
-    res.writeHead(426, { 
-        'Upgrade': 'websocket',
+    // Reject other HTTP methods (only GET, POST for API, and WebSocket upgrades allowed)
+    res.writeHead(405, {
+        'Allow': 'GET, POST',
         'Access-Control-Allow-Origin': '*'
     });
-    res.end('This server only accepts WebSocket connections and /api/chat POST requests');
+    res.end('Method not allowed. Use GET for static files or POST for /api/chat');
 });
 
 // Create WebSocket server attached to HTTP server
@@ -600,8 +657,16 @@ function getNextSpawnPoint() {
 
 // Start server
 server.listen(8080, () => {
-    console.log('Multiplayer server running on ws://localhost:8080');
-    console.log('OpenAI API proxy available at http://localhost:8080/api/chat');
+    // Show appropriate URLs based on environment
+    const isProduction = !!process.env.RENDER_EXTERNAL_URL;
+    const baseUrl = isProduction
+        ? `https://${process.env.RENDER_EXTERNAL_URL.replace('https://', '')}`
+        : 'http://localhost:8080';
+
+    console.log(`Server running on ${baseUrl}`);
+    console.log(`WebSocket multiplayer: ${baseUrl.replace('http', 'ws')}`);
+    console.log(`OpenAI API proxy: ${baseUrl}/api/chat`);
+    console.log(`Static files served from: ${baseUrl}`);
     console.log(`Maximum players: ${MAX_PLAYERS}`);
     console.log(`Spawn points: ${SPAWN_POINTS.length}`);
     if (process.env.OPENAI_API_KEY) {
