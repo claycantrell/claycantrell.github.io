@@ -89,8 +89,8 @@ function init() {
     scene.background = new THREE.Color(0x191970); // Black background for infinite dark void
     // Fog adds overhead - can disable for even lower load
     // Exponential fog to fade into darkness seamlessly
-    // Initial fog density
-    const minFogDensity = 0.008;
+    // Initial fog density - extended range for brighter times
+    const minFogDensity = 0.003; // Even less fog for brightest times
     const maxFogDensity = 0.034;
     const fogCycleDuration = 2 * 60 * 1000; // 2 minutes in milliseconds
     
@@ -121,19 +121,19 @@ function init() {
 
             // Interpolate background color (Sky)
             // Phase 1 (max density/foggy) -> Midnight Blue (0x191970)
-            // Phase 0 (min density/clear) -> Light Blue (0x87CEEB)
-            // Note: User requested Midnight Blue at foggiest.
-            
+            // Phase 0 (min density/clear) -> Bright Sky Blue (0x00BFFF) - brighter than Light Blue
+            // Note: User requested Midnight Blue at foggiest, and brighter times than current max.
+
             // Midnight Blue RGB: (25, 25, 112)
-            // Light Blue RGB: (135, 206, 235)
-            
+            // Bright Sky Blue RGB: (0, 191, 255) - brighter and more vibrant than Light Blue (135, 206, 235)
+
             // Interpolate based on phase (0 to 1)
             // When phase is 1 (foggiest), we want Midnight Blue (25, 25, 112)
-            // When phase is 0 (clearest), we want Light Blue (135, 206, 235)
-            
-            const r = (135 + (25 - 135) * phase) / 255;
-            const g = (206 + (25 - 206) * phase) / 255;
-            const b = (235 + (112 - 235) * phase) / 255;
+            // When phase is 0 (clearest), we want Bright Sky Blue (0, 191, 255)
+
+            const r = (0 + (25 - 0) * phase) / 255;
+            const g = (191 + (25 - 191) * phase) / 255;
+            const b = (255 + (112 - 255) * phase) / 255;
             
             // ONLY update the background color, NOT the fog color
             scene.background.setRGB(r, g, b);
@@ -215,12 +215,15 @@ function init() {
     }
 
     // Initialize multiplayer (optional - game works without it)
-    // Change server URL to your production WebSocket server
+    // Auto-detect server URL based on current domain
     let serverUrl;
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
         serverUrl = 'ws://localhost:8080';
     } else {
-        serverUrl = 'wss://your-server.com'; // Use wss:// for production
+        // For production: use same domain but WebSocket protocol
+        // Railway, Render, etc. will proxy WebSocket connections
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        serverUrl = `${protocol}//${window.location.host}`;
     }
     console.log('Connecting to multiplayer server at:', serverUrl);
     initMultiplayer(serverUrl);

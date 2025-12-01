@@ -124,7 +124,9 @@ let speechVoice = null;
 
 // OpenAI API configuration - now using server proxy
 // API key is hidden on server, rate limiting is IP-based
-const OPENAI_API_URL = 'http://localhost:8080/api/chat';
+const OPENAI_API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8080/api/chat'
+    : `${window.location.protocol}//${window.location.host}/api/chat`;
 
 // Convert message to medieval language and sanitize
 async function convertToMedieval(message, isConversingWithNPC = false) {

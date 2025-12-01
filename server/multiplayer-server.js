@@ -6,7 +6,7 @@ const http = require('http');
 const https = require('https');
 
 // OpenAI API proxy with IP-based rate limiting
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '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';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // IP-based rate limiting
 const ipRateLimits = new Map(); // IP -> { requests: [timestamps], lastCleanup: timestamp }
@@ -133,7 +133,19 @@ const server = http.createServer((req, res) => {
             }));
             return;
         }
-        
+
+        // Check if API key is available
+        if (!OPENAI_API_KEY) {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: {
+                    message: 'Chat features are currently disabled. Please contact the administrator to enable OpenAI integration.',
+                    type: 'chat_disabled'
+                }
+            }));
+            return;
+        }
+
         // Collect request body
         let body = '';
         req.on('data', chunk => {
@@ -595,8 +607,8 @@ server.listen(8080, () => {
     if (process.env.OPENAI_API_KEY) {
         console.log('✅ Using OPENAI_API_KEY from environment variable');
     } else {
-        console.warn('⚠️  WARNING: OPENAI_API_KEY not set in environment, using hardcoded key');
-        console.log('   To set it: export OPENAI_API_KEY=your-key-here');
+        console.log('⚠️  No OPENAI_API_KEY set - chat features will be disabled');
+        console.log('   To enable chat: export OPENAI_API_KEY=your-key-here');
     }
 });
 
