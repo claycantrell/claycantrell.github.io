@@ -42,41 +42,32 @@ const PERFORMANCE = {
 // sharedMaterials is declared globally in core.js
 function initSharedMaterials() {
     sharedMaterials.trunk = new THREE.MeshBasicMaterial({ 
-        color: 0x8B4513, 
-        flatShading: true 
+        color: 0x8B4513
     });
     sharedMaterials.foliage1 = new THREE.MeshBasicMaterial({ 
-        color: 0x006400, 
-        flatShading: true 
+        color: 0x006400
     });
     sharedMaterials.foliage2 = new THREE.MeshBasicMaterial({ 
-        color: 0x008000, 
-        flatShading: true 
+        color: 0x008000
     });
     sharedMaterials.foliage3 = new THREE.MeshBasicMaterial({ 
-        color: 0x228B22, 
-        flatShading: true 
+        color: 0x228B22
     });
     // New Autumn Oak Materials
     sharedMaterials.oakTrunk = new THREE.MeshBasicMaterial({
-        color: 0x4A3728, // Darker wood
-        flatShading: true
+        color: 0x4A3728 // Darker wood
     });
     sharedMaterials.oakFoliage1 = new THREE.MeshBasicMaterial({
-        color: 0x004d00, // Dark Green
-        flatShading: true
+        color: 0x004d00 // Dark Green
     });
     sharedMaterials.oakFoliage2 = new THREE.MeshBasicMaterial({
-        color: 0x006400, // Slightly lighter Dark Green
-        flatShading: true
+        color: 0x006400 // Slightly lighter Dark Green
     });
     sharedMaterials.oakFoliage3 = new THREE.MeshBasicMaterial({
-        color: 0x2E8B57, // Sea Green (darkish)
-        flatShading: true 
+        color: 0x2E8B57 // Sea Green (darkish)
     });
     sharedMaterials.ground = new THREE.MeshBasicMaterial({ 
-        color: 0x004d00, 
-        flatShading: true 
+        color: 0x004d00
     });
 }
 

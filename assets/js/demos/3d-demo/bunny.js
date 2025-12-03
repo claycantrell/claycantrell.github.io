@@ -11,9 +11,9 @@ function createBunny(id, x, z) {
     // Materials
     const colors = [0xFFFFFF, 0xDCDCDC, 0xD2B48C, 0xA9A9A9]; 
     const color = colors[Math.floor(Math.random() * colors.length)];
-    const bunnyMaterial = new THREE.MeshBasicMaterial({ color: color, flatShading: true });
-    const earInnerMaterial = new THREE.MeshBasicMaterial({ color: 0xFFC0CB, flatShading: true }); 
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, flatShading: true });
+    const bunnyMaterial = new THREE.MeshBasicMaterial({ color: color });
+    const earInnerMaterial = new THREE.MeshBasicMaterial({ color: 0xFFC0CB }); 
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
     // --- Body ---
     const bodyGeo = new THREE.SphereGeometry(0.4, 6, 6);

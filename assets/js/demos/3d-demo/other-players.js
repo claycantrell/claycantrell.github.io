@@ -24,16 +24,13 @@ function initOtherPlayerAssets() {
     // Create shared materials (reused for all other players)
     sharedOtherPlayerMaterials = {
         body: new THREE.MeshBasicMaterial({
-            color: 0x00FF00, // Green for other players
-            flatShading: true
+            color: 0x00FF00 // Green for other players
         }),
         head: new THREE.MeshBasicMaterial({
-            color: 0xFFFF00,
-            flatShading: true
+            color: 0xFFFF00
         }),
         hat: new THREE.MeshBasicMaterial({ 
-            color: 0x0000FF, 
-            flatShading: true 
+            color: 0x0000FF
         })
     };
 }

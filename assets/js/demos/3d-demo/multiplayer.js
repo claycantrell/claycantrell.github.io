@@ -130,6 +130,14 @@ function handleServerMessage(data) {
                     }
                 });
             }
+            
+            // Initialize existing built objects
+            if (data.builtObjects && typeof placeObject === 'function') {
+                console.log(`Loading ${data.builtObjects.length} existing objects...`);
+                data.builtObjects.forEach(obj => {
+                    placeObject(obj);
+                });
+            }
             break;
 
         case 'playerJoined':
@@ -172,6 +180,18 @@ function handleServerMessage(data) {
 
         case 'animalUpdate':
              // Deprecated: old client-to-client updates
+             break;
+             
+        case 'objectBuilt':
+             // Handle new object built by another player
+             if (data.object.ownerId !== playerId && typeof placeObject === 'function') {
+                 placeObject(data.object);
+                 // Optional: Show message
+                 if (typeof addSystemMessage === 'function') {
+                     const typeName = ['Stone', 'Pillar', 'Crystal'][data.object.type] || 'Object';
+                     addSystemMessage(`Someone built a ${typeName}`);
+                 }
+             }
              break;
 
         case 'worldState':
@@ -252,6 +272,26 @@ function sendChatToServer(message) {
         if (typeof addSystemMessage === 'function') {
             addSystemMessage('Error sending message: ' + error.message);
         }
+        return false;
+    }
+}
+
+// Send build event to server
+function sendBuildToServer(buildData) {
+    if (!isConnected || !socket || !playerId) {
+        return false;
+    }
+
+    try {
+        const data = {
+            type: 'build',
+            id: playerId,
+            data: buildData
+        };
+        socket.send(JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.error('Error sending build event:', error);
         return false;
     }
 }

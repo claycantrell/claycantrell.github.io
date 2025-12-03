@@ -28,6 +28,10 @@ function serveStaticFile(req, res) {
         filePath = '/pages/3d-demo.html';
     }
 
+    // Normalize: strip leading slashes so path.join stays within project root
+    // e.g. "/pages/home.html" -> "pages/home.html"
+    filePath = filePath.replace(/^\/+/, '');
+
     // Remove leading slash and construct full path
     // Since we're in server/ directory, go up one level to find static files
     const fullPath = path.join(__dirname, '..', filePath);
@@ -304,7 +308,8 @@ const ENTITIES = {
         targetX: 10, targetZ: 10,
         state: 'IDLE',
         timer: 0
-    }
+    },
+    builtObjects: [] // Array of { id, type, x, y, z, rx, ry, rz, color }
 };
 
 // Seeded Random Helper
@@ -717,6 +722,7 @@ wss.on('connection', (ws) => {
         playerCount: players.size, // Let client know how many players
         isHost: false, // DEPRECATED: Server is now host
         worldSeed: 123456, // Shared seed for deterministic randomness
+        builtObjects: ENTITIES.builtObjects, // Send existing built objects
         allPlayers: Array.from(players.entries()).map(([id, data]) => ({
             id,
             position: data.position,
@@ -770,6 +776,40 @@ wss.on('connection', (ws) => {
                     if (client.readyState === WebSocket.OPEN) {
                             client.send(JSON.stringify(chatMessage));
                     }
+                });
+            }
+            else if (data.type === 'build') {
+                // Handle new build object
+                const buildData = data.data;
+                
+                // Add ID and timestamp
+                const objectId = `build_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const newObject = {
+                    id: objectId,
+                    type: buildData.type,
+                    x: buildData.x,
+                    y: buildData.y,
+                    z: buildData.z,
+                    ry: buildData.ry,
+                    rx: buildData.rx || 0,
+                    rz: buildData.rz || 0,
+                    color: buildData.color,
+                    ownerId: playerId
+                };
+                
+                // Store in server state
+                ENTITIES.builtObjects.push(newObject);
+                
+                // Limit total objects to prevent server crash
+                if (ENTITIES.builtObjects.length > 500) {
+                    ENTITIES.builtObjects.shift(); // Remove oldest
+                }
+                
+                // Broadcast to ALL clients (including sender so they get the persistent ID if needed)
+                // If sender optimized locally, they might ignore this or update the ID
+                broadcastToAll({
+                    type: 'objectBuilt',
+                    object: newObject
                 });
             }
         } catch (error) {

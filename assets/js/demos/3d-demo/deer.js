@@ -12,10 +12,10 @@ function createDeer(id, x, z) {
     const coatColor = 0x8B4513; // SaddleBrown
     const bellyColor = 0xD2B48C; // Tan
     
-    const deerMaterial = new THREE.MeshBasicMaterial({ color: coatColor, flatShading: true });
-    const bellyMaterial = new THREE.MeshBasicMaterial({ color: bellyColor, flatShading: true });
-    const noseMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a, flatShading: true });
-    const antlerMaterial = new THREE.MeshBasicMaterial({ color: 0xEEE8AA, flatShading: true }); 
+    const deerMaterial = new THREE.MeshBasicMaterial({ color: coatColor });
+    const bellyMaterial = new THREE.MeshBasicMaterial({ color: bellyColor });
+    const noseMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+    const antlerMaterial = new THREE.MeshBasicMaterial({ color: 0xEEE8AA }); 
 
     // --- Body ---
     const bodyGeo = new THREE.CylinderGeometry(0.7, 0.8, 2.5, 7);

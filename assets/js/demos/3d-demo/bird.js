@@ -15,10 +15,10 @@ function createBird(id, x, z) {
     else if (r < 0.95) color = 0x0000FF; // Blue
     else color = 0xFF0000; // Red
     
-    const birdMaterial = new THREE.MeshBasicMaterial({ color: color, flatShading: true });
-    const wingMaterial = new THREE.MeshBasicMaterial({ color: color, flatShading: true });
-    const beakMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500, flatShading: true }); 
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, flatShading: true });
+    const birdMaterial = new THREE.MeshBasicMaterial({ color: color });
+    const wingMaterial = new THREE.MeshBasicMaterial({ color: color });
+    const beakMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500 }); 
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
     // --- Body ---
     const bodyGeo = new THREE.ConeGeometry(0.15, 0.4, 6);

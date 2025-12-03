@@ -233,41 +233,64 @@ function onBuildMouseDown(event) {
     placeObject();
 }
 
-function placeObject() {
-    if (!buildGhost || !buildGhost.visible) return;
+// Place object function - can be called locally or from network
+function placeObject(networkData = null) {
+    // If networkData is provided, use it. Otherwise use local buildGhost state.
+    
+    let position, rotationY, type, colorHex, rotationX = 0, rotationZ = 0;
+    
+    if (networkData) {
+        // Network placement
+        position = new THREE.Vector3(networkData.x, networkData.y, networkData.z);
+        rotationY = networkData.ry;
+        rotationX = networkData.rx || 0;
+        rotationZ = networkData.rz || 0;
+        type = networkData.type;
+        colorHex = networkData.color;
+    } else {
+        // Local placement
+        if (!buildGhost || !buildGhost.visible) return;
+        
+        position = buildGhost.position.clone();
+        rotationY = buildRotation;
+        type = buildType;
+        
+        // Use HSL for guaranteed color visibility
+        const hue = Math.floor(Math.random() * 360); 
+        const saturation = 60 + Math.floor(Math.random() * 30); 
+        const lightness = 70 + Math.floor(Math.random() * 20); 
+        
+        const color = new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+        colorHex = color.getHex();
+        
+        // Add random slight variation to rotation/scale for organic feel (except pillar height)
+        if (type === 0) {
+            rotationX = Math.random() * Math.PI;
+            rotationZ = Math.random() * Math.PI;
+        }
+    }
 
     let geometry;
     let material;
     
-    // Use HSL for guaranteed color visibility
-    // Saturation: 60-90% (Vibrant)
-    // Lightness: 40-60% (Mid-tone, not too white, not too black)
-    const hue = Math.floor(Math.random() * 360); 
-    const saturation = 60 + Math.floor(Math.random() * 30); 
-    const lightness = 70 + Math.floor(Math.random() * 20); 
-    
-    // Create color using Hex to be absolutely safe with Three.js
-    const color = new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-    const hexColor = color.getHex(); // Convert to hex number immediately
-
-    switch(buildType) {
+    switch(type) {
         case 0: // Stone
             geometry = new THREE.DodecahedronGeometry(1.5, 0);
             material = new THREE.MeshLambertMaterial({ // Use Lambert for better color + simple shading
-                color: hexColor
+                color: colorHex
             });
             break;
         case 1: // Pillar
             geometry = new THREE.CylinderGeometry(0.8, 1, 4, 6);
             material = new THREE.MeshLambertMaterial({ 
-                color: hexColor
+                color: colorHex
             });
             break;
         case 2: // Crystal
             geometry = new THREE.ConeGeometry(0.8, 3, 4);
             material = new THREE.MeshPhongMaterial({ // Phong for shininess on crystals
-                color: hexColor,
-                emissive: hexColor,
+                color: colorHex,
+                emissive: colorHex,
                 emissiveIntensity: 0.2,
                 transparent: true,
                 opacity: 0.9,
@@ -277,14 +300,10 @@ function placeObject() {
     }
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.copy(buildGhost.position);
-    mesh.rotation.y = buildRotation;
-    
-    // Add random slight variation to rotation/scale for organic feel (except pillar height)
-    if (buildType === 0) {
-        mesh.rotation.x = Math.random() * Math.PI;
-        mesh.rotation.z = Math.random() * Math.PI;
-    }
+    mesh.position.copy(position);
+    mesh.rotation.y = rotationY;
+    mesh.rotation.x = rotationX;
+    mesh.rotation.z = rotationZ;
 
     scene.add(mesh);
     
@@ -295,6 +314,18 @@ function placeObject() {
         window.objects.push(mesh);
     }
     
-    // Optional: Add particle effect or sound
+    // If this was a local placement, send to server
+    if (!networkData && typeof sendBuildToServer === 'function') {
+        sendBuildToServer({
+            type: type,
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            ry: rotationY,
+            rx: rotationX,
+            rz: rotationZ,
+            color: colorHex
+        });
+    }
 }
 

@@ -201,7 +201,6 @@ function createPortals() {
             });
             const textMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFFFFF,
-                flatShading: true,
                 side: THREE.DoubleSide // Render both sides for flat text
             });
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);

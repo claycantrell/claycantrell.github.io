@@ -8,8 +8,7 @@ function createCharacter() {
     const bodySegments = PERFORMANCE.characterDetail.bodySegments;
     const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, bodySegments);
     const bodyMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF0000,
-        flatShading: true
+        color: 0xFF0000
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     group.add(body);
@@ -18,8 +17,7 @@ function createCharacter() {
     const headSegments = PERFORMANCE.characterDetail.headSegments;
     const headGeometry = new THREE.SphereGeometry(0.5, headSegments, headSegments);
     const headMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFFFF00,
-        flatShading: true
+        color: 0xFFFF00
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1.5;
@@ -28,7 +26,7 @@ function createCharacter() {
     // Cone Hat with Flat Shading - Reduced segments
     const hatSegments = PERFORMANCE.characterDetail.hatSegments;
     const hatGeometry = new THREE.ConeGeometry(0.6, 1, hatSegments);
-    const hatMaterial = new THREE.MeshBasicMaterial({ color: 0x0000FF, flatShading: true });
+    const hatMaterial = new THREE.MeshBasicMaterial({ color: 0x0000FF });
     const hat = new THREE.Mesh(hatGeometry, hatMaterial);
     hat.position.y = 2.3;
     group.add(hat);

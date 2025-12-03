@@ -20,30 +20,65 @@ function initAudio() {
     });
 
     // Audio Icon Event Listener
-    audioIcon.addEventListener('click', toggleAudio);
+    const audioIcon = document.getElementById('audio-icon');
+    if (audioIcon) {
+        audioIcon.addEventListener('click', toggleAudio);
+        audioIcon.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent double firing on some devices
+            toggleAudio();
+        }, { passive: false });
+    }
 
     // Ensure audio context is resumed on user interaction
-    document.body.addEventListener('click', resumeAudioContext, false);
-    document.body.addEventListener('touchstart', resumeAudioContext, false);
+    const unlockAudio = () => {
+        resumeAudioContext();
+        // Remove listeners once unlocked
+        if (audio.context && audio.context.state === 'running') {
+            document.body.removeEventListener('click', unlockAudio);
+            document.body.removeEventListener('touchstart', unlockAudio);
+        }
+    };
+    
+    document.body.addEventListener('click', unlockAudio, false);
+    document.body.addEventListener('touchstart', unlockAudio, false);
 }
 
 // Function to toggle audio on/off
 function toggleAudio() {
     resumeAudioContext(); // Ensure audio context is resumed
+    
+    const audioIcon = document.getElementById('audio-icon');
+    
     if (isAudioPlaying) {
         audio.pause();
-        audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/mute.png';
+        if (audioIcon) audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/mute.png';
     } else {
         audio.play();
-        audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png';
+        if (audioIcon) audioIcon.src = 'https://img.icons8.com/ios-glyphs/30/ffffff/speaker.png';
     }
     isAudioPlaying = !isAudioPlaying;
 }
 
 // Function to resume audio context
 function resumeAudioContext() {
-    if (audio.context && audio.context.state === 'suspended') {
-        audio.context.resume();
+    if (audio && audio.context && audio.context.state === 'suspended') {
+        audio.context.resume().then(() => {
+            console.log('Audio context resumed');
+        }).catch(e => console.error('Could not resume audio context:', e));
+    }
+    
+    // Also try to unlock speech synthesis for mobile
+    if (window.speechSynthesis) {
+        if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+        }
+        // Prime the TTS engine with a silent utterance (helps on iOS)
+        if (!window.ttsPrimed) {
+            const utterance = new SpeechSynthesisUtterance('');
+            utterance.volume = 0;
+            window.speechSynthesis.speak(utterance);
+            window.ttsPrimed = true;
+        }
     }
 }
 
