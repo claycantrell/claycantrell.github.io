@@ -217,6 +217,11 @@ function init() {
 
     // Create more complex trees
     createMoreComplexTrees();
+
+    // Create biome-specific shrubs
+    if (typeof createShrubs === 'function') {
+        createShrubs();
+    }
     
     // Initialize NPC, ensuring it spawns on the new terrain
     initNPC();

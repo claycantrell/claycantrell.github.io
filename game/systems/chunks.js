@@ -49,6 +49,7 @@ function generateChunkData(cx, cz) {
 
     const heightmap = [];
     const biomeData = [];
+    let hasWater = false;
 
     for (let z = 0; z <= segments; z++) {
         heightmap[z] = [];
@@ -62,16 +63,41 @@ function generateChunkData(cx, cz) {
             // Calculate terrain at this point (uses existing terrain system)
             const data = calculateTerrainHeight(worldX, worldZ);
 
-            heightmap[z][x] = data.height;
+            // Check for rivers and apply carving
+            let height = data.height;
+            let isWaterPoint = false;
+            let waterType = null;
+
+            if (typeof isRiver === 'function' && isRiver(worldX, worldZ, data.climate)) {
+                // Carve river into terrain
+                if (typeof applyRiverCarving === 'function') {
+                    height = applyRiverCarving(worldX, worldZ, height);
+                }
+                isWaterPoint = true;
+                waterType = 'river';
+                hasWater = true;
+            }
+
+            // Check for lakes (low areas)
+            const waterConfig = typeof getWaterConfig === 'function' ? getWaterConfig() : { seaLevel: -5 };
+            if (height < waterConfig.seaLevel) {
+                isWaterPoint = true;
+                waterType = 'lake';
+                hasWater = true;
+            }
+
+            heightmap[z][x] = height;
             biomeData[z][x] = {
-                height: data.height,
+                height: height,
                 climate: data.climate,
-                biome: data.biome
+                biome: data.biome,
+                isWater: isWaterPoint,
+                waterType: waterType
             };
         }
     }
 
-    return { heightmap, biomeData, bounds };
+    return { heightmap, biomeData, bounds, hasWater };
 }
 
 // Create mesh for a chunk
@@ -88,6 +114,11 @@ function createChunkMesh(cx, cz, chunkData) {
     // Create vertex colors
     const colors = new Float32Array(vertexCount * 3);
 
+    // Water colors
+    const riverColor = new THREE.Color(0x2980b9);
+    const lakeColor = new THREE.Color(0x1a5f7a);
+    const shallowColor = new THREE.Color(0x5dade2);
+
     // Apply heights and colors
     for (let i = 0; i < vertices.length; i += 3) {
         const vertexIndex = i / 3;
@@ -97,11 +128,27 @@ function createChunkMesh(cx, cz, chunkData) {
         // Set height
         vertices[i + 2] = chunkData.heightmap[z][x];
 
-        // Set color from biome
+        // Set color from biome or water
         const data = chunkData.biomeData[z][x];
         let color;
 
-        if (data.biome) {
+        if (data.isWater) {
+            // Water coloring based on type and depth
+            if (data.waterType === 'river') {
+                color = riverColor;
+            } else {
+                // Lake - depth based color
+                const waterConfig = typeof getWaterConfig === 'function' ? getWaterConfig() : { seaLevel: -5 };
+                const depth = waterConfig.seaLevel - data.height;
+                if (depth < 2) {
+                    color = shallowColor;
+                } else if (depth < 6) {
+                    color = riverColor;
+                } else {
+                    color = lakeColor;
+                }
+            }
+        } else if (data.biome) {
             color = new THREE.Color(data.biome.color);
         } else {
             color = new THREE.Color(0x4a7c4e);
@@ -145,15 +192,23 @@ function loadChunk(cx, cz) {
     // Generate chunk data
     const chunkData = generateChunkData(cx, cz);
 
-    // Create mesh
+    // Create terrain mesh
     const mesh = createChunkMesh(cx, cz, chunkData);
 
     // Add to scene
     scene.add(mesh);
 
+    // Create water plane if chunk has water
+    let waterMesh = null;
+    if (chunkData.hasWater && typeof createChunkWaterPlane === 'function') {
+        waterMesh = createChunkWaterPlane(cx, cz, CHUNK_CONFIG.size);
+        scene.add(waterMesh);
+    }
+
     // Store in map
     loadedChunks.set(key, {
         mesh,
+        waterMesh,
         data: chunkData,
         cx,
         cz,
@@ -166,12 +221,17 @@ function unloadChunk(key) {
     const chunk = loadedChunks.get(key);
     if (!chunk) return;
 
-    // Remove from scene
+    // Remove terrain mesh from scene
     scene.remove(chunk.mesh);
-
-    // Dispose geometry and material
     chunk.mesh.geometry.dispose();
     chunk.mesh.material.dispose();
+
+    // Remove water mesh if exists
+    if (chunk.waterMesh) {
+        scene.remove(chunk.waterMesh);
+        chunk.waterMesh.geometry.dispose();
+        chunk.waterMesh.material.dispose();
+    }
 
     // Remove from map
     loadedChunks.delete(key);

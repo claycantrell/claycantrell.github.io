@@ -322,18 +322,56 @@ function seededRandom() {
     return currentSeed / m;
 }
 
+// Simple water check - mirrors client-side logic
+// Water exists where continentalness is very low (coastal/ocean areas)
+const SEA_LEVEL = -5;
+
+// Simple 2D noise for server-side checks (doesn't need to match client exactly)
+function simpleNoise2D(x, z, scale, seed) {
+    const nx = x * scale + seed;
+    const nz = z * scale + seed * 1.5;
+    return Math.sin(nx * 1.27 + nz * 0.83) * Math.cos(nz * 1.13 + nx * 0.97);
+}
+
+// Check if position is likely in water (approximate)
+function isWaterPosition(x, z) {
+    // Check continentalness - low values = coastal/ocean = water
+    const continentalness = simpleNoise2D(x, z, 0.0003, 1000);
+    if (continentalness < -0.4) {
+        return true; // Coastal/ocean area
+    }
+    return false;
+}
+
+// Get valid land position (retries if in water)
+function getValidLandPosition(minDist, maxDist, maxAttempts = 10) {
+    for (let i = 0; i < maxAttempts; i++) {
+        const angle = seededRandom() * Math.PI * 2;
+        const dist = minDist + seededRandom() * (maxDist - minDist);
+        const x = Math.cos(angle) * dist;
+        const z = Math.sin(angle) * dist;
+
+        if (!isWaterPosition(x, z)) {
+            return { x, z };
+        }
+    }
+    // Fallback to last position even if water
+    const angle = seededRandom() * Math.PI * 2;
+    const dist = minDist + seededRandom() * (maxDist - minDist);
+    return { x: Math.cos(angle) * dist, z: Math.sin(angle) * dist };
+}
+
 // Initialize Entities
 function initServerEntities() {
     console.log("Initializing server-side entities...");
-    
-    // Deer
-    for (let i = 0; i < 18; i++) { // Increased by 50% (was 12)
-        const angle = seededRandom() * Math.PI * 2;
-        const dist = 60 + seededRandom() * 300;
+
+    // Deer - spawn on land only
+    for (let i = 0; i < 18; i++) {
+        const pos = getValidLandPosition(60, 360);
         ENTITIES.deer.push({
             id: `deer_${i}`,
-            x: Math.cos(angle) * dist,
-            z: Math.sin(angle) * dist,
+            x: pos.x,
+            z: pos.z,
             state: 'IDLE',
             timer: seededRandom() * 5,
             targetDir: { x: 0, z: 1 },
@@ -341,14 +379,13 @@ function initServerEntities() {
         });
     }
 
-    // Bunnies
+    // Bunnies - spawn on land only
     for (let i = 0; i < 20; i++) {
-        const angle = seededRandom() * Math.PI * 2;
-        const dist = 40 + seededRandom() * 300;
+        const pos = getValidLandPosition(40, 340);
         ENTITIES.bunnies.push({
             id: `bunny_${i}`,
-            x: Math.cos(angle) * dist,
-            z: Math.sin(angle) * dist,
+            x: pos.x,
+            z: pos.z,
             state: 'IDLE',
             timer: seededRandom() * 5,
             targetDir: { x: 0, z: 1 },
@@ -357,7 +394,7 @@ function initServerEntities() {
         });
     }
 
-    // Birds
+    // Birds - can fly over water, no check needed
     for (let i = 0; i < 30; i++) {
         const angle = seededRandom() * Math.PI * 2;
         const dist = seededRandom() * 300;
@@ -365,14 +402,14 @@ function initServerEntities() {
             id: `bird_${i}`,
             x: Math.cos(angle) * dist,
             z: Math.sin(angle) * dist,
-            y: 20, // Initial height
+            y: 20,
             state: 'FLYING',
             timer: seededRandom() * 5,
             targetPos: { x: 0, y: 30, z: 0 },
             speed: 8 + seededRandom() * 4
         });
     }
-    
+
     console.log(`Initialized ${ENTITIES.deer.length} deer, ${ENTITIES.bunnies.length} bunnies, ${ENTITIES.birds.length} birds.`);
 }
 
@@ -426,8 +463,17 @@ setInterval(() => {
                  }
              }
              
-             deer.x += deer.targetDir.x * deer.speed * delta;
-             deer.z += deer.targetDir.z * deer.speed * delta;
+             const newX = deer.x + deer.targetDir.x * deer.speed * delta;
+             const newZ = deer.z + deer.targetDir.z * deer.speed * delta;
+             // Only move if not going into water
+             if (!isWaterPosition(newX, newZ)) {
+                 deer.x = newX;
+                 deer.z = newZ;
+             } else {
+                 // Turn around if hitting water
+                 deer.targetDir.x = -deer.targetDir.x;
+                 deer.targetDir.z = -deer.targetDir.z;
+             }
 
              if (nearestDist > 60 && deer.timer <= 0) {
                  deer.state = 'IDLE';
@@ -435,7 +481,6 @@ setInterval(() => {
              }
         }
         else if (deer.state === 'IDLE') {
-            // ... existing idle logic ...
             if (deer.timer <= 0) {
                 if (Math.random() < 0.3) {
                     deer.state = 'GRAZE';
@@ -448,8 +493,15 @@ setInterval(() => {
                 }
             }
         } else if (deer.state === 'WALK') {
-            deer.x += deer.targetDir.x * 3.5 * delta;
-            deer.z += deer.targetDir.z * 3.5 * delta;
+            const newX = deer.x + deer.targetDir.x * 3.5 * delta;
+            const newZ = deer.z + deer.targetDir.z * 3.5 * delta;
+            if (!isWaterPosition(newX, newZ)) {
+                deer.x = newX;
+                deer.z = newZ;
+            } else {
+                deer.targetDir.x = -deer.targetDir.x;
+                deer.targetDir.z = -deer.targetDir.z;
+            }
             if (deer.timer <= 0) {
                 deer.state = 'IDLE';
                 deer.timer = 2 + Math.random() * 3;
@@ -504,9 +556,19 @@ setInterval(() => {
             }
         } else if (bunny.state === 'HOP') {
             const speed = isThreat ? 15.0 : 4.0;
-            bunny.x += bunny.targetDir.x * speed * delta;
-            bunny.z += bunny.targetDir.z * speed * delta;
-            
+            const newX = bunny.x + bunny.targetDir.x * speed * delta;
+            const newZ = bunny.z + bunny.targetDir.z * speed * delta;
+
+            // Only move if not going into water
+            if (!isWaterPosition(newX, newZ)) {
+                bunny.x = newX;
+                bunny.z = newZ;
+            } else {
+                // Turn around if hitting water
+                bunny.targetDir.x = -bunny.targetDir.x;
+                bunny.targetDir.z = -bunny.targetDir.z;
+            }
+
             if (bunny.timer <= 0) {
                 bunny.state = 'IDLE';
                 bunny.timer = isThreat ? 0.1 : (1 + Math.random() * 3);

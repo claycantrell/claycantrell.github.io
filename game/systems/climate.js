@@ -127,10 +127,23 @@ function clampValue(value, min, max) {
 function getHeightModifier(climate) {
     // Erosion: high = flat plains, low = dramatic mountains
     // Convert from [-1, 1] to height multiplier using smooth spline-like curve
-    // Low erosion (-1) = 3x height (mountains), High erosion (1) = 0.2x height (plains)
+    // Low erosion (-1) = 5x height (mountains), High erosion (1) = 0.2x height (plains)
     // Use smoothstep for gradual transitions (no sudden bumps)
     const erosionNorm = (climate.erosion + 1) / 2; // 0 to 1
-    const erosionFactor = 0.2 + (1 - erosionNorm) * (1 - erosionNorm) * 2.8; // Quadratic curve
+
+    // Significantly boost mountain height (low erosion)
+    let erosionFactor;
+    if (erosionNorm < 0.2) {
+        // Very low erosion = mountain peaks - dramatic height boost
+        erosionFactor = 3.0 + (0.2 - erosionNorm) * 10; // 3 to 5x height
+    } else if (erosionNorm < 0.4) {
+        // Low erosion = highlands - good elevation
+        const t = (erosionNorm - 0.2) / 0.2;
+        erosionFactor = 1.5 + (1 - t) * 1.5; // 1.5 to 3x
+    } else {
+        // Normal to high erosion - flat to moderate
+        erosionFactor = 0.2 + (1 - erosionNorm) * (1 - erosionNorm) * 1.3; // 0.2 to 1.5x
+    }
 
     // Continentalness: low = ocean/coast (flatten), high = inland (amplify)
     // Use smooth interpolation to avoid bumpy transitions
@@ -192,10 +205,21 @@ function getBaseHeightOffset(climate) {
     }
 
     // Erosion modifies base height (low erosion = peaks preserved, high = worn down)
-    if (erosion < -0.3 && cont > 0.3) {
-        // Low erosion in inland = mountain peaks - add extra height
-        const peakBonus = (-0.3 - erosion) / 0.7 * 30; // Up to 30 extra
+    // Mountains should be dramatically higher than surrounding terrain
+    if (erosion < -0.6) {
+        // Mountain biome (very low erosion) - dramatic height boost
+        const peakIntensity = (-0.6 - erosion) / 0.4; // 0 to 1
+        const peakBonus = 80 + peakIntensity * peakIntensity * 120; // 80 to 200 extra
         offset += peakBonus;
+    } else if (erosion < -0.3) {
+        // Highland areas - moderate height boost
+        const t = (-0.3 - erosion) / 0.3; // 0 to 1
+        const highlandBonus = t * t * 80; // Up to 80 extra
+        offset += highlandBonus;
+    } else if (erosion < 0 && cont > 0.2) {
+        // Slightly elevated inland areas
+        const t = -erosion / 0.3; // 0 to 1
+        offset += t * 20; // Up to 20 extra
     }
 
     return offset;

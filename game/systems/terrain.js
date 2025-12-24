@@ -56,6 +56,11 @@ function initTerrainConfig() {
         applyClimateConfig(terrainConfig.climate);
     }
 
+    // Initialize water system
+    if (typeof initWaterSystem === 'function') {
+        initWaterSystem(terrainConfig.seed);
+    }
+
     return terrainConfig;
 }
 

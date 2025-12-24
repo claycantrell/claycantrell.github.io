@@ -35,6 +35,11 @@ function animate() {
         }
         // Update sprite billboard rotation every frame (cheap operation)
         updateSpriteBillboards();
+
+        // Update shrub billboards
+        if (typeof updateShrubBillboards === 'function') {
+            updateShrubBillboards();
+        }
     }
 
     // Update NPC behavior
