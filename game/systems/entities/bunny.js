@@ -18,7 +18,7 @@ if (typeof Systems !== 'undefined') {
     Systems.register('bunnies', BunnySystem);
 }
 
-// Use GAME.world.entities.bunnies if available, fallback to local array
+// Use GAME namespace for centralized entity storage with fallback
 const bunnyList = (typeof GAME !== 'undefined' && GAME.world?.entities)
     ? GAME.world.entities.bunnies
     : [];

@@ -18,7 +18,7 @@ if (typeof Systems !== 'undefined') {
     Systems.register('birds', BirdSystem);
 }
 
-// Use GAME.world.entities.birds if available, fallback to local array
+// Use GAME namespace for centralized entity storage with fallback
 const birdList = (typeof GAME !== 'undefined' && GAME.world?.entities)
     ? GAME.world.entities.birds
     : [];

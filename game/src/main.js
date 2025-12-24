@@ -43,14 +43,55 @@ window.SimplexNoise = SimplexNoise;
 window.THREE_MODULES_LOADED = true;
 window.dispatchEvent(new Event('threeModulesLoaded'));
 
-// Dynamically load existing game scripts in order (matches original index.html)
+/**
+ * SCRIPT LOADING ORDER REQUIREMENTS
+ * ==================================
+ * Scripts are loaded sequentially to ensure dependencies are available.
+ * The order is critical - changing it may break the game.
+ *
+ * LAYER 1: Core Framework (must load first)
+ * - namespace.js: GAME namespace - all other scripts depend on this
+ * - systems.js: Systems registry for update loop
+ * - config.js: CONFIG object for centralized configuration
+ * - performance.js: PERFORMANCE config and shared materials
+ * - utils/random.js: Seeded random for consistent world generation
+ * - map-loader.js: Map configuration loading
+ *
+ * LAYER 2: World Systems (depend on Layer 1)
+ * - character.js: Player character (needs GAME, CONFIG)
+ * - climate.js, biomes.js: World generation data
+ * - water.js, chunks.js, terrain.js: Terrain generation
+ * - trees.js, shrubs.js: Vegetation (needs terrain)
+ * - portals.js: Portal system
+ *
+ * LAYER 3: Entity Systems (depend on terrain being defined)
+ * - entities/*.js: NPCs and animals
+ * - entity-registry.js: Entity management
+ *
+ * LAYER 4: Multiplayer (can run independently)
+ * - player-utils.js, time-sync.js, sync.js: Network utilities
+ *
+ * LAYER 5: UI & Input (needs core systems)
+ * - input.js, audio.js, ui.js: User interaction
+ * - chat.js: Chat system
+ * - client.js, other-players.js: Multiplayer rendering
+ * - building.js: Block building system
+ * - map-menu.js: Map selection UI
+ *
+ * LAYER 6: Initialization (must load last)
+ * - core.js: Three.js setup, scene init (depends on ALL above)
+ * - game.js: Animation loop (depends on core.js)
+ */
 const scripts = [
+    // Layer 1: Core Framework
     '../engine/namespace.js',      // GAME namespace (load first)
     '../engine/systems.js',        // Systems registry
     '../engine/config.js',         // Centralized configuration
-    '../engine/performance.js',
-    '../engine/utils/random.js',
-    '../maps/map-loader.js',
+    '../engine/performance.js',    // Performance config
+    '../engine/utils/random.js',   // Seeded random
+    '../maps/map-loader.js',       // Map configuration
+
+    // Layer 2: World Systems
     '../systems/character.js',
     '../systems/climate.js',
     '../systems/biomes.js',
@@ -60,14 +101,20 @@ const scripts = [
     '../systems/trees.js',
     '../systems/shrubs.js',
     '../systems/portals.js',
+
+    // Layer 3: Entity Systems
     '../systems/entities/npc.js',
     '../systems/entities/deer.js',
     '../systems/entities/bunny.js',
     '../systems/entities/bird.js',
     '../systems/entities/entity-registry.js',
+
+    // Layer 4: Multiplayer
     '../multiplayer/player-utils.js',
     '../multiplayer/time-sync.js',
     '../multiplayer/sync.js',
+
+    // Layer 5: UI & Input
     '../engine/input.js',
     '../engine/audio.js',
     '../engine/ui.js',
@@ -76,8 +123,10 @@ const scripts = [
     '../multiplayer/other-players.js',
     '../systems/building.js',
     '../maps/map-menu.js',
-    '../engine/core.js',  // core.js must be AFTER audio, input, ui
-    '../engine/game.js'
+
+    // Layer 6: Initialization (must be last)
+    '../engine/core.js',           // Three.js setup
+    '../engine/game.js'            // Animation loop
 ];
 
 async function loadScripts() {

@@ -17,29 +17,12 @@ if (typeof Systems !== 'undefined') {
     Systems.register('npc', NPCSystem);
 }
 
-// Use GAME.npc namespace for NPC state if available
-// Local variables as fallback and for convenience
 let npc = null;
 let npcState = 'wandering'; // 'wandering' or 'staring'
 let npcWanderTarget = null;
 let npcSpawnPosition = new THREE.Vector3(0, 0, 0);
-let npcHasGreeted = false;
-let npcIsNearby = false;
-
-// Sync local state to GAME namespace
-function syncNPCToGameNamespace() {
-    if (typeof GAME !== 'undefined' && GAME.npc) {
-        GAME.npc.entity = npc;
-        GAME.npc.state = npcState;
-        GAME.npc.target = npcWanderTarget;
-        GAME.npc.spawnPosition = npcSpawnPosition;
-        GAME.npc.hasGreeted = npcHasGreeted;
-        GAME.npc.isNearby = npcIsNearby;
-    }
-    if (typeof GAME !== 'undefined' && GAME.world?.entities) {
-        GAME.world.entities.npc = npc;
-    }
-}
+let npcHasGreeted = false; // Track if NPC has greeted player
+let npcIsNearby = false; // Track if player is near NPC
 
 // Get NPC config values from config with fallbacks
 function getNPCConfig() {
@@ -134,7 +117,7 @@ function initNPC() {
     const spawnZ = Math.sin(spawnAngle) * spawnRadius;
     npc = createNPC(spawnX, spawnZ);
 
-    // Sync NPC to GAME namespace
+    // Sync to GAME namespace
     syncNPCToGameNamespace();
 
     console.log(`NPC spawned at radius ${spawnRadius.toFixed(1)}`);
@@ -216,8 +199,8 @@ function updateNPC(delta) {
                     } else {
                         // Wander nearby (relative to current position)
                         const wanderRange = 300;
-                        targetX = this.mesh.position.x + (Math.random() - 0.5) * wanderRange;
-                        targetZ = this.mesh.position.z + (Math.random() - 0.5) * wanderRange;
+                        targetX = npc.position.x + (Math.random() - 0.5) * wanderRange;
+                        targetZ = npc.position.z + (Math.random() - 0.5) * wanderRange;
                     }
                     
                     npcWanderTarget.set(targetX, 1, targetZ);
@@ -283,9 +266,24 @@ function isPlayerNearNPC() {
     return npcIsNearby;
 }
 
+// Sync local NPC state to GAME namespace
+function syncNPCToGameNamespace() {
+    if (typeof GAME !== 'undefined' && GAME.npc) {
+        GAME.npc.entity = npc;
+        GAME.npc.state = npcState;
+        GAME.npc.target = npcWanderTarget;
+        GAME.npc.spawnPosition = npcSpawnPosition;
+        GAME.npc.hasGreeted = npcHasGreeted;
+        GAME.npc.isNearby = npcIsNearby;
+    }
+    if (typeof GAME !== 'undefined' && GAME.world?.entities) {
+        GAME.world.entities.npc = npc;
+    }
+}
 
 // Make available globally
 window.initNPC = initNPC;
 window.updateNPC = updateNPC;
 window.isPlayerNearNPC = isPlayerNearNPC;
+window.syncNPCToGameNamespace = syncNPCToGameNamespace;
 window.NPCSystem = NPCSystem;

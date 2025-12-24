@@ -18,7 +18,7 @@ if (typeof Systems !== 'undefined') {
     Systems.register('deer', DeerSystem);
 }
 
-// Use GAME.world.entities.deer if available, fallback to local array
+// Use GAME namespace for centralized entity storage with fallback
 const deerList = (typeof GAME !== 'undefined' && GAME.world?.entities)
     ? GAME.world.entities.deer
     : [];
