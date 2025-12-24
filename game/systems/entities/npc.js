@@ -104,7 +104,7 @@ function initNPC() {
 
     // Check if NPC is enabled for this map
     if (!config.enabled) {
-        console.log("NPC disabled for this map");
+        if (typeof gameLog === 'function') gameLog("NPC disabled for this map");
         return;
     }
 
@@ -120,7 +120,7 @@ function initNPC() {
     // Sync to GAME namespace
     syncNPCToGameNamespace();
 
-    console.log(`NPC spawned at radius ${spawnRadius.toFixed(1)}`);
+    if (typeof gameLog === 'function') gameLog(`NPC spawned at radius ${spawnRadius.toFixed(1)}`);
 }
 
 // Update NPC behavior

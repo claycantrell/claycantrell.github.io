@@ -1,8 +1,44 @@
 // Main entry point - loads existing game with modern module system
 import * as THREE from 'three';
+import { SimplexNoise as ThreeSimplexNoise } from 'three/addons/math/SimplexNoise.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-import { SimplexNoise as ThreeSimplexNoise } from 'three/addons/math/SimplexNoise.js';
+
+// ============================================================================
+// PRODUCTION CONFIG
+// ============================================================================
+const IS_PRODUCTION = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const SCRIPT_LOAD_TIMEOUT = 10000; // 10 second timeout per script
+
+// ============================================================================
+// GLOBAL ERROR HANDLER
+// ============================================================================
+window.onerror = function(message, source, lineno, colno, error) {
+    if (IS_PRODUCTION) {
+        // In production, show user-friendly message
+        const notification = document.getElementById('notification');
+        if (notification) {
+            notification.textContent = 'An error occurred. Please refresh the page.';
+            notification.style.display = 'block';
+        }
+    }
+    // Always log to console for debugging
+    console.error('Global error:', { message, source, lineno, colno, error });
+    return false; // Don't suppress the error
+};
+
+window.onunhandledrejection = function(event) {
+    if (IS_PRODUCTION) {
+        console.error('Unhandled promise rejection:', event.reason);
+    } else {
+        console.error('Unhandled promise rejection:', event.reason);
+    }
+};
+
+// Production-safe logging
+window.gameLog = IS_PRODUCTION
+    ? () => {} // No-op in production
+    : console.log.bind(console);
 
 // Create seeded random number generator from string
 function seededRandom(seed) {
@@ -129,17 +165,46 @@ const scripts = [
     '../engine/game.js'            // Animation loop
 ];
 
+// Load a single script with timeout
+function loadScriptWithTimeout(src, timeout = SCRIPT_LOAD_TIMEOUT) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+
+        const timeoutId = setTimeout(() => {
+            reject(new Error(`Script load timeout: ${src}`));
+        }, timeout);
+
+        script.onload = () => {
+            clearTimeout(timeoutId);
+            resolve();
+        };
+
+        script.onerror = () => {
+            clearTimeout(timeoutId);
+            reject(new Error(`Failed to load script: ${src}`));
+        };
+
+        document.body.appendChild(script);
+    });
+}
+
 async function loadScripts() {
-    for (const src of scripts) {
-        await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.body.appendChild(script);
-        });
+    try {
+        for (const src of scripts) {
+            await loadScriptWithTimeout(src);
+        }
+        gameLog('All game scripts loaded');
+    } catch (error) {
+        console.error('Script loading failed:', error);
+        // Show user-friendly error
+        const notification = document.getElementById('notification');
+        if (notification) {
+            notification.textContent = 'Failed to load game. Please refresh the page.';
+            notification.style.display = 'block';
+            notification.style.background = 'rgba(200, 0, 0, 0.8)';
+        }
     }
-    console.log('All game scripts loaded');
 }
 
 loadScripts();

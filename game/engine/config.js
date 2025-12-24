@@ -2,7 +2,36 @@
 // Provides unified access to all game configuration with defaults
 // Works with map-loader for per-map overrides
 
+// Environment detection
+const IS_PRODUCTION = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const IS_SECURE = window.location.protocol === 'https:';
+
 const CONFIG = {
+    // Environment settings
+    env: {
+        isProduction: IS_PRODUCTION,
+        isSecure: IS_SECURE,
+        // API endpoints - auto-configured based on environment
+        apiBaseUrl: IS_PRODUCTION
+            ? `${window.location.protocol}//${window.location.host}`
+            : 'http://localhost:8080',
+        wsBaseUrl: IS_PRODUCTION
+            ? `${IS_SECURE ? 'wss:' : 'ws:'}//${window.location.host}`
+            : 'ws://localhost:8080',
+        // Feature flags
+        enableLogging: !IS_PRODUCTION,
+        enableDebugMode: !IS_PRODUCTION
+    },
+
+    // API endpoints (derived from env)
+    get api() {
+        return {
+            chat: `${this.env.apiBaseUrl}/api/chat`,
+            token: `${this.env.apiBaseUrl}/api/token`,
+            websocket: this.env.wsBaseUrl
+        };
+    },
+
     // Default values for all configurable settings
     defaults: {
         character: {

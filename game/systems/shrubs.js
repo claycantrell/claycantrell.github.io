@@ -330,7 +330,7 @@ function selectShrubType(types) {
 
 // Create shrubs for the terrain
 function createShrubs() {
-    console.log('Creating biome-specific shrubs...');
+    // Creating biome-specific shrubs
 
     shrubData = [];
     shrubGroup = new THREE.Group();
@@ -437,8 +437,7 @@ function createShrubs() {
 
     scene.add(shrubGroup);
 
-    console.log(`Placed ${placedCount} shrubs in ${attempts} attempts`);
-    console.log('Shrubs by biome:', biomeCounts);
+    // Shrubs placed
 }
 
 // Update shrub billboards to face camera

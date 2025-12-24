@@ -41,10 +41,10 @@ function setServerTime(serverTimestamp) {
     // Offset = ServerTime - LocalTime
     // This is a naive sync (doesn't account for latency), but good enough for day/night
     serverTimeOffset = serverTimestamp - now;
-    console.log(`Time synchronized. Offset: ${serverTimeOffset}ms`);
 }
 
 
 // Make available globally
 window.getDayNightPhase = getDayNightPhase;
-window.getServerTime = getServerTime;
+window.setServerTime = setServerTime;
+window.getSharedTime = getSharedTime;

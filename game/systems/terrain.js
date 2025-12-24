@@ -70,6 +70,315 @@ function smoothstep(min, max, value) {
     return x * x * (3 - 2 * x);
 }
 
+// ============================================================================
+// BIOME-SPECIFIC TERRAIN FEATURES
+// Each biome gets unique topological characteristics
+// ============================================================================
+
+// Desert: Rolling dunes oriented NE-SW (simulating wind-formed barchan dunes)
+function applyDunes(baseHeight, x, z) {
+    // Primary dune waves - large rolling dunes oriented at 45 degrees
+    const angle = Math.PI / 4; // 45 degrees (NE-SW orientation)
+    const rotatedX = x * Math.cos(angle) + z * Math.sin(angle);
+    const rotatedZ = -x * Math.sin(angle) + z * Math.cos(angle);
+
+    // Main dune ridges (large wavelength)
+    const duneScale = 0.015;
+    const mainDune = Math.sin(rotatedX * duneScale) * 12;
+
+    // Secondary smaller dunes perpendicular
+    const secondaryScale = 0.04;
+    const secondaryDune = Math.sin(rotatedZ * secondaryScale) * 4;
+
+    // Small ripples on dune surfaces
+    const rippleScale = 0.12;
+    const ripples = simplex.noise2D(x * rippleScale, z * rippleScale) * 1.5;
+
+    // Combine: main dunes + cross-dunes + ripples
+    const duneHeight = mainDune + secondaryDune * 0.5 + ripples;
+
+    // Dunes should only add height, not subtract (sand piles up)
+    return baseHeight + Math.max(0, duneHeight + 6);
+}
+
+// Mountains: Cliffs, crags, and rocky outcrops
+function applyCliffs(baseHeight, x, z, climate) {
+    // High-frequency noise for rocky crags
+    const cragScale = 0.05;
+    const cragNoise = simplex.noise2D(x * cragScale + 500, z * cragScale + 500);
+
+    // Create sharp ridges using absolute value (ridged noise)
+    const ridgeScale = 0.008;
+    const ridgeNoise = Math.abs(simplex.noise2D(x * ridgeScale, z * ridgeScale));
+
+    // Cliff bands - horizontal ledges at certain elevations
+    const bandFrequency = 0.02;
+    const bandNoise = simplex.noise2D(x * bandFrequency, z * bandFrequency);
+    const cliffBand = Math.sin(baseHeight * 0.15 + bandNoise * 2) * 0.5 + 0.5;
+
+    // Sharpen terrain based on erosion (lower erosion = sharper features)
+    const erosionFactor = climate ? (1 - climate.erosion) * 0.5 + 0.5 : 1;
+
+    // Combine: rocky crags + ridges + cliff ledges
+    const cliffHeight = (cragNoise * 8 + ridgeNoise * 15 + cliffBand * 5) * erosionFactor;
+
+    // Add vertical cliff faces using step function
+    const stepHeight = Math.floor(baseHeight / 25) * 25;
+    const stepBlend = smoothstep(0, 5, Math.abs(baseHeight - stepHeight));
+
+    return baseHeight + cliffHeight + (1 - stepBlend) * 8;
+}
+
+// Badlands: Mesas, canyons, and striated layers
+function applyMesas(baseHeight, x, z) {
+    // Canyon carving - deep valleys
+    const canyonScale = 0.006;
+    const canyonNoise = Math.abs(simplex.noise2D(x * canyonScale + 200, z * canyonScale + 200));
+    const canyon = canyonNoise < 0.15 ? -20 * (1 - canyonNoise / 0.15) : 0;
+
+    // Mesa plateaus - quantized heights for flat-topped mesas
+    const mesaHeight = baseHeight + canyon;
+    const layerHeight = 20;
+    const quantizedHeight = Math.floor(mesaHeight / layerHeight) * layerHeight;
+
+    // Soft transition at layer edges
+    const layerBlend = smoothstep(0, 3, Math.abs(mesaHeight - quantizedHeight));
+    const finalHeight = quantizedHeight + layerBlend * (mesaHeight - quantizedHeight);
+
+    // Add subtle striations (horizontal lines)
+    const striationScale = 0.3;
+    const striation = Math.sin(finalHeight * striationScale) * 0.5;
+
+    return finalHeight + striation;
+}
+
+// Tundra: Flat permafrost with thermokarst pools and polygonal ground
+function applyPermafrost(baseHeight, x, z) {
+    // Flatten the terrain significantly
+    const flattenedHeight = baseHeight * 0.3;
+
+    // Polygonal ground pattern (characteristic of permafrost)
+    const polyScale = 0.02;
+    const polyNoise = simplex.noise2D(x * polyScale, z * polyScale);
+    const polygon = Math.abs(polyNoise) * 3;
+
+    // Thermokarst depressions (lakes form in thawed permafrost)
+    const poolScale = 0.008;
+    const poolNoise = simplex.noise2D(x * poolScale + 100, z * poolScale + 100);
+    const pool = poolNoise < -0.3 ? (poolNoise + 0.3) * 15 : 0; // Depressions below threshold
+
+    // Low mounds (pingos)
+    const pingoScale = 0.004;
+    const pingoNoise = simplex.noise2D(x * pingoScale + 300, z * pingoScale + 300);
+    const pingo = pingoNoise > 0.6 ? (pingoNoise - 0.6) * 25 : 0;
+
+    return flattenedHeight + polygon + pool + pingo;
+}
+
+// Taiga: Boggy lowlands with wetland pools and hummocks
+function applyBoggyTerrain(baseHeight, x, z) {
+    // Reduce overall terrain variation for wet, low-lying areas
+    const softenedHeight = baseHeight * 0.5;
+
+    // Many small depressions for wetland pools
+    const poolScale = 0.025;
+    const poolNoise = simplex.noise2D(x * poolScale, z * poolScale);
+    const pool = poolNoise < -0.2 ? (poolNoise + 0.2) * 8 : 0;
+
+    // Hummocks - raised mossy mounds between pools
+    const hummockScale = 0.06;
+    const hummockNoise = simplex.noise2D(x * hummockScale + 50, z * hummockScale + 50);
+    const hummock = hummockNoise > 0.3 ? (hummockNoise - 0.3) * 6 : 0;
+
+    // Gentle undulating base
+    const undulateScale = 0.01;
+    const undulation = simplex.noise2D(x * undulateScale, z * undulateScale) * 4;
+
+    return softenedHeight + pool + hummock + undulation;
+}
+
+// Jungle: Steep ravines and terraced hillsides
+function applyRavines(baseHeight, x, z) {
+    // Amplify terrain variation for dramatic topography
+    const amplifiedHeight = baseHeight * 1.4;
+
+    // Deep ravine carving using inverted ridge noise
+    const ravineScale = 0.007;
+    const ravineNoise = Math.abs(simplex.noise2D(x * ravineScale, z * ravineScale));
+    const ravine = ravineNoise < 0.12 ? -25 * (1 - ravineNoise / 0.12) : 0;
+
+    // Terraced hillsides (like rice paddies or erosion patterns)
+    const terraceHeight = 15;
+    const terraceNoise = simplex.noise2D(x * 0.03, z * 0.03) * 5;
+    const rawTerrace = amplifiedHeight + ravine + terraceNoise;
+    const terraced = Math.floor(rawTerrace / terraceHeight) * terraceHeight;
+    const terraceBlend = smoothstep(0, 4, Math.abs(rawTerrace - terraced));
+
+    // Steep valley walls
+    const valleyScale = 0.005;
+    const valleyNoise = simplex.noise2D(x * valleyScale + 400, z * valleyScale + 400);
+    const valley = valleyNoise < -0.4 ? (valleyNoise + 0.4) * 30 : 0;
+
+    return terraced + terraceBlend * (rawTerrace - terraced) + valley;
+}
+
+// Snowy Peaks: Craggy alpine with cirques and sharp ridges
+function applyCraggyAlpine(baseHeight, x, z) {
+    // Sharp, jagged peaks using ridged noise
+    const jaggedScale = 0.02;
+    const jaggedNoise = 1 - Math.abs(simplex.noise2D(x * jaggedScale, z * jaggedScale));
+    const jagged = jaggedNoise * jaggedNoise * 20; // Square for sharper peaks
+
+    // Cirque-like bowl features (glacial erosion)
+    const cirqueScale = 0.005;
+    const cirqueNoise = simplex.noise2D(x * cirqueScale + 600, z * cirqueScale + 600);
+    const cirque = cirqueNoise > 0.5 ? -(cirqueNoise - 0.5) * 40 : 0;
+
+    // Asymmetric slopes - steep on one side, gradual on other
+    const asymScale = 0.003;
+    const asymNoise = simplex.noise2D(x * asymScale, z * asymScale);
+    const asymmetry = asymNoise * 15;
+
+    // Rocky outcrops
+    const outcroppScale = 0.08;
+    const outcrop = simplex.noise2D(x * outcroppScale + 700, z * outcroppScale + 700) * 5;
+
+    return baseHeight + jagged + cirque + asymmetry + outcrop;
+}
+
+// Forest: Gentle rolling hills with occasional small ravines
+function applyRollingHills(baseHeight, x, z) {
+    // Gentle, rounded hill shapes
+    const hillScale = 0.008;
+    const hillNoise = simplex.noise2D(x * hillScale, z * hillScale);
+    const hills = hillNoise * hillNoise * Math.sign(hillNoise) * 10; // Softer peaks
+
+    // Occasional small ravines (streams)
+    const ravineScale = 0.015;
+    const ravineNoise = Math.abs(simplex.noise2D(x * ravineScale + 800, z * ravineScale + 800));
+    const smallRavine = ravineNoise < 0.08 ? -8 * (1 - ravineNoise / 0.08) : 0;
+
+    return baseHeight + hills + smallRavine;
+}
+
+// Plains/Grassland/Meadow: Very gentle undulations
+function applyGentleUndulations(baseHeight, x, z) {
+    // Very low amplitude, wide rolling features
+    const undulateScale = 0.004;
+    const undulation = simplex.noise2D(x * undulateScale, z * undulateScale) * 5;
+
+    // Occasional small hillocks
+    const hillockScale = 0.015;
+    const hillockNoise = simplex.noise2D(x * hillockScale + 900, z * hillockScale + 900);
+    const hillock = hillockNoise > 0.6 ? (hillockNoise - 0.6) * 12 : 0;
+
+    // Flatten the base significantly
+    const flattenedHeight = baseHeight * 0.4;
+
+    return flattenedHeight + undulation + hillock;
+}
+
+// Beach: Nearly flat with gentle slope and minor ripples
+function applyBeachTerrain(baseHeight, x, z) {
+    // Very flat
+    const flatHeight = baseHeight * 0.15;
+
+    // Minor sand ripples near water
+    const rippleScale = 0.1;
+    const ripples = simplex.noise2D(x * rippleScale, z * rippleScale) * 0.5;
+
+    return flatHeight + ripples;
+}
+
+// Savanna: Mostly flat with occasional kopjes (isolated rock outcrops)
+function applyKopjes(baseHeight, x, z) {
+    // Flatten base terrain
+    const flatHeight = baseHeight * 0.35;
+
+    // Gentle rolling savanna
+    const rollScale = 0.006;
+    const roll = simplex.noise2D(x * rollScale, z * rollScale) * 4;
+
+    // Kopjes - isolated granite outcrops
+    const kopjeScale = 0.003;
+    const kopjeNoise = simplex.noise2D(x * kopjeScale + 1000, z * kopjeScale + 1000);
+    // Very sparse but tall when they occur
+    const kopje = kopjeNoise > 0.7 ? Math.pow(kopjeNoise - 0.7, 2) * 500 : 0;
+
+    return flatHeight + roll + kopje;
+}
+
+// Highlands: Elevated rolling terrain with rocky areas
+function applyHighlands(baseHeight, x, z) {
+    // Moderate rolling terrain
+    const rollScale = 0.01;
+    const roll = simplex.noise2D(x * rollScale, z * rollScale) * 8;
+
+    // Rocky patches
+    const rockyScale = 0.04;
+    const rockyNoise = simplex.noise2D(x * rockyScale + 1100, z * rockyScale + 1100);
+    const rocky = rockyNoise > 0.4 ? (rockyNoise - 0.4) * 10 : 0;
+
+    return baseHeight + roll + rocky;
+}
+
+// Master function to apply biome-specific terrain features
+function applyBiomeFeatures(baseHeight, x, z, biome, climate) {
+    if (!biome) return baseHeight;
+
+    switch (biome.id) {
+        // Hot/dry biomes
+        case 'desert':
+            return applyDunes(baseHeight, x, z);
+        case 'badlands':
+            return applyMesas(baseHeight, x, z);
+        case 'savanna':
+            return applyKopjes(baseHeight, x, z);
+
+        // Mountain biomes
+        case 'mountains':
+            return applyCliffs(baseHeight, x, z, climate);
+        case 'snowyPeaks':
+            return applyCraggyAlpine(baseHeight, x, z);
+        case 'snowySlopes':
+            return applyCliffs(baseHeight, x, z, climate);
+        case 'highlands':
+            return applyHighlands(baseHeight, x, z);
+
+        // Cold/wet biomes
+        case 'tundra':
+            return applyPermafrost(baseHeight, x, z);
+        case 'taiga':
+            return applyBoggyTerrain(baseHeight, x, z);
+
+        // Tropical biomes
+        case 'jungle':
+            return applyRavines(baseHeight, x, z);
+
+        // Forest biomes
+        case 'forest':
+        case 'coldForest':
+        case 'warmForest':
+            return applyRollingHills(baseHeight, x, z);
+
+        // Flat biomes
+        case 'plains':
+        case 'grassland':
+        case 'meadow':
+        case 'coldPlains':
+            return applyGentleUndulations(baseHeight, x, z);
+
+        // Coastal biomes
+        case 'beach':
+            return applyBeachTerrain(baseHeight, x, z);
+        case 'stonyShore':
+            return applyCliffs(baseHeight, x, z, climate) * 0.5; // Smaller cliffs
+
+        default:
+            return baseHeight;
+    }
+}
+
 // Get terrain height at world coordinates (with bilinear interpolation)
 function getTerrainHeightAt(x, z) {
     // Use chunk system if enabled
@@ -195,6 +504,9 @@ function calculateTerrainHeight(x, z) {
         if (typeof getBiomeAt === 'function') {
             biome = getBiomeAt(climate);
         }
+
+        // Apply biome-specific terrain features (dunes, cliffs, mesas, etc.)
+        height = applyBiomeFeatures(height, x, z, biome, climate);
     }
 
     // Apply plateau at center (spawn area)
@@ -243,7 +555,7 @@ function createHillyGround() {
     // Initialize terrain config from map
     initTerrainConfig();
 
-    console.log(`Initializing terrain: ${terrainSize}x${terrainSize} world, chunks: ${useChunks}`);
+    if (typeof gameLog === 'function') gameLog(`Terrain: ${terrainSize}x${terrainSize}, chunks: ${useChunks}`);
     const startTime = performance.now();
 
     if (useChunks) {
@@ -255,7 +567,7 @@ function createHillyGround() {
     }
 
     const genTime = performance.now() - startTime;
-    console.log(`Terrain initialized in ${genTime.toFixed(1)}ms`);
+    if (typeof gameLog === 'function') gameLog(`Terrain initialized in ${genTime.toFixed(1)}ms`);
 }
 
 // Create chunk-based terrain (for large worlds)
@@ -281,7 +593,7 @@ function createChunkedTerrain() {
         updateChunks(0, 0);
     }
 
-    console.log(`Chunked terrain ready: ${terrainSize}x${terrainSize} world, ${terrainConfig.chunks.size}x${terrainConfig.chunks.size} chunks`);
+    // Chunked terrain ready
 }
 
 // Create single-mesh terrain (for smaller worlds, legacy mode)
@@ -379,8 +691,7 @@ function createSingleMeshTerrain() {
         }
     }
 
-    console.log(`Single-mesh terrain created: ${terrainSize}x${terrainSize}, seed: ${terrainConfig.seed}`);
-    console.log('Biome distribution:', biomeCounts);
+    // Single-mesh terrain created
 }
 
 // Make available globally

@@ -33,7 +33,7 @@ function init() {
         typeof initDeer !== 'function' ||
         typeof initBunnies !== 'function' ||
         typeof initBirds !== 'function') {
-        console.log('Waiting for dependencies to load...');
+        // Waiting for dependencies to load
         setTimeout(init, 100); // Try again in 100ms
         return;
     }
@@ -311,7 +311,7 @@ function init() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         serverUrl = `${protocol}//${window.location.host}`;
     }
-    console.log('Connecting to multiplayer server at:', serverUrl);
+    if (typeof gameLog === 'function') gameLog('Connecting to multiplayer server');
     initMultiplayer(serverUrl);
 }
 
@@ -326,7 +326,7 @@ async function startGame() {
 
     // Load map configuration first
     const mapId = getMapIdFromUrl() || 'grasslands';
-    console.log('Loading map:', mapId);
+    if (typeof gameLog === 'function') gameLog('Loading map:', mapId);
 
     try {
         if (typeof loadMap === 'function') {
@@ -334,7 +334,7 @@ async function startGame() {
             if (!config) {
                 console.error('Failed to load map config, using defaults');
             } else {
-                console.log('Map loaded:', config.name);
+                if (typeof gameLog === 'function') gameLog('Map loaded:', config.name);
             }
         }
     } catch (error) {

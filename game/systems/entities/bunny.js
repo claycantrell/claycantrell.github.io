@@ -103,7 +103,7 @@ function createBunny(id, x, z) {
 
 // Init called by main game, waiting for server
 function initBunnies() {
-    console.log("Bunny system initialized, waiting for server state...");
+    // Bunny system initialized, waiting for server state
 }
 
 // Called by animal-sync.js

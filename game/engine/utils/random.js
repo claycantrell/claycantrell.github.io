@@ -5,7 +5,7 @@ let worldSeed = 123456; // Default seed, updated by server
 
 function setWorldSeed(seed) {
     worldSeed = seed;
-    console.log(`World seed set to: ${worldSeed}`);
+    if (typeof gameLog === 'function') gameLog(`World seed set to: ${worldSeed}`);
 }
 
 // Linear Congruential Generator

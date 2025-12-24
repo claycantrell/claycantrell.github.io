@@ -139,8 +139,7 @@ function createDeer(id, x, z) {
 
 // Init called by main game, but we wait for server updates to create entities
 function initDeer() {
-    // No-op, we create on network update
-    console.log("Deer system initialized, waiting for server state...");
+    // Deer system initialized, waiting for server state
 }
 
 // Called by animal-sync.js when server sends snapshot

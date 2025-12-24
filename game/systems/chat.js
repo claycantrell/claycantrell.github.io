@@ -122,11 +122,37 @@ function checkRateLimit() {
 let speechSynthesis = window.speechSynthesis;
 let speechVoice = null;
 
-// OpenAI API configuration - now using server proxy
+// OpenAI API configuration - uses centralized CONFIG
 // API key is hidden on server, rate limiting is IP-based
-const OPENAI_API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8080/api/chat'
-    : `${window.location.protocol}//${window.location.host}/api/chat`;
+function getApiUrl(endpoint) {
+    if (typeof CONFIG !== 'undefined' && CONFIG.api) {
+        return CONFIG.api[endpoint];
+    }
+    // Fallback if CONFIG not loaded yet
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const base = isLocal ? 'http://localhost:8080' : `${window.location.protocol}//${window.location.host}`;
+    return `${base}/api/${endpoint}`;
+}
+
+// Session token for API authentication
+let sessionToken = null;
+
+// Fetch session token from server
+async function getSessionToken() {
+    if (sessionToken) return sessionToken;
+
+    try {
+        const response = await fetch(getApiUrl('token'));
+        if (response.ok) {
+            const data = await response.json();
+            sessionToken = data.token;
+            return sessionToken;
+        }
+    } catch (error) {
+        // Silently fail - chat may not work but game continues
+    }
+    return null;
+}
 
 // Convert message to medieval language and sanitize
 async function convertToMedieval(message, isConversingWithNPC = false) {
@@ -162,16 +188,23 @@ async function convertToMedieval(message, isConversingWithNPC = false) {
             role: 'user',
             content: message
         });
-        
-        const response = await fetch(OPENAI_API_URL, {
+
+        // Get session token for authentication
+        const token = await getSessionToken();
+        if (!token) {
+            throw new Error('Could not get session token');
+        }
+
+        const response = await fetch(getApiUrl('chat'), {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Session-Token': token
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini', // GPT-5 Nano - fastest, cheapest version
+                model: 'gpt-4o-mini',
                 messages: messages,
-                max_tokens: 80, // Shorter responses
+                max_tokens: 80,
                 temperature: 0.9
             })
         });
@@ -179,25 +212,20 @@ async function convertToMedieval(message, isConversingWithNPC = false) {
         if (!response.ok) {
             // Get detailed error message from API
             let errorMessage = `HTTP ${response.status}`;
-            let errorData = null;
             try {
-                errorData = await response.json();
+                const errorData = await response.json();
                 errorMessage = errorData.error?.message || errorMessage;
-                
-                // Handle rate limit errors from server
-                if (response.status === 429) {
-                    console.warn('Rate limit exceeded:', errorMessage);
-                    throw new Error(`Rate limit: ${errorMessage}`);
+
+                // Handle rate limit and auth errors
+                if (response.status === 429 || response.status === 401) {
+                    throw new Error(errorMessage);
                 }
-                
-                console.error('OpenAI API error details:', errorData);
             } catch (e) {
-                // If we can't parse error, use status code
-                if (e.message && e.message.startsWith('Rate limit:')) {
-                    throw e; // Re-throw rate limit errors
+                if (e.message && !e.message.startsWith('HTTP')) {
+                    throw e;
                 }
             }
-            throw new Error(`OpenAI API error: ${errorMessage}`);
+            throw new Error(`API error: ${errorMessage}`);
         }
 
         const data = await response.json();
@@ -206,7 +234,6 @@ async function convertToMedieval(message, isConversingWithNPC = false) {
         // If empty or just whitespace, return original (or empty if was inappropriate)
         return medievalMessage || '';
     } catch (error) {
-        console.error('Error converting to medieval:', error);
         // Fallback: return original message if API fails
         return message;
     }
@@ -215,7 +242,6 @@ async function convertToMedieval(message, isConversingWithNPC = false) {
 // Initialize TTS voice (robotic/synthetic voice)
 function initTTS() {
     if (!speechSynthesis) {
-        console.warn('Speech synthesis not supported');
         return;
     }
     
@@ -262,10 +288,7 @@ function initTTS() {
             speechVoice = voices[0];
         }
         
-        // Configure voice settings for robotic/Hawking-like sound
-        if (speechVoice) {
-            console.log('Using TTS voice:', speechVoice.name);
-        }
+        // Voice is ready
     };
     
     // Load voices (some browsers need this)
@@ -285,7 +308,6 @@ function initChat() {
     
     // Safety check for Safari
     if (!chatBox || !chatToggle || !chatMessages || !chatInput) {
-        console.error('Chat elements not found - retrying...');
         setTimeout(initChat, 100);
         return;
     }
@@ -341,7 +363,6 @@ function toggleChat() {
 // Send chat message
 async function sendChatMessage() {
     if (!chatInput || !chatMessages) {
-        console.error('Chat elements not available');
         return; // Safety check for Safari
     }
     
@@ -448,14 +469,11 @@ async function sendChatMessage() {
                     // Fallback if playerId not available yet
                     addChatMessage('You', medievalMessage, true);
                 }
-            } else {
-                console.warn('Failed to send chat message to server');
             }
             // If sendChatToServer returns false, it already showed an error message
         } else {
             // Fallback: show error if multiplayer not available
             addSystemMessage('Chat unavailable - multiplayer not loaded');
-            console.error('sendChatToServer function not available');
         }
     }
 }

@@ -8,8 +8,24 @@ let lastUpdateTime = 0;
 let reconnectAttempts = 0;
 let lastErrorTime = 0;
 
+// Determine WebSocket URL based on environment (uses CONFIG if available)
+function getDefaultWebSocketUrl() {
+    // Use centralized CONFIG if available
+    if (typeof CONFIG !== 'undefined' && CONFIG.api && CONFIG.api.websocket) {
+        return CONFIG.api.websocket;
+    }
+    // Fallback
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost) {
+        return 'ws://localhost:8080';
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}`;
+}
+
 // Initialize multiplayer connection
-function initMultiplayer(serverUrl = 'ws://localhost:8080') {
+function initMultiplayer(serverUrl = null) {
+    serverUrl = serverUrl || getDefaultWebSocketUrl();
     try {
         // Close existing connection if any
         if (socket && socket.readyState !== WebSocket.CLOSED) {
@@ -22,7 +38,7 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
         socket = new WebSocket(serverUrl);
 
         socket.onopen = () => {
-            console.log('✅ Connected to multiplayer server');
+            if (typeof gameLog === 'function') gameLog('Connected to multiplayer server');
             isConnected = true;
             reconnectAttempts = 0;
 
@@ -44,8 +60,8 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
         };
 
         socket.onclose = () => {
-            if (isConnected) {
-                console.log('Disconnected from multiplayer server');
+            if (isConnected && typeof gameLog === 'function') {
+                gameLog('Disconnected from multiplayer server');
             }
             isConnected = false;
             
@@ -58,32 +74,19 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
                     }
                 }, 3000);
             } else {
-                // After 10 failed attempts, give up and log once
-                const now = Date.now();
-                if (now - lastErrorTime > 30000) { // Only log every 30 seconds
-                    console.warn('⚠️ Multiplayer server unavailable. Playing in single-player mode.');
-                    lastErrorTime = now;
-                }
+                // After 10 failed attempts, give up silently
+                // Game continues in single-player mode
+                lastErrorTime = Date.now();
             }
         };
 
-        socket.onerror = (error) => {
-            // Only log error once per 10 seconds to avoid spam
-            const now = Date.now();
-            if (now - lastErrorTime > 10000) {
-                console.warn('⚠️ Multiplayer server not available. Playing in single-player mode.');
-                lastErrorTime = now;
-            }
+        socket.onerror = () => {
+            // Silently fail - game continues in single-player mode
             isConnected = false;
         };
     } catch (error) {
-        // Only log once
-        const now = Date.now();
-        if (now - lastErrorTime > 10000) {
-            console.warn('⚠️ Multiplayer not available:', error.message);
-            lastErrorTime = now;
-        }
         // Continue without multiplayer - game still works
+        isConnected = false;
     }
 }
 
@@ -102,14 +105,11 @@ function handleServerMessage(data) {
             // If data.isHost is present, set it
             if (data.isHost) {
                 isAnimalHost = true;
-                console.log("You are the animal host.");
             } else if (data.playerCount === 1) {
                 // Fallback: if we are the only player, we are host
                 isAnimalHost = true;
-                console.log("Only player connected. You are the animal host.");
             } else {
                 isAnimalHost = false;
-                console.log("Joined existing game. Waiting for animal updates.");
             }
             
             // Set character spawn position from server
@@ -120,7 +120,6 @@ function handleServerMessage(data) {
                     data.spawnPosition.z
                 );
                 character.rotation.y = data.spawnRotation.y;
-                console.log(`Spawned at (${data.spawnPosition.x}, ${data.spawnPosition.z})`);
             }
             
             // Initialize other players that already exist
@@ -134,7 +133,6 @@ function handleServerMessage(data) {
             
             // Initialize existing built objects
             if (data.builtObjects && typeof placeObject === 'function') {
-                console.log(`Loading ${data.builtObjects.length} existing objects...`);
                 data.builtObjects.forEach(obj => {
                     placeObject(obj);
                 });
@@ -167,8 +165,6 @@ function handleServerMessage(data) {
                 if (!isOwnMessage) {
                     addChatMessage(data.playerName || 'Player', data.message, false);
                 }
-            } else {
-                console.error('addChatMessage function not available');
             }
             break;
 
@@ -186,7 +182,6 @@ function handleServerMessage(data) {
         case 'builtObjects':
              // Handle bulk sync of built objects for current map
              if (data.objects && Array.isArray(data.objects) && typeof placeObject === 'function') {
-                 console.log(`Loading ${data.objects.length} built objects for this map`);
                  data.objects.forEach(obj => {
                      placeObject(obj);
                  });
@@ -203,7 +198,6 @@ function handleServerMessage(data) {
              }
              // Add players on this map
              if (data.players && Array.isArray(data.players)) {
-                 console.log(`Found ${data.players.length} players on this map`);
                  data.players.forEach(player => {
                      addOtherPlayer(player.id, player.position, player.rotation);
                  });
@@ -270,7 +264,6 @@ function updateMultiplayer() {
 // Send chat message to server
 function sendChatToServer(message) {
     if (!isConnected || !socket || !playerId) {
-        console.warn('Cannot send chat: not connected to server');
         if (typeof addSystemMessage === 'function') {
             addSystemMessage('Not connected to server - chat unavailable');
         }
@@ -278,7 +271,6 @@ function sendChatToServer(message) {
     }
 
     if (socket.readyState !== WebSocket.OPEN) {
-        console.warn('Socket not open, readyState:', socket.readyState);
         if (typeof addSystemMessage === 'function') {
             addSystemMessage('Connection not ready - please wait');
         }
@@ -292,12 +284,10 @@ function sendChatToServer(message) {
             message: message
         };
         socket.send(JSON.stringify(chatData));
-        console.log('Chat sent:', message);
         return true;
     } catch (error) {
-        console.error('Error sending chat message:', error);
         if (typeof addSystemMessage === 'function') {
-            addSystemMessage('Error sending message: ' + error.message);
+            addSystemMessage('Error sending message');
         }
         return false;
     }
@@ -318,7 +308,6 @@ function sendBuildToServer(buildData) {
         socket.send(JSON.stringify(data));
         return true;
     } catch (error) {
-        console.error('Error sending build event:', error);
         return false;
     }
 }
@@ -326,5 +315,7 @@ function sendBuildToServer(buildData) {
 
 // Make available globally
 window.initMultiplayer = initMultiplayer;
-window.sendPosition = sendPosition;
-window.isConnected = isConnected;
+window.sendPlayerUpdate = sendPlayerUpdate;
+window.updateMultiplayer = updateMultiplayer;
+window.sendChatToServer = sendChatToServer;
+window.sendBuildToServer = sendBuildToServer;

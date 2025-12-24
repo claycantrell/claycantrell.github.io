@@ -6,9 +6,48 @@ const http = require('http');
 const https = require('https');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // OpenAI API proxy with IP-based rate limiting
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// API Authentication - Generate session tokens for clients
+const sessionTokens = new Map(); // token -> { ip, created, lastUsed }
+const SESSION_TOKEN_LIFETIME = 3600000; // 1 hour
+
+// Generate a secure session token
+function generateSessionToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+// Validate session token
+function validateSessionToken(token, ip) {
+    if (!token) return false;
+
+    const session = sessionTokens.get(token);
+    if (!session) return false;
+
+    // Check if expired
+    const now = Date.now();
+    if (now - session.created > SESSION_TOKEN_LIFETIME) {
+        sessionTokens.delete(token);
+        return false;
+    }
+
+    // Update last used
+    session.lastUsed = now;
+    return true;
+}
+
+// Clean up expired tokens periodically
+setInterval(() => {
+    const now = Date.now();
+    sessionTokens.forEach((session, token) => {
+        if (now - session.created > SESSION_TOKEN_LIFETIME) {
+            sessionTokens.delete(token);
+        }
+    });
+}, 300000); // Every 5 minutes
 
 // IP-based rate limiting
 const ipRateLimits = new Map(); // IP -> { requests: [timestamps], lastCleanup: timestamp }
@@ -155,11 +194,10 @@ const server = http.createServer((req, res) => {
     // Handle OPTIONS preflight requests FIRST (before any other logic)
     // This must handle ALL OPTIONS requests, not just /api/chat
     if (req.method === 'OPTIONS') {
-        console.log('[HTTP] Handling OPTIONS preflight request');
         res.writeHead(200, {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token',
             'Access-Control-Max-Age': '86400' // Cache preflight for 24 hours
         });
         res.end();
@@ -168,6 +206,27 @@ const server = http.createServer((req, res) => {
     
     // Serve static files for GET requests
     if (req.method === 'GET') {
+        // API endpoint to get session token (required for chat API)
+        if (req.url === '/api/token') {
+            const clientIP = getClientIP(req);
+            const token = generateSessionToken();
+            const now = Date.now();
+
+            // Store token with IP binding
+            sessionTokens.set(token, {
+                ip: clientIP,
+                created: now,
+                lastUsed: now
+            });
+
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({ token }));
+            return;
+        }
+
         serveStaticFile(req, res);
         return;
     }
@@ -177,16 +236,29 @@ const server = http.createServer((req, res) => {
         // Set CORS headers for API endpoint
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token');
         const clientIP = getClientIP(req);
-        
+
+        // Validate session token (required for API access)
+        const sessionToken = req.headers['x-session-token'];
+        if (!validateSessionToken(sessionToken, clientIP)) {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: {
+                    message: 'Invalid or missing session token. Please refresh the page.',
+                    type: 'auth_error'
+                }
+            }));
+            return;
+        }
+
         // Check rate limit
         const rateLimitCheck = checkIPRateLimit(clientIP);
         if (!rateLimitCheck.allowed) {
             res.writeHead(429, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
                 error: {
-                    message: rateLimitCheck.reason === 'minute' 
+                    message: rateLimitCheck.reason === 'minute'
                         ? `Rate limit exceeded. Please wait ${rateLimitCheck.retryAfter} seconds.`
                         : `Hourly rate limit exceeded. Please wait ${rateLimitCheck.retryAfter} minutes.`,
                     type: 'rate_limit_error'

@@ -19,7 +19,7 @@ function registerEntity(type, config) {
         enabled: config.enabled !== false
     };
 
-    console.log(`Registered entity type: ${type}`);
+    if (typeof gameLog === 'function') gameLog(`Registered entity type: ${type}`);
 }
 
 // Initialize all registered entities
@@ -32,14 +32,14 @@ function initAllEntities() {
             ? CONFIG.get(`entities.${type}.enabled`, true)
             : true;
         if (!isEnabled) {
-            console.log(`Entity '${type}' disabled by config`);
+            if (typeof gameLog === 'function') gameLog(`Entity '${type}' disabled by config`);
             continue;
         }
 
         if (entity.enabled && typeof entity.init === 'function') {
             try {
                 entity.init();
-                console.log(`Initialized entity: ${type}`);
+                if (typeof gameLog === 'function') gameLog(`Initialized entity: ${type}`);
             } catch (e) {
                 console.error(`Failed to initialize entity '${type}':`, e);
             }
@@ -119,7 +119,7 @@ if (typeof initBirds === 'function' && typeof updateBirds === 'function') {
     });
 }
 
-console.log('Entity registry loaded, registered types:', getRegisteredEntities());
+if (typeof gameLog === 'function') gameLog('Entity registry loaded, registered types:', getRegisteredEntities());
 
 // Make available globally (if not already)
 if (typeof window.entityRegistry === "undefined") {

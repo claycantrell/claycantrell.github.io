@@ -62,16 +62,41 @@ function initBuildSystem() {
         pointer-events: none;
     `;
 
-    let blockList = BLOCK_TYPES.map((b, i) => `<div>${i + 1}: ${b.name}</div>`).join('');
-    buildUI.innerHTML = `
-        <div style="font-weight:bold; margin-bottom:5px; color:#ffff00">BUILD MODE [B]</div>
-        <div>Left Click: Place Block</div>
-        <div>Right Click: Remove Block</div>
-        <div>Scroll: Change Block</div>
-        ${blockList}
-        <div id="current-build-type" style="margin-top:5px; color:#00ff00">Selected: ${BLOCK_TYPES[0].name}</div>
-        <div id="grid-pos" style="color:#aaa"></div>
-    `;
+    // Build UI safely without innerHTML (XSS prevention)
+    const header = document.createElement('div');
+    header.style.cssText = 'font-weight:bold; margin-bottom:5px; color:#ffff00';
+    header.textContent = 'BUILD MODE [B]';
+    buildUI.appendChild(header);
+
+    const instructions = [
+        'Left Click: Place Block',
+        'Right Click: Remove Block',
+        'Scroll: Change Block'
+    ];
+    instructions.forEach(text => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        buildUI.appendChild(div);
+    });
+
+    // Block type list
+    BLOCK_TYPES.forEach((b, i) => {
+        const div = document.createElement('div');
+        div.textContent = `${i + 1}: ${b.name}`;
+        buildUI.appendChild(div);
+    });
+
+    const currentType = document.createElement('div');
+    currentType.id = 'current-build-type';
+    currentType.style.cssText = 'margin-top:5px; color:#00ff00';
+    currentType.textContent = `Selected: ${BLOCK_TYPES[0].name}`;
+    buildUI.appendChild(currentType);
+
+    const gridPos = document.createElement('div');
+    gridPos.id = 'grid-pos';
+    gridPos.style.color = '#aaa';
+    buildUI.appendChild(gridPos);
+
     document.body.appendChild(buildUI);
 
     // Create ghost block
@@ -382,7 +407,6 @@ function removeBlock() {
 function placeObject(networkData) {
     // Ensure scene is ready
     if (typeof scene === 'undefined' || !scene) {
-        console.warn('placeObject: scene not ready, retrying in 100ms');
         setTimeout(() => placeObject(networkData), 100);
         return;
     }
@@ -425,4 +449,5 @@ function placeObject(networkData) {
 // Make available globally
 window.initBuildSystem = initBuildSystem;
 window.placeBlock = placeBlock;
-window.handleNetworkBlock = handleNetworkBlock;
+window.placeObject = placeObject;
+window.removeBlock = removeBlock;

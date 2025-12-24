@@ -13,11 +13,11 @@ const climateNoises = {
 // Climate configuration (can be overridden by map config)
 // Smaller scales = larger biome regions
 let climateConfig = {
-    temperatureScale: 0.0004,
-    humidityScale: 0.0005,
-    continentalnessScale: 0.0003,
-    erosionScale: 0.0006,
-    weirdnessScale: 0.001,
+    temperatureScale: 0.0002,      // Doubled biome size (was 0.0004)
+    humidityScale: 0.00025,        // Doubled biome size (was 0.0005)
+    continentalnessScale: 0.00015, // Doubled biome size (was 0.0003)
+    erosionScale: 0.0003,          // Doubled biome size (was 0.0006)
+    weirdnessScale: 0.0005,        // Doubled biome size (was 0.001)
     // Offsets allow maps to shift the climate (e.g., +0.3 makes it warmer)
     temperatureOffset: 0,
     humidityOffset: 0
@@ -32,7 +32,7 @@ function initClimateNoises(seed) {
     climateNoises.erosion = new SimplexNoise(seed + '_erosion');
     climateNoises.weirdness = new SimplexNoise(seed + '_weirdness');
 
-    console.log(`Climate system initialized with seed: ${seed}`);
+    // Climate system initialized
 }
 
 // Apply climate config from map (optional overrides)
@@ -68,7 +68,7 @@ function sampleOctaveNoise(noiseFunc, x, z, scale, octaves) {
 // Get all climate parameters at a world position
 function getClimateAt(x, z) {
     if (!climateNoises.temperature) {
-        console.warn('Climate system not initialized');
+        // Climate system not initialized - return defaults
         return {
             temperature: 0,
             humidity: 0,
@@ -226,5 +226,5 @@ function getBaseHeightOffset(climate) {
 }
 
 // Make available globally
-window.initClimate = initClimate;
+window.initClimateNoises = initClimateNoises;
 window.getClimateAt = getClimateAt;

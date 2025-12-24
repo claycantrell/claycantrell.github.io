@@ -34,7 +34,7 @@ async function loadMap(mapId) {
         currentMapConfig = config;
         currentMapId = mapId;
 
-        console.log(`Loaded map: ${config.name}`);
+        if (typeof gameLog === 'function') gameLog(`Loaded map: ${config.name}`);
         return config;
     } catch (error) {
         console.error(`Failed to load map ${mapId}:`, error);

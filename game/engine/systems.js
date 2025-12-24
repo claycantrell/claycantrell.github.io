@@ -23,7 +23,7 @@ const Systems = {
     // Register a system
     register(name, system) {
         this._registry[name] = system;
-        console.log(`System registered: ${name}`);
+        if (typeof gameLog === 'function') gameLog(`System registered: ${name}`);
     },
 
     // Get a system by name

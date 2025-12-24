@@ -392,7 +392,7 @@ function initChunkSystem(config = {}) {
     if (config.renderDistance) CHUNK_CONFIG.renderDistance = config.renderDistance;
     if (config.unloadDistance) CHUNK_CONFIG.unloadDistance = config.unloadDistance;
 
-    console.log(`Chunk system initialized: ${CHUNK_CONFIG.size}x${CHUNK_CONFIG.size} chunks, render distance: ${CHUNK_CONFIG.renderDistance}`);
+    if (typeof gameLog === 'function') gameLog(`Chunk system initialized: ${CHUNK_CONFIG.size}x${CHUNK_CONFIG.size} chunks`);
 
     // Start update loop
     startChunkUpdates();
@@ -422,4 +422,4 @@ function reloadAllChunks() {
 // Make available globally
 window.initChunkSystem = initChunkSystem;
 window.updateChunks = updateChunks;
-window.getChunkKey = getChunkKey;
+window.chunkKey = chunkKey;

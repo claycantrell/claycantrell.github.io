@@ -40,5 +40,4 @@ function getAllPlayers() {
 
 
 // Make available globally
-window.packPlayerPosition = packPlayerPosition;
-window.unpackPlayerPosition = unpackPlayerPosition;
+window.getAllPlayers = getAllPlayers;

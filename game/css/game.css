@@ -1,11 +1,62 @@
-/* Importing retro font - must be first */
+/* Importing retro font with local fallback */
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* Local font fallback - system monospace fonts that look retro */
+@font-face {
+    font-family: 'Retro Fallback';
+    src: local('Courier New'), local('Courier'), local('monospace');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* CSS Variables for theming */
+:root {
+    /* Colors */
+    --color-bg: #000000;
+    --color-text: #FFFFFF;
+    --color-text-secondary: #F5DEB3;
+    --color-accent: #FFFF00;
+    --color-success: #00FF00;
+    --color-wood-primary: rgba(139, 69, 19, 0.95);
+    --color-wood-solid: #8B4513;
+    --color-wood-hover: #A0522D;
+    --color-forest: rgba(74, 124, 78, 0.95);
+    --color-forest-solid: #4a7c4e;
+    --color-overlay: rgba(0, 0, 0, 0.85);
+    --color-overlay-light: rgba(0, 0, 0, 0.7);
+
+    /* Typography - with fallback chain */
+    --font-retro: 'Press Start 2P', 'Retro Fallback', 'Courier New', monospace;
+    --font-size-xs: 10px;
+    --font-size-sm: 12px;
+    --font-size-md: 16px;
+    --font-size-lg: 20px;
+    --font-size-xl: 24px;
+    --font-size-xxl: 34px;
+
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+
+    /* Border */
+    --border-radius: 8px;
+    --border-width: 2px;
+    --border-width-thick: 4px;
+
+    /* Z-index layers */
+    --z-notification: 20;
+    --z-instruction: 30;
+    --z-ui: 40;
+    --z-chat: 50;
+    --z-overlay: 9999;
+}
 
 body {
     margin: 0;
     overflow: hidden;
-    background-color: black;
-    /* Black background for retro contrast */
+    background-color: var(--color-bg);
 }
 
 canvas {
@@ -19,15 +70,12 @@ canvas {
     top: 20px;
     width: 100%;
     text-align: center;
-    font-size: 24px;
-    color: #FFFFFF;
-    /* White text for contrast */
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
     opacity: 0;
     transition: opacity 2s ease-in-out;
-    font-family: 'Press Start 2P', cursive;
-    /* Retro font */
-    z-index: 20;
-    /* Ensure notification is above other elements */
+    font-family: var(--font-retro);
+    z-index: var(--z-notification);
 }
 
 #audio-icon {
@@ -37,8 +85,7 @@ canvas {
     width: 8%;
     height: auto;
     cursor: pointer;
-    z-index: 20;
-    /* Ensure audio icon is above other elements */
+    z-index: var(--z-notification);
 }
 
 /* Instructional Message Styling */
@@ -49,24 +96,18 @@ canvas {
     transform: translate(-50%, -50%);
     width: 80%;
     max-width: 500px;
-    padding: 25px;
-    background-color: rgba(139, 69, 19, 0.95);
-    /* Semi-transparent brown for wooden sign */
-    border: 4px solid #8B4513;
-    /* Dark brown border */
-    border-radius: 10px;
+    padding: var(--spacing-lg);
+    background-color: var(--color-wood-primary);
+    border: var(--border-width-thick) solid var(--color-wood-solid);
+    border-radius: var(--border-radius);
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
-    font-family: 'Press Start 2P', cursive;
-    /* Retro font */
-    color: #F5DEB3;
-    /* Wheat color for text */
-    z-index: 30;
-    /* Above all other elements */
+    font-family: var(--font-retro);
+    color: var(--color-text-secondary);
+    z-index: var(--z-instruction);
     text-align: center;
     opacity: 1;
     transition: opacity 2s ease-in-out;
     pointer-events: none;
-    /* Allow clicks to pass through */
 }
 
 #instruction-message p {

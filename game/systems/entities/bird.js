@@ -106,7 +106,7 @@ function createBird(id, x, z) {
 }
 
 function initBirds() {
-    console.log("Bird system initialized, waiting for server state...");
+    // Bird system initialized, waiting for server state
 }
 
 function updateBirdState(serverData) {

@@ -445,7 +445,7 @@ function createMoreComplexTrees() {
     let attempts = 0;
     let skippedByDensity = 0;
 
-    console.log(`Creating trees (target: ${targetCount}, radius: ${treeRadius}, biomes: ${useBiomes})`);
+    // Creating trees
 
     // Spatial hash for collision detection
     const cellSize = minSpacing;
@@ -562,9 +562,7 @@ function createMoreComplexTrees() {
         biomeCounts[t.biome] = (biomeCounts[t.biome] || 0) + 1;
     });
 
-    console.log(`Placed ${placedCount} trees in ${attempts} attempts (${skippedByDensity} skipped by density)`);
-    console.log('Trees by variant:', variantCounts);
-    console.log('Trees by biome:', biomeCounts);
+    // Trees placed
 }
 
 // Update LOD based on distance from character

@@ -63,7 +63,7 @@ function toggleAudio() {
 function resumeAudioContext() {
     if (audio && audio.context && audio.context.state === 'suspended') {
         audio.context.resume().then(() => {
-            console.log('Audio context resumed');
+            // Audio context resumed successfully
         }).catch(e => console.error('Could not resume audio context:', e));
     }
 

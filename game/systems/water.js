@@ -22,7 +22,7 @@ let riverNoise2 = null;  // Second layer for more complex patterns
 function initWaterSystem(seed) {
     riverNoise = new SimplexNoise(seed + '_river');
     riverNoise2 = new SimplexNoise(seed + '_river2');
-    console.log('Water system initialized');
+    // Water system initialized
 }
 
 // Check if a point is in a river - DISABLED
@@ -157,8 +157,13 @@ function setWaterConfig(config) {
 }
 
 // Make available globally
-window.initWater = initWater;
-window.createWaterForChunk = createWaterForChunk;
-window.isWaterAt = isWaterAt;
-window.getWaterHeight = getWaterHeight;
+window.initWaterSystem = initWaterSystem;
+window.isWater = isWater;
+window.isLake = isLake;
+window.isRiver = isRiver;
+window.getRiverInfluence = getRiverInfluence;
+window.applyRiverCarving = applyRiverCarving;
+window.getWaterColor = getWaterColor;
+window.createChunkWaterPlane = createChunkWaterPlane;
+window.getWaterConfig = getWaterConfig;
 window.setWaterConfig = setWaterConfig;

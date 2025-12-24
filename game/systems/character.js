@@ -106,7 +106,7 @@ function initCharacterSpawn(charGroup) {
     charGroup.position.set(spawnX, spawnY, spawnZ);
     charGroup.rotation.y = charConfig.spawn.rotation;
 
-    console.log(`Character spawned at (${spawnX}, ${spawnY.toFixed(2)}, ${spawnZ}) rotation: ${charConfig.spawn.rotation}`);
+    if (typeof gameLog === 'function') gameLog(`Character spawned at (${spawnX}, ${spawnY.toFixed(2)}, ${spawnZ})`);
 }
 
 // Character movement calculations (called from game.js) - Raycasting-based terrain following
