@@ -25,12 +25,13 @@ function initMultiplayer(serverUrl = 'ws://localhost:8080') {
             console.log('✅ Connected to multiplayer server');
             isConnected = true;
             reconnectAttempts = 0;
-            
-            // Determine host status (simplified logic)
-            // Ideally server tells us if we are host or gives us a list
-            // For now, assume not host until told otherwise, OR check if we are first
-            // But we don't have that info yet.
-            // Let's rely on server sending 'host: true' in 'connected' message if we want to be robust
+
+            // Send current map ID to server
+            const currentMapId = typeof getCurrentMapId === 'function' ? getCurrentMapId() : 'grasslands';
+            socket.send(JSON.stringify({
+                type: 'setMap',
+                mapId: currentMapId
+            }));
         };
 
         socket.onmessage = (event) => {
@@ -182,6 +183,16 @@ function handleServerMessage(data) {
              // Deprecated: old client-to-client updates
              break;
              
+        case 'builtObjects':
+             // Handle bulk sync of built objects for current map
+             if (data.objects && Array.isArray(data.objects) && typeof placeObject === 'function') {
+                 console.log(`Loading ${data.objects.length} built objects for this map`);
+                 data.objects.forEach(obj => {
+                     placeObject(obj);
+                 });
+             }
+             break;
+
         case 'objectBuilt':
              // Handle new object built by another player
              if (data.object.ownerId !== playerId && typeof placeObject === 'function') {

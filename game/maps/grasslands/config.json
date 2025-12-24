@@ -1,87 +1,86 @@
 {
   "id": "grasslands",
   "name": "Grasslands",
-  "description": "A peaceful meadow with rolling hills and wandering wildlife",
-  "version": "1.0",
+  "description": "A vast world with diverse biomes - forests, plains, deserts, and mountains",
+  "version": "2.0",
 
   "terrain": {
-    "size": 800,
-    "segments": 200,
+    "size": 50000,
+    "useChunks": true,
+    "chunks": {
+      "size": 512,
+      "segments": 48,
+      "renderDistance": 6,
+      "unloadDistance": 8
+    },
     "seed": "skyrim",
     "noise": {
-      "scale": 0.02,
-      "octaves": 4,
+      "scale": 0.008,
+      "octaves": 3,
       "persistence": 0.5,
       "lacunarity": 2.0
     },
     "elevation": {
-      "hillHeight": 4,
-      "plateauRadius": 30,
-      "mountainStartRadius": 110,
-      "mountainHeight": 120
-    },
-    "boundary": 120,
-    "color": "#004d00"
+      "hillHeight": 25,
+      "plateauRadius": 60,
+      "mountainStartRadius": 400,
+      "mountainHeight": 200
+    }
   },
 
   "spawn": {
-    "position": { "x": -50, "z": -50 },
-    "rotation": 0.785
+    "position": { "x": 0, "z": 0 },
+    "rotation": 0
   },
 
   "portals": [
-    { "name": "WELCOME", "angle": 0, "color": "#ff0000" },
-    { "name": "WELCOME", "angle": 60, "color": "#ff8800" },
-    { "name": "WELCOME", "angle": 120, "color": "#ffff00" },
-    { "name": "WELCOME", "angle": 180, "color": "#00ff00" },
-    { "name": "WELCOME", "angle": 240, "color": "#0000ff" },
-    { "name": "WELCOME", "angle": 300, "color": "#8800ff" }
+    { "name": "FOREST", "angle": 45, "color": "#228B22" },
+    { "name": "DESERT", "angle": 135, "color": "#C2B280" },
+    { "name": "TUNDRA", "angle": 225, "color": "#708090" },
+    { "name": "JUNGLE", "angle": 315, "color": "#006400" }
   ],
-  "portalRadius": 19.5,
+  "portalRadius": 50,
 
   "trees": {
-    "count": 700,
-    "radius": 380,
-    "exclusionRadius": 35,
-    "minSpacing": 15,
-    "lodDistance": 80,
-    "types": {
-      "pine": { "weight": 0.9 },
-      "oak": { "weight": 0.1 }
-    }
+    "count": 5000,
+    "radius": 3000,
+    "exclusionRadius": 50,
+    "minSpacing": 12,
+    "maxAttempts": 15000,
+    "useBiomes": true
   },
 
   "entities": {
     "npc": {
       "enabled": true,
-      "spawnRadius": { "min": 29.5, "max": 49.5 },
-      "wanderRadius": 100,
+      "spawnRadius": { "min": 50, "max": 100 },
+      "wanderRadius": 200,
       "detectionDistance": 15,
       "leaveDistance": 20,
       "speed": 5.0
     },
-    "deer": { "count": 18, "spawnRadius": { "min": 60, "max": 360 } },
-    "bunnies": { "count": 20, "spawnRadius": { "min": 40, "max": 340 } },
-    "birds": { "count": 30, "spawnRadius": { "min": 0, "max": 300 }, "baseHeight": 20 }
+    "deer": { "count": 80, "spawnRadius": { "min": 100, "max": 2500 } },
+    "bunnies": { "count": 100, "spawnRadius": { "min": 80, "max": 2000 } },
+    "birds": { "count": 120, "spawnRadius": { "min": 0, "max": 2000 }, "baseHeight": 30 }
   },
 
   "character": {
-    "moveSpeed": 20.0,
+    "moveSpeed": 28.0,
     "rotationSpeed": 2.0,
-    "flySpeed": 15.0,
+    "flySpeed": 24.0,
     "gravity": 25.0,
     "collisionRadius": 3.0
   },
 
   "rendering": {
-    "backgroundColor": "#191970",
+    "backgroundColor": "#87CEEB",
     "fogColor": "#000000",
-    "fogDensity": 0.003,
-    "ambientLight": { "color": "#ffffff", "intensity": 0.5 },
-    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } },
-    "maxDrawDistance": 300,
-    "lodDistance": 80,
-    "lodUpdateInterval": 500
+    "fogDensity": 0.0004,
+    "ambientLight": { "color": "#ffffff", "intensity": 0.6 },
+    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 100, "y": 150, "z": 50 } },
+    "maxDrawDistance": 3000,
+    "lodDistance": 400,
+    "lodUpdateInterval": 350
   },
 
   "audio": {

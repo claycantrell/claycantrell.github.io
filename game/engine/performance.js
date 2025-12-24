@@ -3,9 +3,9 @@
 
 // Performance configuration
 const PERFORMANCE = {
-    // Tree count - increased for larger map
-    treeCount: 700,
-    
+    // Tree count - increased for larger chunked world
+    treeCount: 3000,
+
     // Reduce tree detail (keeping some optimizations but restoring foliage layers)
     treeDetail: {
         trunkSegments: 4,      // Was 8 (kept reduced for performance)
@@ -13,28 +13,28 @@ const PERFORMANCE = {
         coneSegments: 4,        // Was 5 (kept reduced for performance)
         foliageLayers: 3       // Restored to 3 layers
     },
-    
+
     // Character detail - restored to original
     characterDetail: {
         bodySegments: 6,        // Restored to 6
         headSegments: 6,        // Restored to 6x6
         hatSegments: 4          // Restored to 4
     },
-    
+
     // Portal optimizations
     portalDetail: {
         frameSegments: 1,       // Box is already low-poly
         disableText: false      // Can disable text for even lower load
     },
-    
-    // Rendering optimizations
+
+    // Rendering optimizations - tuned for large 8000x8000 chunked world
     rendering: {
-        maxDrawDistance: 300,   // Increased draw distance for larger map
+        maxDrawDistance: 1200,  // Larger draw distance for big world
         frustumCulling: true,   // Only render visible objects
         materialSharing: true,  // Share materials to reduce draw calls
         lodEnabled: true,       // Enable Level of Detail (2D sprites for distant trees)
-        lodDistance: 80,        // Distance threshold: beyond this, use 2D sprites
-        lodUpdateInterval: 500  // Update LOD every 500ms (not every frame for performance)
+        lodDistance: 200,       // LOD switch distance
+        lodUpdateInterval: 350  // Faster updates for smoother LOD transitions
     }
 };
 

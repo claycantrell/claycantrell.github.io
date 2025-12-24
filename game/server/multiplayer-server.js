@@ -20,8 +20,8 @@ const RATE_LIMIT = {
 
 // Static file serving
 function serveStaticFile(req, res) {
-    // Get the file path from the URL
-    let filePath = req.url;
+    // Get the file path from the URL, stripping query parameters
+    let filePath = req.url.split('?')[0];
 
     // Default to game index for root requests
     if (filePath === '/' || filePath === '') {
@@ -309,7 +309,7 @@ const ENTITIES = {
         state: 'IDLE',
         timer: 0
     },
-    builtObjects: [] // Array of { id, type, x, y, z, rx, ry, rz, color }
+    builtObjects: {} // Map of mapId -> Array of { id, type, x, y, z, rx, ry, rz, color }
 };
 
 // Seeded Random Helper
@@ -704,11 +704,12 @@ wss.on('connection', (ws) => {
         y: spawnPoint.rotation
     };
     
-    // Store player with initial position
+    // Store player with initial position and map
     players.set(playerId, {
         position: initialPosition,
         rotation: initialRotation,
-        lastUpdate: Date.now()
+        lastUpdate: Date.now(),
+        mapId: 'grasslands' // Default, updated when client sends setMap
     });
     
     console.log(`Player connected: ${playerId} (${players.size}/${MAX_PLAYERS}) at (${spawnPoint.x}, ${spawnPoint.z})`);
@@ -722,7 +723,7 @@ wss.on('connection', (ws) => {
         playerCount: players.size, // Let client know how many players
         isHost: false, // DEPRECATED: Server is now host
         worldSeed: 123456, // Shared seed for deterministic randomness
-        builtObjects: ENTITIES.builtObjects, // Send existing built objects
+        builtObjects: [], // Will be sent after client sends setMap with their mapId
         allPlayers: Array.from(players.entries()).map(([id, data]) => ({
             id,
             position: data.position,
@@ -744,12 +745,37 @@ wss.on('connection', (ws) => {
         try {
             const data = JSON.parse(message);
 
-            if (data.type === 'update') {
+            if (data.type === 'setMap') {
+                // Player is telling us which map they're on
+                const mapId = data.mapId || 'grasslands';
+                const player = players.get(playerId);
+                if (player) {
+                    player.mapId = mapId;
+                    players.set(playerId, player);
+                }
+
+                // Initialize map's build array if needed
+                if (!ENTITIES.builtObjects[mapId]) {
+                    ENTITIES.builtObjects[mapId] = [];
+                }
+
+                // Send existing built objects for this map
+                ws.send(JSON.stringify({
+                    type: 'builtObjects',
+                    objects: ENTITIES.builtObjects[mapId] || []
+                }));
+
+                console.log(`Player ${playerId} joined map: ${mapId}`);
+            }
+            else if (data.type === 'update') {
                 // ... existing update logic ...
+                const player = players.get(playerId);
+                const mapId = player ? player.mapId : 'grasslands';
                 players.set(playerId, {
                     position: data.position,
                     rotation: data.rotation,
-                    lastUpdate: Date.now()
+                    lastUpdate: Date.now(),
+                    mapId: mapId
                 });
 
                 // Broadcast to all other players
@@ -781,7 +807,14 @@ wss.on('connection', (ws) => {
             else if (data.type === 'build') {
                 // Handle new build object
                 const buildData = data.data;
-                
+                const player = players.get(playerId);
+                const mapId = player ? player.mapId : 'grasslands';
+
+                // Initialize map's build array if needed
+                if (!ENTITIES.builtObjects[mapId]) {
+                    ENTITIES.builtObjects[mapId] = [];
+                }
+
                 // Add ID and timestamp
                 const objectId = `build_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 const newObject = {
@@ -794,22 +827,32 @@ wss.on('connection', (ws) => {
                     rx: buildData.rx || 0,
                     rz: buildData.rz || 0,
                     color: buildData.color,
-                    ownerId: playerId
+                    ownerId: playerId,
+                    mapId: mapId
                 };
-                
-                // Store in server state
-                ENTITIES.builtObjects.push(newObject);
-                
-                // Limit total objects to prevent server crash
-                if (ENTITIES.builtObjects.length > 500) {
-                    ENTITIES.builtObjects.shift(); // Remove oldest
+
+                // Store in map-specific array
+                ENTITIES.builtObjects[mapId].push(newObject);
+
+                // Limit total objects per map to prevent server crash
+                if (ENTITIES.builtObjects[mapId].length > 200) {
+                    ENTITIES.builtObjects[mapId].shift(); // Remove oldest
                 }
-                
-                // Broadcast to ALL clients (including sender so they get the persistent ID if needed)
-                // If sender optimized locally, they might ignore this or update the ID
-                broadcastToAll({
-                    type: 'objectBuilt',
-                    object: newObject
+
+                // Broadcast only to players on the same map
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        // Find player for this client and check mapId
+                        for (const [pid, pdata] of players.entries()) {
+                            if (pdata.mapId === mapId) {
+                                client.send(JSON.stringify({
+                                    type: 'objectBuilt',
+                                    object: newObject
+                                }));
+                                break;
+                            }
+                        }
+                    }
                 });
             }
         } catch (error) {

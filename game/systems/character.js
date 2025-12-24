@@ -9,12 +9,16 @@ function getCharacterSettings() {
     // getTerrainConfig is defined in map-loader.js (boundary is in terrain config)
     const terrainConfig = typeof getTerrainConfig === 'function' ? getTerrainConfig() : {};
 
+    // For chunked terrain, use half the world size as boundary (or terrain size / 2)
+    const worldSize = terrainConfig.size || 50000;
+    const defaultBoundary = worldSize / 2;
+
     return {
         moveSpeed: config.moveSpeed ?? 20.0,
         flySpeed: config.flySpeed ?? 15.0,
         rotationSpeed: config.rotationSpeed ?? 2.0,
         gravity: config.gravity ?? 25.0,
-        boundary: terrainConfig.boundary ?? 120,
+        boundary: terrainConfig.boundary ?? defaultBoundary,
         spawn: {
             position: {
                 x: spawnConfig.position?.x ?? 0,

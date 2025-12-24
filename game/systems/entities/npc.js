@@ -171,10 +171,10 @@ function updateNPC(delta) {
                         targetX = Math.cos(angle) * distance;
                         targetZ = Math.sin(angle) * distance;
                     } else {
-                        // Wander anywhere on map (up to boundary)
-                        const boundary = 110; // Match character boundary
-                        targetX = (Math.random() - 0.5) * boundary * 2;
-                        targetZ = (Math.random() - 0.5) * boundary * 2;
+                        // Wander nearby (relative to current position)
+                        const wanderRange = 300;
+                        targetX = this.mesh.position.x + (Math.random() - 0.5) * wanderRange;
+                        targetZ = this.mesh.position.z + (Math.random() - 0.5) * wanderRange;
                     }
                     
                     npcWanderTarget.set(targetX, 1, targetZ);
@@ -213,9 +213,9 @@ function updateNPC(delta) {
                 targetX = Math.cos(angle) * distance;
                 targetZ = Math.sin(angle) * distance;
             } else {
-                const boundary = 110;
-                targetX = (Math.random() - 0.5) * boundary * 2;
-                targetZ = (Math.random() - 0.5) * boundary * 2;
+                const wanderRange = 300;
+                targetX = npc.position.x + (Math.random() - 0.5) * wanderRange;
+                targetZ = npc.position.z + (Math.random() - 0.5) * wanderRange;
             }
             
             npcWanderTarget = new THREE.Vector3(targetX, 1, targetZ);

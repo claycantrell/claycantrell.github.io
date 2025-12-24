@@ -7,10 +7,8 @@ let currentMapId = null;
 
 // Available maps registry
 const AVAILABLE_MAPS = [
-    { id: 'grasslands', name: 'Grasslands', path: 'maps/grasslands/config.json' }
-    // Add more maps here as they're created
-    // { id: 'forest', name: 'Dark Forest', path: 'maps/forest/config.json' },
-    // { id: 'desert', name: 'Sandy Desert', path: 'maps/desert/config.json' }
+    { id: 'grasslands', name: 'Grasslands', path: 'maps/grasslands/config.json' },
+    { id: 'desert', name: 'Scorching Dunes', path: 'maps/desert/config.json' }
 ];
 
 // Get list of available maps
