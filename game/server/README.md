@@ -244,5 +244,5 @@ PORT=8080 node multiplayer-server.js
 
 ## Testing
 
-Open multiple browser tabs/windows to `http://localhost:8000/pages/3d-demo.html` and you should see other players as green characters moving around.
+Open multiple browser tabs/windows to `http://localhost:8080/` and you should see other players as green characters moving around.
 

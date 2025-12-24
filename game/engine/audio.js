@@ -10,7 +10,7 @@ function initAudio() {
 
     audioLoader = new THREE.AudioLoader();
     // Load background audio
-    audioLoader.load('../assets/media/audio/background.mp3', function (buffer) {
+    audioLoader.load('assets/audio/background.mp3', function (buffer) {
         audio.setBuffer(buffer);
         audio.setLoop(true);
         audio.setVolume(0.5);

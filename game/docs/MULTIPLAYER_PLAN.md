@@ -11,12 +11,12 @@
 ## File Structure
 
 ```
-server/
-  └── multiplayer-server.js    (Simple WebSocket server)
-
-assets/js/demos/3d-demo/
-  ├── multiplayer.js           (Client-side multiplayer logic)
-  └── other-players.js         (Rendering other players)
+game/
+├── server/
+│   └── multiplayer-server.js    (Simple WebSocket server)
+└── js/
+    ├── multiplayer.js           (Client-side multiplayer logic)
+    └── other-players.js         (Rendering other players)
 ```
 
 ## Data Flow

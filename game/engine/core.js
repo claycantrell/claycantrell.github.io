@@ -250,13 +250,26 @@ function init() {
 
 // Load Retro Font and start the game
 // Wait for FontLoader to be available (loaded as ES6 module)
-function startGame() {
+async function startGame() {
     if (!window.THREE || !window.THREE.FontLoader) {
         // Wait for modules to load
         window.addEventListener('threeModulesLoaded', startGame, { once: true });
         return;
     }
-    
+
+    // Load map configuration first
+    const mapId = getMapIdFromUrl() || 'grasslands';
+    console.log('Loading map:', mapId);
+
+    if (typeof loadMap === 'function') {
+        const config = await loadMap(mapId);
+        if (!config) {
+            console.error('Failed to load map config, using defaults');
+        } else {
+            console.log('Map loaded:', config.name);
+        }
+    }
+
     const loader = new THREE.FontLoader();
     loader.load('https://threejs.org/examples/fonts/droid/droid_sans_mono_regular.typeface.json', function (loadedFont) {
         font = loadedFont;
@@ -270,6 +283,12 @@ function startGame() {
             instructionMessage.style.opacity = '0';
         }, 3000);
     });
+}
+
+// Get map ID from URL query parameter
+function getMapIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('map');
 }
 
 // Start the game when DOM is ready

@@ -24,7 +24,7 @@ You should see: `Multiplayer server running on ws://localhost:8080`
 ### 3. Test It
 
 1. Keep the server running
-2. Open `http://localhost:8000/pages/3d-demo.html` in multiple browser tabs/windows
+2. Open `http://localhost:8080/` in multiple browser tabs/windows
 3. Move around - you should see other players as green characters!
 
 ## How It Works

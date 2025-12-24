@@ -6,7 +6,22 @@ function initUI() {
     document.getElementById('exit-button').addEventListener('click', () => {
         window.location.href = '/pages/home.html';
     });
-    
+
+    // Map Button -> Open map menu
+    const mapButton = document.getElementById('map-button');
+    if (mapButton) {
+        mapButton.addEventListener('click', () => {
+            if (typeof toggleMapMenu === 'function') {
+                toggleMapMenu();
+            }
+        });
+    }
+
+    // Initialize map menu
+    if (typeof initMapMenu === 'function') {
+        initMapMenu();
+    }
+
     // Initialize chat system
     if (typeof initChat === 'function') {
         initChat();

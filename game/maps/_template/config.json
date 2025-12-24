@@ -1,0 +1,85 @@
+{
+  "id": "new-map",
+  "name": "New Map",
+  "description": "Description of your map",
+  "version": "1.0",
+
+  "terrain": {
+    "size": 800,
+    "segments": 200,
+    "seed": "your-seed-here",
+    "noise": {
+      "scale": 0.02,
+      "octaves": 4,
+      "persistence": 0.5,
+      "lacunarity": 2.0
+    },
+    "elevation": {
+      "hillHeight": 4,
+      "plateauRadius": 30,
+      "mountainStartRadius": 110,
+      "mountainHeight": 120
+    },
+    "boundary": 120,
+    "color": "#4a7c4e"
+  },
+
+  "spawn": {
+    "position": { "x": 0, "z": 0 },
+    "rotation": 0
+  },
+
+  "portals": [],
+  "portalRadius": 19.5,
+
+  "trees": {
+    "count": 500,
+    "radius": 300,
+    "exclusionRadius": 30,
+    "minSpacing": 15,
+    "lodDistance": 80,
+    "types": {
+      "pine": { "weight": 0.9 },
+      "oak": { "weight": 0.1 }
+    }
+  },
+
+  "entities": {
+    "npc": {
+      "enabled": false,
+      "spawnRadius": { "min": 20, "max": 50 },
+      "wanderRadius": 100,
+      "detectionDistance": 15,
+      "leaveDistance": 20,
+      "speed": 5.0
+    },
+    "deer": { "count": 10, "spawnRadius": { "min": 60, "max": 300 } },
+    "bunnies": { "count": 15, "spawnRadius": { "min": 40, "max": 300 } },
+    "birds": { "count": 20, "spawnRadius": { "min": 0, "max": 250 }, "baseHeight": 20 }
+  },
+
+  "character": {
+    "moveSpeed": 20.0,
+    "rotationSpeed": 2.0,
+    "flySpeed": 15.0,
+    "gravity": 25.0,
+    "collisionRadius": 3.0
+  },
+
+  "rendering": {
+    "backgroundColor": "#191970",
+    "fogColor": "#191970",
+    "fogDensity": 0.003,
+    "ambientLight": { "color": "#ffffff", "intensity": 0.5 },
+    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } },
+    "maxDrawDistance": 300,
+    "lodDistance": 80,
+    "lodUpdateInterval": 500
+  },
+
+  "audio": {
+    "background": "assets/audio/background.mp3",
+    "volume": 0.5,
+    "loop": true
+  }
+}

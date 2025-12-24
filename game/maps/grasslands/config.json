@@ -1,0 +1,92 @@
+{
+  "id": "grasslands",
+  "name": "Grasslands",
+  "description": "A peaceful meadow with rolling hills and wandering wildlife",
+  "version": "1.0",
+
+  "terrain": {
+    "size": 800,
+    "segments": 200,
+    "seed": "skyrim",
+    "noise": {
+      "scale": 0.02,
+      "octaves": 4,
+      "persistence": 0.5,
+      "lacunarity": 2.0
+    },
+    "elevation": {
+      "hillHeight": 4,
+      "plateauRadius": 30,
+      "mountainStartRadius": 110,
+      "mountainHeight": 120
+    },
+    "boundary": 120,
+    "color": "#4a7c4e"
+  },
+
+  "spawn": {
+    "position": { "x": -50, "z": -50 },
+    "rotation": 0.785
+  },
+
+  "portals": [
+    { "name": "WELCOME", "angle": 0, "color": "#ff0000" },
+    { "name": "WELCOME", "angle": 60, "color": "#ff8800" },
+    { "name": "WELCOME", "angle": 120, "color": "#ffff00" },
+    { "name": "WELCOME", "angle": 180, "color": "#00ff00" },
+    { "name": "WELCOME", "angle": 240, "color": "#0000ff" },
+    { "name": "WELCOME", "angle": 300, "color": "#8800ff" }
+  ],
+  "portalRadius": 19.5,
+
+  "trees": {
+    "count": 700,
+    "radius": 380,
+    "exclusionRadius": 35,
+    "minSpacing": 15,
+    "lodDistance": 80,
+    "types": {
+      "pine": { "weight": 0.9 },
+      "oak": { "weight": 0.1 }
+    }
+  },
+
+  "entities": {
+    "npc": {
+      "enabled": true,
+      "spawnRadius": { "min": 29.5, "max": 49.5 },
+      "wanderRadius": 100,
+      "detectionDistance": 15,
+      "leaveDistance": 20,
+      "speed": 5.0
+    },
+    "deer": { "count": 18, "spawnRadius": { "min": 60, "max": 360 } },
+    "bunnies": { "count": 20, "spawnRadius": { "min": 40, "max": 340 } },
+    "birds": { "count": 30, "spawnRadius": { "min": 0, "max": 300 }, "baseHeight": 20 }
+  },
+
+  "character": {
+    "moveSpeed": 20.0,
+    "rotationSpeed": 2.0,
+    "flySpeed": 15.0,
+    "gravity": 25.0,
+    "collisionRadius": 3.0
+  },
+
+  "rendering": {
+    "backgroundColor": "#191970",
+    "fogColor": "#191970",
+    "fogDensity": 0.003,
+    "ambientLight": { "color": "#ffffff", "intensity": 0.5 },
+    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } },
+    "maxDrawDistance": 300,
+    "lodDistance": 80,
+    "lodUpdateInterval": 500
+  },
+
+  "audio": {
+    "background": "assets/audio/background.mp3",
+    "volume": 0.5,
+    "loop": true
+  }
+}

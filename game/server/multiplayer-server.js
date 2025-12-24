@@ -23,9 +23,9 @@ function serveStaticFile(req, res) {
     // Get the file path from the URL
     let filePath = req.url;
 
-    // Default to 3D demo for root requests
+    // Default to game index for root requests
     if (filePath === '/' || filePath === '') {
-        filePath = '/pages/3d-demo.html';
+        filePath = '/index.html';
     }
 
     // Normalize: strip leading slashes so path.join stays within project root

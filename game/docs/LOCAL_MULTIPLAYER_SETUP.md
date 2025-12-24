@@ -8,7 +8,7 @@ The multiplayer server should now be running on `ws://localhost:8080`
 
 1. **Open your demo** in a browser:
    ```
-   http://localhost:8000/pages/3d-demo.html
+   http://localhost:8080/
    ```
 
 2. **Open the same page in another browser tab/window**

@@ -5,15 +5,24 @@ This is a standalone 3D interactive demo/game built with Three.js. The entire de
 ## File Structure
 
 ```
-assets/js/demos/3d-demo/
-├── README.md          (this file)
-├── core.js            (Scene setup, initialization, global variables)
-├── character.js        (Character creation and movement)
-├── world.js            (Environment: portals, trees, ground)
-├── controls.js         (Input handling: keyboard + touch)
-├── audio.js            (Audio management)
-├── ui.js               (UI elements: notifications, instructions)
-└── game.js             (Main game loop and portal logic)
+game/
+├── index.html         (Entry point)
+├── css/
+│   └── 3d-demo.css    (Game styles)
+├── js/
+│   ├── README.md      (this file)
+│   ├── core.js        (Scene setup, initialization, global variables)
+│   ├── character.js   (Character creation and movement)
+│   ├── world.js       (Environment: portals, trees, ground)
+│   ├── controls.js    (Input handling: keyboard + touch)
+│   ├── audio.js       (Audio management)
+│   ├── ui.js          (UI elements: notifications, instructions)
+│   └── game.js        (Main game loop and portal logic)
+├── assets/
+│   └── audio/
+│       └── background.mp3
+├── server/            (Multiplayer server)
+└── docs/              (Documentation)
 ```
 
 ## Dependencies
@@ -22,7 +31,7 @@ assets/js/demos/3d-demo/
 - **FontLoader** (Three.js example)
 - **TextGeometry** (Three.js example)
 - **CSS**: `../css/3d-demo.css`
-- **Audio**: `../../media/audio/background.mp3`
+- **Audio**: `../assets/audio/background.mp3`
 
 ## Load Order
 
@@ -64,14 +73,11 @@ To enable multiplayer:
 
 ## How to Extract
 
-To extract this demo to a standalone project:
+The game is already self-contained in the `game/` directory. To use it standalone:
 
-1. Copy the `assets/js/demos/3d-demo/` folder
-2. Copy `assets/css/3d-demo.css`
-3. Copy `assets/media/audio/background.mp3`
-4. Copy `pages/3d-demo.html` (update paths to be relative to new structure)
-5. (Optional) Copy `server/` folder for multiplayer support
-5. Ensure Three.js CDN links are still valid
+1. Copy the entire `game/` folder to your project
+2. Ensure Three.js CDN links are still valid
+3. (Optional) Set up the multiplayer server: `cd game/server && npm install && npm start`
 
 ## Future Expansion
 

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>3D Interactive Demo</title>
-    <link rel="stylesheet" href="../assets/css/3d-demo.css">
+    <link rel="stylesheet" href="css/game.css">
 </head>
 
 <body>
@@ -20,6 +20,9 @@
 
     <!-- Exit Button -->
     <button id="exit-button">Go Home</button>
+
+    <!-- Map Button -->
+    <button id="map-button" title="Select Map (M)">Maps</button>
 
     <!-- Chat System (RuneScape style) -->
     <div id="chat-container">
@@ -41,10 +44,10 @@
         }
     }
     </script>
-    
+
     <!-- Include Three.js library from CDN (UMD build for global THREE) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+
     <!-- Noise library for terrain generation -->
     <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
 
@@ -62,27 +65,49 @@
         window.dispatchEvent(new Event('threeModulesLoaded'));
     </script>
 
-    <!-- 3D Demo JavaScript Modules (load order is important) -->
-    <script src="../assets/js/demos/3d-demo/performance.js"></script>
-    <script src="../assets/js/demos/3d-demo/random.js"></script>
-    <script src="../assets/js/demos/3d-demo/character.js"></script>
-    <script src="../assets/js/demos/3d-demo/world.js"></script>
-    <script src="../assets/js/demos/3d-demo/npc.js"></script>
-    <script src="../assets/js/demos/3d-demo/deer.js"></script>
-    <script src="../assets/js/demos/3d-demo/bunny.js"></script>
-    <script src="../assets/js/demos/3d-demo/bird.js"></script>
-    <script src="../assets/js/demos/3d-demo/core.js"></script>
-    <script src="../assets/js/demos/3d-demo/player-utils.js"></script>
-    <script src="../assets/js/demos/3d-demo/time-sync.js"></script>
-    <script src="../assets/js/demos/3d-demo/animal-sync.js"></script>
-    <script src="../assets/js/demos/3d-demo/controls.js"></script>
-    <script src="../assets/js/demos/3d-demo/audio.js"></script>
-    <script src="../assets/js/demos/3d-demo/ui.js"></script>
-    <script src="../assets/js/demos/3d-demo/chat.js"></script>
-    <script src="../assets/js/demos/3d-demo/multiplayer.js"></script>
-    <script src="../assets/js/demos/3d-demo/other-players.js"></script>
-    <script src="../assets/js/demos/3d-demo/build.js"></script>
-    <script src="../assets/js/demos/3d-demo/game.js"></script>
+    <!-- ===== ENGINE ===== -->
+    <script src="engine/performance.js"></script>
+    <script src="engine/utils/random.js"></script>
+
+    <!-- ===== MAP SYSTEM ===== -->
+    <script src="maps/map-loader.js"></script>
+
+    <!-- ===== GAME SYSTEMS ===== -->
+    <script src="systems/character.js"></script>
+    <script src="systems/world.js"></script>
+    <script src="systems/entities/npc.js"></script>
+    <script src="systems/entities/deer.js"></script>
+    <script src="systems/entities/bunny.js"></script>
+    <script src="systems/entities/bird.js"></script>
+
+    <!-- ===== ENGINE CORE ===== -->
+    <script src="engine/core.js"></script>
+
+    <!-- ===== MULTIPLAYER ===== -->
+    <script src="multiplayer/player-utils.js"></script>
+    <script src="multiplayer/time-sync.js"></script>
+    <script src="multiplayer/sync.js"></script>
+
+    <!-- ===== ENGINE SYSTEMS ===== -->
+    <script src="engine/input.js"></script>
+    <script src="engine/audio.js"></script>
+    <script src="engine/ui.js"></script>
+
+    <!-- ===== GAME SYSTEMS ===== -->
+    <script src="systems/chat.js"></script>
+
+    <!-- ===== MULTIPLAYER ===== -->
+    <script src="multiplayer/client.js"></script>
+    <script src="multiplayer/other-players.js"></script>
+
+    <!-- ===== GAME SYSTEMS ===== -->
+    <script src="systems/building.js"></script>
+
+    <!-- ===== MAP MENU ===== -->
+    <script src="maps/map-menu.js"></script>
+
+    <!-- ===== MAIN GAME LOOP ===== -->
+    <script src="engine/game.js"></script>
 
     <!-- White Overlay for fade-out effect -->
     <div id="white-overlay"></div>
