@@ -1,5 +1,22 @@
 // Animal Synchronization (Client-Side)
 // Receives World State from Server -> Updates Local Entities
+// Uses Systems registry pattern for organized update loop
+
+// AnimalSyncSystem - handles server-side animal state updates
+const AnimalSyncSystem = {
+    init() {
+        // Socket handlers are set up in client.js
+    },
+
+    update(delta) {
+        sendAnimalUpdates();
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('animalSync', AnimalSyncSystem);
+}
 
 function handleAnimalUpdate(data) {
     if (data.type === 'worldState') {
@@ -36,3 +53,5 @@ function sendAnimalUpdates() {}
 // Make available globally
 window.updateMultiplayer = updateMultiplayer;
 window.sendAnimalUpdates = sendAnimalUpdates;
+window.handleAnimalUpdate = handleAnimalUpdate;
+window.AnimalSyncSystem = AnimalSyncSystem;

@@ -1,5 +1,22 @@
 // Deer system for 3D Demo (Client-Side Rendering Only)
 // Receives state from server, updates visual models.
+// Uses Systems registry pattern for organized update loop
+
+// DeerSystem - manages deer rendering and animation
+const DeerSystem = {
+    init() {
+        initDeer();
+    },
+
+    update(delta) {
+        updateDeer(delta);
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('deer', DeerSystem);
+}
 
 let deerList = [];
 
@@ -176,3 +193,5 @@ function updateDeer(delta) {
 // Make available globally
 window.initDeer = initDeer;
 window.updateDeer = updateDeer;
+window.updateDeerState = updateDeerState;
+window.DeerSystem = DeerSystem;

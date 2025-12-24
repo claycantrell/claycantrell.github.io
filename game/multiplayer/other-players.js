@@ -1,4 +1,22 @@
 // Rendering and managing other players in the scene
+// Uses Systems registry pattern for organized update loop
+
+// MultiplayerSystem - manages other players rendering and interpolation
+const MultiplayerSystem = {
+    init() {
+        initOtherPlayerAssets();
+    },
+
+    update(delta) {
+        updateMultiplayer();
+        interpolateOtherPlayers(delta);
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('multiplayer', MultiplayerSystem);
+}
 
 window.otherPlayers = new Map(); // id -> {mesh, group}
 // Alias for local use if needed, though window.otherPlayers is clearer
@@ -159,3 +177,7 @@ function interpolateOtherPlayers(delta) {
 // Make available globally
 window.initOtherPlayerAssets = initOtherPlayerAssets;
 window.interpolateOtherPlayers = interpolateOtherPlayers;
+window.addOtherPlayer = addOtherPlayer;
+window.updateOtherPlayer = updateOtherPlayer;
+window.removeOtherPlayer = removeOtherPlayer;
+window.MultiplayerSystem = MultiplayerSystem;

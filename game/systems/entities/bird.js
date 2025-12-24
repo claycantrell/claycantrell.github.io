@@ -1,5 +1,22 @@
 // Bird system for 3D Demo (Client-Side Rendering Only)
 // Receives state from server, updates visual models.
+// Uses Systems registry pattern for organized update loop
+
+// BirdSystem - manages bird rendering and animation
+const BirdSystem = {
+    init() {
+        initBirds();
+    },
+
+    update(delta) {
+        updateBirds(delta);
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('birds', BirdSystem);
+}
 
 let birdList = [];
 
@@ -127,3 +144,5 @@ function updateBirds(delta) {
 // Make available globally
 window.initBirds = initBirds;
 window.updateBirds = updateBirds;
+window.updateBirdState = updateBirdState;
+window.BirdSystem = BirdSystem;

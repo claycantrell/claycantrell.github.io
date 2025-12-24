@@ -45,6 +45,8 @@ window.dispatchEvent(new Event('threeModulesLoaded'));
 
 // Dynamically load existing game scripts in order (matches original index.html)
 const scripts = [
+    '../engine/namespace.js',      // GAME namespace (load first)
+    '../engine/systems.js',        // Systems registry
     '../engine/performance.js',
     '../engine/utils/random.js',
     '../maps/map-loader.js',

@@ -1,4 +1,21 @@
 // NPC system - wandering NPC that stops and stares at player
+// Uses Systems registry pattern for organized update loop
+
+// NPCSystem - manages NPC creation and behavior
+const NPCSystem = {
+    init() {
+        initNPC();
+    },
+
+    update(delta) {
+        updateNPC(delta);
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('npc', NPCSystem);
+}
 
 let npc = null;
 let npcState = 'wandering'; // 'wandering' or 'staring'
@@ -244,3 +261,5 @@ function isPlayerNearNPC() {
 // Make available globally
 window.initNPC = initNPC;
 window.updateNPC = updateNPC;
+window.isPlayerNearNPC = isPlayerNearNPC;
+window.NPCSystem = NPCSystem;

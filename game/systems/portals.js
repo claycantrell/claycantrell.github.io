@@ -1,4 +1,22 @@
 // Portal system - creates portal gates around the map center
+// Uses Systems registry pattern for organized update loop
+
+// PortalSystem - manages portal creation and interaction
+const PortalSystem = {
+    init() {
+        // Portals are created after font is loaded, called from core.js
+    },
+
+    update(delta) {
+        // Portal interaction is handled in game.js for now
+        // Will be moved here in future refactor
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('portals', PortalSystem);
+}
 
 function createPortals() {
     // Get portal config from map
@@ -101,3 +119,4 @@ function createPortals() {
 
 // Make available globally
 window.createPortals = createPortals;
+window.PortalSystem = PortalSystem;

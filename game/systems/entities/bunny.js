@@ -1,5 +1,22 @@
 // Bunny system for 3D Demo (Client-Side Rendering Only)
 // Receives state from server, updates visual models.
+// Uses Systems registry pattern for organized update loop
+
+// BunnySystem - manages bunny rendering and animation
+const BunnySystem = {
+    init() {
+        initBunnies();
+    },
+
+    update(delta) {
+        updateBunnies(delta);
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('bunnies', BunnySystem);
+}
 
 let bunnyList = [];
 
@@ -136,3 +153,5 @@ function updateBunnies(delta) {
 // Make available globally
 window.initBunnies = initBunnies;
 window.updateBunnies = updateBunnies;
+window.updateBunnyState = updateBunnyState;
+window.BunnySystem = BunnySystem;

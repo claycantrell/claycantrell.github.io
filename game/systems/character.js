@@ -1,4 +1,35 @@
 // Character creation and movement logic
+// Uses Systems registry pattern for organized update loop
+
+// CharacterSystem - manages player character creation and movement
+const CharacterSystem = {
+    settings: null,
+
+    init() {
+        // Character is created in core.js, we just need to initialize spawn
+        // This will be called when terrain is ready
+    },
+
+    update(delta) {
+        updateCharacterMovement(delta);
+    },
+
+    getSettings() {
+        if (!this.settings) {
+            this.settings = getCharacterSettings();
+        }
+        return this.settings;
+    },
+
+    refreshSettings() {
+        this.settings = null;
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('character', CharacterSystem);
+}
 
 // Get character config values from map config, with fallbacks
 function getCharacterSettings() {
@@ -275,3 +306,4 @@ function updateCharacterMovement(delta) {
 window.createCharacter = createCharacter;
 window.initCharacterSpawn = initCharacterSpawn;
 window.updateCharacterMovement = updateCharacterMovement;
+window.CharacterSystem = CharacterSystem;

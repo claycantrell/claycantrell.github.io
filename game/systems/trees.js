@@ -1,5 +1,29 @@
 // Tree system - 3D trees, 2D sprites, and LOD management
 // Biome-aware with multiple tree variants based on pine and oak
+// Uses Systems registry pattern for organized update loop
+
+// TreeSystem - manages tree creation, LOD, and billboard updates
+const TreeSystem = {
+    init() {
+        // Trees are created after terrain is ready, called from core.js
+    },
+
+    update(delta) {
+        // LOD updates are throttled in the game loop for performance
+        // This is called every frame for billboard rotation
+        updateSpriteBillboards();
+    },
+
+    // Throttled LOD update (called separately for performance)
+    updateLOD() {
+        updateTreeLOD();
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('trees', TreeSystem);
+}
 
 // Tree variant definitions - all based on pine (conifer) or oak (deciduous) templates
 const TREE_VARIANTS = {
@@ -610,3 +634,4 @@ function updateSpriteBillboards() {
 window.createMoreComplexTrees = createMoreComplexTrees;
 window.updateTreeLOD = updateTreeLOD;
 window.updateSpriteBillboards = updateSpriteBillboards;
+window.TreeSystem = TreeSystem;
