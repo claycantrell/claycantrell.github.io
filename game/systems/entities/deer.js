@@ -20,10 +20,11 @@ if (typeof Systems !== 'undefined') {
 
 let deerList = [];
 
-// Get deer count from map config, fallback to default
+// Get deer count from config
 function getDeerCount() {
-    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
-    return config.deer?.count || 18;
+    return typeof CONFIG !== 'undefined'
+        ? CONFIG.get('entities.deer.count', 18)
+        : 18;
 }
 
 // Create a single deer visual entity

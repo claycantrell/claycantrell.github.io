@@ -9,7 +9,7 @@ const AnimalSyncSystem = {
     },
 
     update(delta) {
-        sendAnimalUpdates();
+        // Animal state is received via socket, no per-frame update needed
     }
 };
 
@@ -46,12 +46,6 @@ function handleAnimalUpdate(data) {
     }
 }
 
-// Deprecated functions (keeping empty to prevent errors if called)
-function packAnimalData() { return []; }
-function sendAnimalUpdates() {}
-
 // Make available globally
-window.updateMultiplayer = updateMultiplayer;
-window.sendAnimalUpdates = sendAnimalUpdates;
 window.handleAnimalUpdate = handleAnimalUpdate;
 window.AnimalSyncSystem = AnimalSyncSystem;

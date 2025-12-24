@@ -1,5 +1,23 @@
 // Minecraft-style Grid Building System
 // Place blocks on a 2-unit grid for LEGO-like building
+// Uses Systems registry pattern for organized update loop
+
+// BuildingSystem - manages block placement and removal
+const BuildingSystem = {
+    init() {
+        initBuildSystem();
+    },
+
+    update(delta) {
+        // Building mode updates ghost position via mouse events
+        // No per-frame update needed
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('building', BuildingSystem);
+}
 
 const GRID_SIZE = 2; // Size of each block
 let isBuildMode = false;

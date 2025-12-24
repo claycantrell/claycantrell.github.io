@@ -1,5 +1,25 @@
 // Shrub system - biome-specific sprite-based ground vegetation
 // Shrubs are 2D billboards that always face the camera
+// Uses Systems registry pattern for organized update loop
+
+// ShrubSystem - manages shrub creation and billboard updates
+const ShrubSystem = {
+    init() {
+        // Shrubs are created after terrain via createShrubs()
+    },
+
+    update(delta) {
+        // Update billboard rotation to face camera
+        if (typeof updateShrubBillboards === 'function') {
+            updateShrubBillboards();
+        }
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('shrubs', ShrubSystem);
+}
 
 // Shrub type definitions per biome
 const SHRUB_TYPES = {

@@ -20,10 +20,11 @@ if (typeof Systems !== 'undefined') {
 
 let bunnyList = [];
 
-// Get bunny count from map config, fallback to default
+// Get bunny count from config
 function getBunnyCount() {
-    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
-    return config.bunnies?.count || 20;
+    return typeof CONFIG !== 'undefined'
+        ? CONFIG.get('entities.bunnies.count', 20)
+        : 20;
 }
 
 // Create a single bunny visual entity

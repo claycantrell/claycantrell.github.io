@@ -1,5 +1,26 @@
 // Chunk-based terrain system for large worlds
 // Only loads terrain chunks near the player for performance
+// Uses Systems registry pattern for organized update loop
+
+// ChunkSystem - manages terrain chunk loading/unloading
+const ChunkSystem = {
+    init() {
+        // Chunks are initialized when terrain is created
+    },
+
+    update(delta) {
+        // Chunk updates are handled by updateChunks() called separately
+        // to allow for throttling
+        if (typeof updateChunks === 'function') {
+            updateChunks();
+        }
+    }
+};
+
+// Register with Systems registry
+if (typeof Systems !== 'undefined') {
+    Systems.register('chunks', ChunkSystem);
+}
 
 // Chunk configuration
 const CHUNK_CONFIG = {

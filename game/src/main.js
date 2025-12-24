@@ -47,6 +47,7 @@ window.dispatchEvent(new Event('threeModulesLoaded'));
 const scripts = [
     '../engine/namespace.js',      // GAME namespace (load first)
     '../engine/systems.js',        // Systems registry
+    '../engine/config.js',         // Centralized configuration
     '../engine/performance.js',
     '../engine/utils/random.js',
     '../maps/map-loader.js',

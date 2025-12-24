@@ -88,6 +88,68 @@ const GAME = {
         instructionMessage: null,
         chatInput: null,
         chatMessages: null
+    },
+
+    // Chat system state
+    chat: {
+        open: false,
+        history: [],
+        npcConversation: []
+    },
+
+    // NPC state
+    npc: {
+        entity: null,
+        state: 'wandering',
+        target: null,
+        spawnPosition: null,
+        hasGreeted: false,
+        isNearby: false
+    },
+
+    // Building system state
+    building: {
+        mode: false,
+        selectedBlock: null,
+        placedBlocks: []
+    },
+
+    // Chunk system state
+    chunks: {
+        loaded: new Map(),
+        updateTimer: 0,
+        lastPlayerChunk: null
+    },
+
+    // Terrain state
+    terrain: {
+        simplex: null,
+        heightmap: null,
+        config: null,
+        size: 50000,
+        segments: 256,
+        data: null
+    },
+
+    // Error handling utility
+    error: {
+        log(system, error, level = 'error') {
+            const msg = `[${system}] ${error.message || error}`;
+            console[level](msg);
+            if (level === 'error' && typeof showNotification === 'function') {
+                showNotification(`Error in ${system}`);
+            }
+        },
+
+        wrap(system, fn) {
+            return (...args) => {
+                try {
+                    return fn(...args);
+                } catch (e) {
+                    this.log(system, e);
+                }
+            };
+        }
     }
 };
 

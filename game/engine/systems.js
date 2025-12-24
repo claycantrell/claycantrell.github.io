@@ -58,7 +58,12 @@ const Systems = {
                 try {
                     sys.update(delta);
                 } catch (e) {
-                    console.error(`Error in system ${name}:`, e);
+                    // Use GAME.error if available, fallback to console
+                    if (typeof GAME !== 'undefined' && GAME.error) {
+                        GAME.error.log(name, e);
+                    } else {
+                        console.error(`Error in system ${name}:`, e);
+                    }
                 }
             }
         }

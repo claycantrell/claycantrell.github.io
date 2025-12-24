@@ -8,8 +8,37 @@ const PortalSystem = {
     },
 
     update(delta) {
-        // Portal interaction is handled in game.js for now
-        // Will be moved here in future refactor
+        // Skip if no character or portals
+        if (!GAME.character || !GAME.world.portals) return;
+
+        const currentTime = performance.now();
+
+        GAME.world.portals.forEach(portalObj => {
+            const distance = GAME.character.position.distanceTo(portalObj.group.position);
+
+            if (distance < 5) {
+                showNotification(`Portal to ${portalObj.name} Triggered`);
+
+                const colors = [0xFF0000, 0x00FF00, 0x0000FF];
+                portalObj.innerPortal.material.color.setHex(colors[Math.floor(Math.random() * 3)]);
+
+                if (!GAME.state.portalActivated) {
+                    GAME.state.portalActivated = true;
+                    if (typeof fadeOutToWhite === 'function') {
+                        fadeOutToWhite();
+                    }
+                }
+            } else {
+                portalObj.innerPortal.material.color.setHex(0xFFFFFF);
+            }
+
+            // Animate label floating
+            if (portalObj.labelMesh) {
+                const frame = Math.floor(currentTime / 100);
+                portalObj.labelMesh.position.y =
+                    portalObj.labelStartY + Math.sin(frame * 0.2 + portalObj.group.position.x) * 0.2;
+            }
+        });
     }
 };
 

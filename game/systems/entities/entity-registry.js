@@ -24,14 +24,14 @@ function registerEntity(type, config) {
 
 // Initialize all registered entities
 function initAllEntities() {
-    const entityConfig = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
-
     for (const type in entityRegistry) {
         const entity = entityRegistry[type];
 
         // Check if entity is enabled in config
-        const typeConfig = entityConfig[type];
-        if (typeConfig && typeConfig.enabled === false) {
+        const isEnabled = typeof CONFIG !== 'undefined'
+            ? CONFIG.get(`entities.${type}.enabled`, true)
+            : true;
+        if (!isEnabled) {
             console.log(`Entity '${type}' disabled by config`);
             continue;
         }

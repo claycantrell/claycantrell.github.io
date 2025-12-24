@@ -24,18 +24,24 @@ let npcSpawnPosition = new THREE.Vector3(0, 0, 0);
 let npcHasGreeted = false; // Track if NPC has greeted player
 let npcIsNearby = false; // Track if player is near NPC
 
-// Get NPC config values from map config, with fallbacks
+// Get NPC config values from config with fallbacks
 function getNPCConfig() {
-    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
+    if (typeof CONFIG === 'undefined') {
+        return {
+            enabled: true, speed: 5.0, detectionDistance: 15.0,
+            leaveDistance: 20.0, wanderRadius: 100.0,
+            spawnRadius: { min: 29.5, max: 49.5 }
+        };
+    }
     return {
-        enabled: config.npc?.enabled ?? true,
-        speed: config.npc?.speed ?? 5.0,
-        detectionDistance: config.npc?.detectionDistance ?? 15.0,
-        leaveDistance: config.npc?.leaveDistance ?? 20.0,
-        wanderRadius: config.npc?.wanderRadius ?? 100.0,
+        enabled: CONFIG.get('entities.npc.enabled', true),
+        speed: CONFIG.get('entities.npc.speed', 5.0),
+        detectionDistance: CONFIG.get('entities.npc.detectionDistance', 15.0),
+        leaveDistance: CONFIG.get('entities.npc.leaveDistance', 20.0),
+        wanderRadius: CONFIG.get('entities.npc.wanderRadius', 100.0),
         spawnRadius: {
-            min: config.npc?.spawnRadius?.min ?? 29.5,
-            max: config.npc?.spawnRadius?.max ?? 49.5
+            min: CONFIG.get('entities.npc.spawnRadius.min', 29.5),
+            max: CONFIG.get('entities.npc.spawnRadius.max', 49.5)
         }
     };
 }

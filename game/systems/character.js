@@ -31,31 +31,26 @@ if (typeof Systems !== 'undefined') {
     Systems.register('character', CharacterSystem);
 }
 
-// Get character config values from map config, with fallbacks
+// Get character config values with fallbacks
 function getCharacterSettings() {
-    // getCharacterConfig is defined in map-loader.js (character movement settings)
-    const config = typeof getCharacterConfig === 'function' ? getCharacterConfig() : {};
-    // getSpawnConfig is defined in map-loader.js (spawn position - root level in config)
-    const spawnConfig = typeof getSpawnConfig === 'function' ? getSpawnConfig() : {};
-    // getTerrainConfig is defined in map-loader.js (boundary is in terrain config)
-    const terrainConfig = typeof getTerrainConfig === 'function' ? getTerrainConfig() : {};
+    const useConfig = typeof CONFIG !== 'undefined';
 
-    // For chunked terrain, use half the world size as boundary (or terrain size / 2)
-    const worldSize = terrainConfig.size || 50000;
+    // For chunked terrain, use half the world size as boundary
+    const worldSize = useConfig ? CONFIG.get('terrain.size', 50000) : 50000;
     const defaultBoundary = worldSize / 2;
 
     return {
-        moveSpeed: config.moveSpeed ?? 20.0,
-        flySpeed: config.flySpeed ?? 15.0,
-        rotationSpeed: config.rotationSpeed ?? 2.0,
-        gravity: config.gravity ?? 25.0,
-        boundary: terrainConfig.boundary ?? defaultBoundary,
+        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
+        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 15.0) : 15.0,
+        rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
+        gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
+        boundary: useConfig ? CONFIG.get('terrain.boundary', defaultBoundary) : defaultBoundary,
         spawn: {
             position: {
-                x: spawnConfig.position?.x ?? 0,
-                z: spawnConfig.position?.z ?? 0
+                x: useConfig ? CONFIG.get('spawn.position.x', 0) : 0,
+                z: useConfig ? CONFIG.get('spawn.position.z', 0) : 0
             },
-            rotation: spawnConfig.rotation ?? 0
+            rotation: useConfig ? CONFIG.get('spawn.rotation', 0) : 0
         }
     };
 }

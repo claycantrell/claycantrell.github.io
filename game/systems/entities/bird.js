@@ -20,10 +20,11 @@ if (typeof Systems !== 'undefined') {
 
 let birdList = [];
 
-// Get bird count from map config, fallback to default
+// Get bird count from config
 function getBirdCount() {
-    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
-    return config.birds?.count || 30;
+    return typeof CONFIG !== 'undefined'
+        ? CONFIG.get('entities.birds.count', 30)
+        : 30;
 } 
 
 // Create a single bird visual entity
