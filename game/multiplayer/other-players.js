@@ -155,3 +155,7 @@ function interpolateOtherPlayers(delta) {
     });
 }
 
+
+// Make available globally
+window.initOtherPlayerAssets = initOtherPlayerAssets;
+window.interpolateOtherPlayers = interpolateOtherPlayers;

@@ -44,3 +44,7 @@ function setServerTime(serverTimestamp) {
     console.log(`Time synchronized. Offset: ${serverTimeOffset}ms`);
 }
 
+
+// Make available globally
+window.getDayNightPhase = getDayNightPhase;
+window.getServerTime = getServerTime;

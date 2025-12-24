@@ -397,3 +397,8 @@ function reloadAllChunks() {
         updateChunks(character.position.x, character.position.z);
     }
 }
+
+// Make available globally
+window.initChunkSystem = initChunkSystem;
+window.updateChunks = updateChunks;
+window.getChunkKey = getChunkKey;

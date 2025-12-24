@@ -594,3 +594,7 @@ function addSystemMessage(message) {
     return messageDiv;
 }
 
+
+// Make available globally
+window.initChat = initChat;
+window.addChatMessage = addChatMessage;

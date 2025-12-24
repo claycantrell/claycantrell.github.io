@@ -172,3 +172,7 @@ function updateDeer(delta) {
     });
 }
 
+
+// Make available globally
+window.initDeer = initDeer;
+window.updateDeer = updateDeer;

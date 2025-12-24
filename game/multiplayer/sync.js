@@ -32,3 +32,7 @@ function handleAnimalUpdate(data) {
 // Deprecated functions (keeping empty to prevent errors if called)
 function packAnimalData() { return []; }
 function sendAnimalUpdates() {}
+
+// Make available globally
+window.updateMultiplayer = updateMultiplayer;
+window.sendAnimalUpdates = sendAnimalUpdates;

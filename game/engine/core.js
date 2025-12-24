@@ -6,8 +6,7 @@ let character;
 // Lighting references for day/night cycle
 let ambientLight, directionalLight, sunMesh, moonMesh;
 
-// Shared materials (declared here, initialized in performance.js)
-let sharedMaterials = {};
+// Input state
 let moveForward = false,
     moveBackward = false,
     rotateLeft = false,
@@ -411,4 +410,41 @@ if (document.readyState === 'loading') {
 } else {
     startGame();
 }
+
+// Make globals available on window for other modules
+window.scene = null;  // Will be set in init()
+window.camera = null;
+window.renderer = null;
+window.character = null;
+window.portals = portals;
+window.objects = objects;
+window.velocity = velocity;
+window.font = null;
+window.treeData = treeData;
+
+// Expose getters for mutable state
+Object.defineProperties(window, {
+    'scene': { get: () => scene, set: (v) => scene = v },
+    'camera': { get: () => camera, set: (v) => camera = v },
+    'renderer': { get: () => renderer, set: (v) => renderer = v },
+    'character': { get: () => character, set: (v) => character = v },
+    'font': { get: () => font, set: (v) => font = v },
+    'moveForward': { get: () => moveForward, set: (v) => moveForward = v },
+    'moveBackward': { get: () => moveBackward, set: (v) => moveBackward = v },
+    'rotateLeft': { get: () => rotateLeft, set: (v) => rotateLeft = v },
+    'rotateRight': { get: () => rotateRight, set: (v) => rotateRight = v },
+    'isFlying': { get: () => isFlying, set: (v) => isFlying = v },
+    'isFirstPerson': { get: () => isFirstPerson, set: (v) => isFirstPerson = v },
+    'isTerrainReady': { get: () => isTerrainReady, set: (v) => isTerrainReady = v },
+    'portalActivated': { get: () => portalActivated, set: (v) => portalActivated = v },
+    'ambientLight': { get: () => ambientLight, set: (v) => ambientLight = v },
+    'directionalLight': { get: () => directionalLight, set: (v) => directionalLight = v },
+    'sunMesh': { get: () => sunMesh, set: (v) => sunMesh = v },
+    'moonMesh': { get: () => moonMesh, set: (v) => moonMesh = v },
+    'prevTime': { get: () => prevTime, set: (v) => prevTime = v }
+});
+
+window.init = init;
+window.startGame = startGame;
+window.getMapIdFromUrl = getMapIdFromUrl;
 

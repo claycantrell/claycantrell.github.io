@@ -98,3 +98,6 @@ function createPortals() {
         objects.push(portalGroup);
     }
 }
+
+// Make available globally
+window.createPortals = createPortals;

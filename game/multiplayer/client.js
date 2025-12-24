@@ -323,3 +323,8 @@ function sendBuildToServer(buildData) {
     }
 }
 
+
+// Make available globally
+window.initMultiplayer = initMultiplayer;
+window.sendPosition = sendPosition;
+window.isConnected = isConnected;

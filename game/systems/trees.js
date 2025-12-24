@@ -605,3 +605,8 @@ function updateSpriteBillboards() {
         }
     });
 }
+
+// Make available globally
+window.createMoreComplexTrees = createMoreComplexTrees;
+window.updateTreeLOD = updateTreeLOD;
+window.updateSpriteBillboards = updateSpriteBillboards;

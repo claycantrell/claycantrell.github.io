@@ -104,3 +104,19 @@ function unloadMap() {
     currentMapConfig = null;
     currentMapId = null;
 }
+
+// Make available globally
+window.getAvailableMaps = getAvailableMaps;
+window.loadMap = loadMap;
+window.getMapConfig = getMapConfig;
+window.getCurrentMapId = getCurrentMapId;
+window.getTerrainConfig = getTerrainConfig;
+window.getSpawnConfig = getSpawnConfig;
+window.getPortalConfig = getPortalConfig;
+window.getTreeConfig = getTreeConfig;
+window.getEntityConfig = getEntityConfig;
+window.getCharacterConfig = getCharacterConfig;
+window.getRenderingConfig = getRenderingConfig;
+window.getAudioConfig = getAudioConfig;
+window.isMapLoaded = isMapLoaded;
+window.unloadMap = unloadMap;

@@ -240,3 +240,7 @@ function isPlayerNearNPC() {
     return npcIsNearby;
 }
 
+
+// Make available globally
+window.initNPC = initNPC;
+window.updateNPC = updateNPC;

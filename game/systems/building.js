@@ -403,3 +403,8 @@ function placeObject(networkData) {
         placeBlock(gridData);
     }
 }
+
+// Make available globally
+window.initBuildSystem = initBuildSystem;
+window.placeBlock = placeBlock;
+window.handleNetworkBlock = handleNetworkBlock;

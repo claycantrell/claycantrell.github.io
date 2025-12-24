@@ -120,3 +120,8 @@ if (typeof initBirds === 'function' && typeof updateBirds === 'function') {
 }
 
 console.log('Entity registry loaded, registered types:', getRegisteredEntities());
+
+// Make available globally (if not already)
+if (typeof window.entityRegistry === "undefined") {
+    window.entityRegistry = entityRegistry;
+}

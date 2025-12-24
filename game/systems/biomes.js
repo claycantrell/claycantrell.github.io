@@ -270,3 +270,7 @@ function getParameterLevel(paramName, value) {
     }
     return levels.length - 2;
 }
+
+// Make available globally
+window.getBiomeAt = getBiomeAt;
+window.BIOMES = BIOMES;

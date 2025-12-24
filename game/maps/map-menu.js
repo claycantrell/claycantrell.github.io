@@ -410,3 +410,8 @@ function setupMapMenuControls() {
 function isMapMenuVisible() {
     return mapMenuVisible;
 }
+
+// Make available globally
+window.initMapMenu = initMapMenu;
+window.toggleMapMenu = toggleMapMenu;
+window.isMapMenuVisible = isMapMenuVisible;

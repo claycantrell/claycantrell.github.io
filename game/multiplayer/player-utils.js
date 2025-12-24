@@ -38,3 +38,7 @@ function getAllPlayers() {
     return players;
 }
 
+
+// Make available globally
+window.packPlayerPosition = packPlayerPosition;
+window.unpackPlayerPosition = unpackPlayerPosition;

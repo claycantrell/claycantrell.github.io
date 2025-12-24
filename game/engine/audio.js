@@ -66,7 +66,7 @@ function resumeAudioContext() {
             console.log('Audio context resumed');
         }).catch(e => console.error('Could not resume audio context:', e));
     }
-    
+
     // Also try to unlock speech synthesis for mobile
     if (window.speechSynthesis) {
         if (window.speechSynthesis.paused) {
@@ -81,4 +81,9 @@ function resumeAudioContext() {
         }
     }
 }
+
+// Make available globally
+window.initAudio = initAudio;
+window.toggleAudio = toggleAudio;
+window.resumeAudioContext = resumeAudioContext;
 

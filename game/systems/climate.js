@@ -224,3 +224,7 @@ function getBaseHeightOffset(climate) {
 
     return offset;
 }
+
+// Make available globally
+window.initClimate = initClimate;
+window.getClimateAt = getClimateAt;

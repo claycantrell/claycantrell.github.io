@@ -104,3 +104,6 @@ function animate() {
     }
 }
 
+// Make available globally
+window.animate = animate;
+

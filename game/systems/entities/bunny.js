@@ -132,3 +132,7 @@ function updateBunnies(delta) {
     });
 }
 
+
+// Make available globally
+window.initBunnies = initBunnies;
+window.updateBunnies = updateBunnies;

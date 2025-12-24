@@ -455,3 +455,8 @@ function disposeShrubs() {
 function getShrubConfig() {
     return SHRUB_CONFIG;
 }
+
+// Make available globally
+window.createShrubs = createShrubs;
+window.updateShrubBillboards = updateShrubBillboards;
+window.getShrubConfig = getShrubConfig;

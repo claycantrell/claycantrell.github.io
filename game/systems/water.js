@@ -155,3 +155,10 @@ function getWaterConfig() {
 function setWaterConfig(config) {
     Object.assign(WATER_CONFIG, config);
 }
+
+// Make available globally
+window.initWater = initWater;
+window.createWaterForChunk = createWaterForChunk;
+window.isWaterAt = isWaterAt;
+window.getWaterHeight = getWaterHeight;
+window.setWaterConfig = setWaterConfig;

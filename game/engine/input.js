@@ -293,3 +293,8 @@ function initControls() {
     }, 1000); // Check every second
 }
 
+// Make available globally
+window.initControls = initControls;
+window.resetMovementFlags = resetMovementFlags;
+window.activeKeys = activeKeys;
+

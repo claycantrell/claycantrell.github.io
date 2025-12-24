@@ -270,3 +270,8 @@ function updateCharacterMovement(delta) {
     }
 }
 
+
+// Make available globally
+window.createCharacter = createCharacter;
+window.initCharacterSpawn = initCharacterSpawn;
+window.updateCharacterMovement = updateCharacterMovement;

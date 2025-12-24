@@ -58,3 +58,8 @@ function fadeOutToWhite() {
     }, 2000);
 }
 
+// Make available globally
+window.initUI = initUI;
+window.showNotification = showNotification;
+window.fadeOutToWhite = fadeOutToWhite;
+

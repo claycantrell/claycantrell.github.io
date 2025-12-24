@@ -123,3 +123,7 @@ function updateBirds(delta) {
     });
 }
 
+
+// Make available globally
+window.initBirds = initBirds;
+window.updateBirds = updateBirds;

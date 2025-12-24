@@ -382,3 +382,9 @@ function createSingleMeshTerrain() {
     console.log(`Single-mesh terrain created: ${terrainSize}x${terrainSize}, seed: ${terrainConfig.seed}`);
     console.log('Biome distribution:', biomeCounts);
 }
+
+// Make available globally
+window.getTerrainHeightAt = getTerrainHeightAt;
+window.getTerrainDataAt = getTerrainDataAt;
+window.createHillyGround = createHillyGround;
+window.initTerrainConfig = initTerrainConfig;

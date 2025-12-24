@@ -38,19 +38,22 @@ const PERFORMANCE = {
     }
 };
 
+// Shared materials container
+const sharedMaterials = {};
+
 // Initialize shared materials (reuse instead of creating new ones)
-// sharedMaterials is declared globally in core.js
 function initSharedMaterials() {
-    sharedMaterials.trunk = new THREE.MeshBasicMaterial({ 
+    const THREE = window.THREE;
+    sharedMaterials.trunk = new THREE.MeshBasicMaterial({
         color: 0x8B4513
     });
-    sharedMaterials.foliage1 = new THREE.MeshBasicMaterial({ 
+    sharedMaterials.foliage1 = new THREE.MeshBasicMaterial({
         color: 0x006400
     });
-    sharedMaterials.foliage2 = new THREE.MeshBasicMaterial({ 
+    sharedMaterials.foliage2 = new THREE.MeshBasicMaterial({
         color: 0x008000
     });
-    sharedMaterials.foliage3 = new THREE.MeshBasicMaterial({ 
+    sharedMaterials.foliage3 = new THREE.MeshBasicMaterial({
         color: 0x228B22
     });
     // New Autumn Oak Materials
@@ -66,7 +69,7 @@ function initSharedMaterials() {
     sharedMaterials.oakFoliage3 = new THREE.MeshBasicMaterial({
         color: 0x2E8B57 // Sea Green (darkish)
     });
-    sharedMaterials.ground = new THREE.MeshBasicMaterial({ 
+    sharedMaterials.ground = new THREE.MeshBasicMaterial({
         color: 0x004d00
     });
 }
@@ -74,8 +77,14 @@ function initSharedMaterials() {
 // Check if object is in camera frustum (simple distance check)
 function isInView(object, camera) {
     if (!PERFORMANCE.rendering.frustumCulling) return true;
-    
+
     const distance = camera.position.distanceTo(object.position);
     return distance < PERFORMANCE.rendering.maxDrawDistance;
 }
+
+// Make available globally for legacy code
+window.PERFORMANCE = PERFORMANCE;
+window.sharedMaterials = sharedMaterials;
+window.initSharedMaterials = initSharedMaterials;
+window.isInView = isInView;
 

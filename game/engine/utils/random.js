@@ -27,3 +27,8 @@ function seededRandomRange(min, max, seedOffset) {
     return min + seededRandom(seedOffset) * (max - min);
 }
 
+// Make available globally
+window.setWorldSeed = setWorldSeed;
+window.seededRandom = seededRandom;
+window.seededRandomRange = seededRandomRange;
+
