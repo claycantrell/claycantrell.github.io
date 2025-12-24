@@ -18,7 +18,10 @@ if (typeof Systems !== 'undefined') {
     Systems.register('bunnies', BunnySystem);
 }
 
-let bunnyList = [];
+// Use GAME.world.entities.bunnies if available, fallback to local array
+const bunnyList = (typeof GAME !== 'undefined' && GAME.world?.entities)
+    ? GAME.world.entities.bunnies
+    : [];
 
 // Get bunny count from config
 function getBunnyCount() {

@@ -18,7 +18,10 @@ if (typeof Systems !== 'undefined') {
     Systems.register('birds', BirdSystem);
 }
 
-let birdList = [];
+// Use GAME.world.entities.birds if available, fallback to local array
+const birdList = (typeof GAME !== 'undefined' && GAME.world?.entities)
+    ? GAME.world.entities.birds
+    : [];
 
 // Get bird count from config
 function getBirdCount() {

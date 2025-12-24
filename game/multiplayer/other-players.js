@@ -18,9 +18,23 @@ if (typeof Systems !== 'undefined') {
     Systems.register('multiplayer', MultiplayerSystem);
 }
 
-window.otherPlayers = new Map(); // id -> {mesh, group}
-// Alias for local use if needed, though window.otherPlayers is clearer
-const otherPlayers = window.otherPlayers; 
+// Use GAME namespace for otherPlayers storage
+// Fallback to local Map if GAME not available yet
+const otherPlayers = (typeof GAME !== 'undefined' && GAME.multiplayer)
+    ? GAME.multiplayer.otherPlayers
+    : new Map();
+
+// Ensure GAME.multiplayer.otherPlayers points to the same Map
+if (typeof GAME !== 'undefined' && GAME.multiplayer) {
+    GAME.multiplayer.otherPlayers = otherPlayers;
+}
+
+// Backward compatibility - expose on window via getter
+Object.defineProperty(window, 'otherPlayers', {
+    get: () => (typeof GAME !== 'undefined' && GAME.multiplayer)
+        ? GAME.multiplayer.otherPlayers
+        : otherPlayers
+}); 
 
 // Shared geometries for other players (reuse to save memory)
 let sharedOtherPlayerGeometries = null;

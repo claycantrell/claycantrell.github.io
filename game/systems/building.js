@@ -204,8 +204,8 @@ function updateGhostPosition() {
     });
 
     // Also check global objects array
-    if (typeof objects !== 'undefined') {
-        objects.forEach(obj => {
+    if (typeof GAME !== 'undefined' && GAME.world?.objects) {
+        GAME.world.objects.forEach(obj => {
             if (obj.isMesh && obj.visible && obj !== buildGhost && obj.userData.isBlock) {
                 intersectObjects.push(obj);
             }
@@ -319,8 +319,8 @@ function placeBlock(networkData = null) {
     placedBlocks.set(key, mesh);
 
     // Add to objects array
-    if (typeof objects !== 'undefined') {
-        objects.push(mesh);
+    if (typeof GAME !== 'undefined' && GAME.world?.objects) {
+        GAME.world.objects.push(mesh);
     }
 
     // Send to server
@@ -356,9 +356,9 @@ function removeBlock() {
             placedBlocks.delete(key);
 
             // Remove from objects array
-            if (typeof objects !== 'undefined') {
-                const idx = objects.indexOf(mesh);
-                if (idx > -1) objects.splice(idx, 1);
+            if (typeof GAME !== 'undefined' && GAME.world?.objects) {
+                const idx = GAME.world.objects.indexOf(mesh);
+                if (idx > -1) GAME.world.objects.splice(idx, 1);
             }
 
             // Dispose material (geometry is shared)
@@ -399,9 +399,9 @@ function placeObject(networkData) {
             const mesh = placedBlocks.get(key);
             scene.remove(mesh);
             placedBlocks.delete(key);
-            if (typeof objects !== 'undefined') {
-                const idx = objects.indexOf(mesh);
-                if (idx > -1) objects.splice(idx, 1);
+            if (typeof GAME !== 'undefined' && GAME.world?.objects) {
+                const idx = GAME.world.objects.indexOf(mesh);
+                if (idx > -1) GAME.world.objects.splice(idx, 1);
             }
             mesh.material.dispose();
         }

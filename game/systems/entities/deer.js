@@ -18,7 +18,10 @@ if (typeof Systems !== 'undefined') {
     Systems.register('deer', DeerSystem);
 }
 
-let deerList = [];
+// Use GAME.world.entities.deer if available, fallback to local array
+const deerList = (typeof GAME !== 'undefined' && GAME.world?.entities)
+    ? GAME.world.entities.deer
+    : [];
 
 // Get deer count from config
 function getDeerCount() {

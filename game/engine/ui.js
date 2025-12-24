@@ -1,7 +1,31 @@
 // UI elements and interactions
 
+// Cached DOM elements
+let notificationEl = null;
+let audioIconEl = null;
+let whiteOverlayEl = null;
+let notificationTimeout = null;
+
+// Cache DOM elements (called once at startup)
+function cacheDOMElements() {
+    notificationEl = document.getElementById('notification');
+    audioIconEl = document.getElementById('audio-icon');
+    whiteOverlayEl = document.getElementById('white-overlay');
+
+    // Also store in GAME.dom if available
+    if (typeof GAME !== 'undefined' && GAME.dom) {
+        GAME.dom.notification = notificationEl;
+        GAME.dom.audioIcon = audioIconEl;
+        GAME.dom.instructionMessage = document.getElementById('instruction-message');
+        GAME.dom.chatInput = document.getElementById('chat-input');
+        GAME.dom.chatMessages = document.getElementById('chat-messages');
+    }
+}
+
 // Initialize UI
 function initUI() {
+    // Cache DOM elements first
+    cacheDOMElements();
     // Exit Button -> Home (relative path for GitHub Pages compatibility)
     document.getElementById('exit-button').addEventListener('click', () => {
         window.location.href = '../pages/home.html';
@@ -30,19 +54,23 @@ function initUI() {
 
 // Function to show notifications on screen
 function showNotification(message) {
+    // Use cached element or fall back to getElementById
+    const el = notificationEl || document.getElementById('notification');
+    if (!el) return;
+
     if (notificationTimeout) {
         clearTimeout(notificationTimeout);
     }
-    notification.textContent = message;
-    notification.style.opacity = '1';
+    el.textContent = message;
+    el.style.opacity = '1';
     notificationTimeout = setTimeout(() => {
-        notification.style.opacity = '0';
+        el.style.opacity = '0';
     }, 2000);
 }
 
 // Fade out function - navigates to the other map
 function fadeOutToWhite() {
-    const overlay = document.getElementById('white-overlay');
+    const overlay = whiteOverlayEl || document.getElementById('white-overlay');
     overlay.style.opacity = '1';  // start fading in
 
     // Get current map from URL or fallback to grasslands

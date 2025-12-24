@@ -532,7 +532,7 @@ function createMoreComplexTrees() {
             treeGroup = create3DTree(x, z, detail, treeVariant);
             treeGroup.position.y = y;
             scene.add(treeGroup);
-            objects.push(treeGroup);
+            GAME.world.objects.push(treeGroup);
             treeGroup.userData.absoluteTreeHeight = y + treeGroup.userData.treeHeight;
         } else {
             sprite = create2DSprite(x, z, treeVariant);
@@ -589,15 +589,15 @@ function updateTreeLOD() {
                     tree.group.position.y = getTerrainHeightAt(tree.position.x, tree.position.z);
                     tree.group.userData.absoluteTreeHeight = tree.group.position.y + tree.group.userData.treeHeight;
                     scene.add(tree.group);
-                    objects.push(tree.group);
+                    GAME.world.objects.push(tree.group);
                 }
                 tree.is3D = true;
             } else {
                 if (tree.group) {
                     scene.remove(tree.group);
-                    const groupIndex = objects.indexOf(tree.group);
+                    const groupIndex = GAME.world.objects.indexOf(tree.group);
                     if (groupIndex > -1) {
-                        objects.splice(groupIndex, 1);
+                        GAME.world.objects.splice(groupIndex, 1);
                     }
                     tree.group = null;
                 }

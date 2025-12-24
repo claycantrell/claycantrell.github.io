@@ -142,7 +142,7 @@ function createPortals() {
         }
 
         scene.add(portalGroup);
-        objects.push(portalGroup);
+        GAME.world.objects.push(portalGroup);
     }
 }
 

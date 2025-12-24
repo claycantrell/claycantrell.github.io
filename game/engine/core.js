@@ -1,10 +1,7 @@
 // Core Three.js setup and initialization
 // All state is now stored in GAME namespace (see namespace.js)
 
-// Local references for convenience (pointing to GAME namespace)
-let notificationTimeout;
-
-// Cache DOM elements immediately
+// Cache DOM elements immediately (for instructions only - other DOM caching in ui.js)
 const instructionMessage = document.getElementById('instruction-message');
 const instructionsParagraph = document.getElementById('instructions');
 

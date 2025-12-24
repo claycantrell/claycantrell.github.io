@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>3D Interactive Demo</title>
+  <script type="module" crossorigin src="./assets/index-CgKSy9NX.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BniTenmJ.css">
+</head>
+
+<body>
+    <div id="notification"></div>
+    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/mute.png" alt="Audio Icon">
+
+    <!-- Instructional Message -->
+    <div id="instruction-message">
+        <p id="instructions">
+            <!-- Instructions will be populated by JavaScript -->
+        </p>
+    </div>
+
+    <!-- Exit Button -->
+    <button id="exit-button">Go Home</button>
+
+    <!-- Map Button (hidden) -->
+    <button id="map-button" title="Select Map (M)">Maps</button>
+
+    <!-- Info Panel -->
+    <div id="info-panel">
+        <span class="key">WASD</span> - Move<br>
+        <span class="key">SPACE</span> - Fly<br>
+        <span class="key">V</span> - Camera View<br>
+        <span class="key">B</span> - Build Mode<br>
+        <span class="key">Enter</span> - Chat
+    </div>
+
+    <!-- Chat System (RuneScape style) -->
+    <div id="chat-container">
+        <div id="chat-toggle">Chat</div>
+        <div id="chat-box" class="chat-closed">
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="100">
+            </div>
+        </div>
+    </div>
+
+    <!-- Main game module (Vite bundled) -->
+
+    <!-- White Overlay for fade-out effect -->
+    <div id="white-overlay"></div>
+</body>
+
+</html>

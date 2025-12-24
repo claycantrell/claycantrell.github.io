@@ -23,7 +23,14 @@ const GAME = {
         portals: [],
         objects: [],
         treeData: [],
-        groundMesh: null
+        groundMesh: null,
+        // Entity lists (populated by entity systems)
+        entities: {
+            deer: [],
+            bunnies: [],
+            birds: [],
+            npc: null
+        }
     },
 
     // Resources
@@ -78,7 +85,7 @@ const GAME = {
         socket: null,
         playerId: null,
         isConnected: false,
-        otherPlayers: new Map()
+        otherPlayers: new Map()  // id -> {mesh, targetPosition, targetRotation, lastUpdate}
     },
 
     // DOM elements cache

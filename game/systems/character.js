@@ -89,7 +89,7 @@ function createCharacter() {
     group.position.y = 1;
 
     // Add to objects for collision detection
-    objects.push(group);
+    GAME.world.objects.push(group);
 
     return group;
 }
