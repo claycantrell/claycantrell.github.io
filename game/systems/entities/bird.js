@@ -2,7 +2,12 @@
 // Receives state from server, updates visual models.
 
 let birdList = [];
-const BIRD_COUNT = 30; 
+
+// Get bird count from map config, fallback to default
+function getBirdCount() {
+    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
+    return config.birds?.count || 30;
+} 
 
 // Create a single bird visual entity
 function createBird(id, x, z) {

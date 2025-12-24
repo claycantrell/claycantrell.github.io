@@ -2,7 +2,12 @@
 // Receives state from server, updates visual models.
 
 let deerList = [];
-const DEER_COUNT = 18; // Increased by 50% (was 12)
+
+// Get deer count from map config, fallback to default
+function getDeerCount() {
+    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
+    return config.deer?.count || 18;
+}
 
 // Create a single deer visual entity
 function createDeer(id, x, z) {

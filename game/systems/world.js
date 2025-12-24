@@ -1,10 +1,40 @@
 // World/environment creation (portals, trees, ground)
 
-// Terrain generation using Simplex Noise - Minecraft/Runescape style
-const simplex = new SimplexNoise('skyrim'); // Use a seed for consistent terrain
-const terrainSize = 800;
-const terrainSegments = 200;
-let terrainHeightmap = null; // 2D array storing height at each grid point
+// Terrain state - initialized from config
+let simplex = null;
+let terrainSize = 800;
+let terrainSegments = 200;
+let terrainHeightmap = null;
+let terrainConfig = null;
+
+// Initialize terrain from map config
+function initTerrainConfig() {
+    const config = typeof getTerrainConfig === 'function' ? getTerrainConfig() : {};
+    terrainConfig = {
+        size: config.size || 800,
+        segments: config.segments || 200,
+        seed: config.seed || 'skyrim',
+        noise: {
+            scale: config.noise?.scale || 0.02,
+            octaves: config.noise?.octaves || 4,
+            persistence: config.noise?.persistence || 0.5,
+            lacunarity: config.noise?.lacunarity || 2.0
+        },
+        elevation: {
+            hillHeight: config.elevation?.hillHeight || 4,
+            plateauRadius: config.elevation?.plateauRadius || 30,
+            mountainStartRadius: config.elevation?.mountainStartRadius || 110,
+            mountainHeight: config.elevation?.mountainHeight || 120
+        },
+        color: config.color || '#4a7c4e'
+    };
+
+    terrainSize = terrainConfig.size;
+    terrainSegments = terrainConfig.segments;
+    simplex = new SimplexNoise(terrainConfig.seed);
+
+    return terrainConfig;
+}
 
 // Smoothstep function for blending
 function smoothstep(min, max, value) {
@@ -53,10 +83,15 @@ function getTerrainHeightAt(x, z) {
 }
 
 function calculateTerrainHeight(x, z) {
-    const scale = 0.02;
-    const octaves = 4;
-    const persistence = 0.5;
-    const lacunarity = 2.0;
+    // Use config values (with fallbacks for safety)
+    const cfg = terrainConfig || {};
+    const noise = cfg.noise || {};
+    const elev = cfg.elevation || {};
+
+    const scale = noise.scale || 0.02;
+    const octaves = noise.octaves || 4;
+    const persistence = noise.persistence || 0.5;
+    const lacunarity = noise.lacunarity || 2.0;
 
     let total = 0;
     let frequency = 1;
@@ -70,35 +105,28 @@ function calculateTerrainHeight(x, z) {
         frequency *= lacunarity;
     }
 
-    const hillHeight = 4;
+    const hillHeight = elev.hillHeight || 4;
     let height = (total / maxValue) * hillHeight;
 
-    const plateauRadius = 30;
+    const plateauRadius = elev.plateauRadius || 30;
     const distanceToCenter = Math.sqrt(x * x + z * z);
-    
+
     // Create plateau at center
     if (distanceToCenter < plateauRadius) {
         const blendFactor = smoothstep(0, 1, distanceToCenter / plateauRadius);
         height *= blendFactor;
     }
-    
+
     // Mountain generation for distant terrain
-    const mountainStartRadius = 110; // Start raising terrain outside playable area
+    const mountainStartRadius = elev.mountainStartRadius || 110;
     if (distanceToCenter > mountainStartRadius) {
-        // Calculate transition factor (0 at boundary, increases outwards)
-        // Transition region over 150 units
         const transition = Math.min(1, Math.max(0, (distanceToCenter - mountainStartRadius) / 150));
-        
-        // Add large scale mountain noise
+
         const mountainScale = 0.01;
-        // Use different offset to avoid correlation with ground detail
         const mountainNoise = simplex.noise2D(x * mountainScale + 1000, z * mountainScale + 1000);
-        
-        // Map -1..1 to 0..1 roughly, but we want mountains to go up
-        // Height increase: up to 120 units
-        const mountainHeight = (mountainNoise * 0.5 + 0.5) * 120 * transition; 
-        
-        // Blend it in
+
+        const mountainHeight = (mountainNoise * 0.5 + 0.5) * (elev.mountainHeight || 120) * transition;
+
         height += mountainHeight;
     }
 
@@ -106,6 +134,9 @@ function calculateTerrainHeight(x, z) {
 }
 
 function createHillyGround() {
+    // Initialize terrain config from map
+    initTerrainConfig();
+
     // Precompute heightmap for entire terrain (like Minecraft chunks)
     terrainHeightmap = [];
     for (let z = 0; z <= terrainSegments; z++) {
@@ -133,10 +164,19 @@ function createHillyGround() {
     groundGeometry.attributes.position.needsUpdate = true;
     groundGeometry.computeVertexNormals();
 
-    const ground = new THREE.Mesh(groundGeometry, sharedMaterials.ground);
+    // Use ground color from config if available
+    let groundMaterial = sharedMaterials.ground;
+    if (terrainConfig && terrainConfig.color) {
+        groundMaterial = new THREE.MeshBasicMaterial({
+            color: terrainConfig.color,
+            flatShading: true
+        });
+    }
+
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
-    
+
     // Expose ground mesh globally for raycasting/building
     window.groundMesh = ground;
 
@@ -145,18 +185,31 @@ function createHillyGround() {
     if (typeof window !== 'undefined') {
         window.isTerrainReady = true;
     }
+
+    console.log(`Terrain created: ${terrainSize}x${terrainSize}, seed: ${terrainConfig.seed}`);
 }
 
 
 // Function to create portals
 function createPortals() {
-    const portalNames = ['WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME', 'WELCOME'];
-    const radius = 19.5;
-    const angleIncrement = (Math.PI * 2) / 6;
-    const portalColors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x8B00FF];
+    // Get portal config from map
+    const portalConfig = typeof getPortalConfig === 'function' ? getPortalConfig() : {};
+    const configPortals = portalConfig.portals || [];
+    const radius = portalConfig.radius || 19.5;
 
-    for (let i = 0; i < 6; i++) {
-        const angle = angleIncrement * i;
+    // Use config portals if available, otherwise use defaults
+    const portalData = configPortals.length > 0 ? configPortals : [
+        { name: 'WELCOME', angle: 0, color: '#FF0000' },
+        { name: 'WELCOME', angle: 60, color: '#FF7F00' },
+        { name: 'WELCOME', angle: 120, color: '#FFFF00' },
+        { name: 'WELCOME', angle: 180, color: '#00FF00' },
+        { name: 'WELCOME', angle: 240, color: '#0000FF' },
+        { name: 'WELCOME', angle: 300, color: '#8B00FF' }
+    ];
+
+    for (let i = 0; i < portalData.length; i++) {
+        const portal = portalData[i];
+        const angle = (portal.angle || 0) * (Math.PI / 180); // Convert degrees to radians
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
         const y = getTerrainHeightAt(x, z); // Portals are now placed on the flat plateau
@@ -172,8 +225,9 @@ function createPortals() {
 
         // Inner Portal with Flat Shading
         const innerGeometry = new THREE.PlaneGeometry(4.55, 9.75);
+        const portalColor = portal.color || '#FF0000';
         const innerMaterial = new THREE.MeshBasicMaterial({
-            color: portalColors[i],
+            color: portalColor,
             flatShading: true
         });
         const innerPortal = new THREE.Mesh(innerGeometry, innerMaterial);
@@ -188,9 +242,12 @@ function createPortals() {
         portalGroup.lookAt(0, 0, 0);
         portalGroup.rotateY(Math.PI);
 
+        // Get portal name from config
+        const portalName = portal.name || 'PORTAL';
+
         // Add label with Retro Font
         if (font) {
-            const textGeometry = new THREE.TextGeometry(portalNames[i], {
+            const textGeometry = new THREE.TextGeometry(portalName, {
                 font: font,
                 size: 1.04,
                 depth: 0.1, // Extrusion depth (was using wrong parameter name 'height')
@@ -216,7 +273,7 @@ function createPortals() {
             // Add floating animation to the label
             portals.push({
                 group: portalGroup,
-                name: portalNames[i],
+                name: portalName,
                 innerPortal: innerPortal,
                 labelMesh: textMesh,
                 labelStartY: textMesh.position.y,
@@ -224,7 +281,7 @@ function createPortals() {
         } else {
             portals.push({
                 group: portalGroup,
-                name: portalNames[i],
+                name: portalName,
                 innerPortal: innerPortal,
             });
         }
@@ -418,6 +475,22 @@ function create2DSprite(x, z, isOak = false) {
     return spriteGroup;
 }
 
+// Get tree config values from map config, with fallbacks
+function getTreeSettings() {
+    // getTreeConfig is defined in map-loader.js
+    const config = typeof getTreeConfig === 'function' ? getTreeConfig() : {};
+    return {
+        count: config.count || PERFORMANCE.treeCount || 700,
+        radius: config.radius || 380,
+        exclusionRadius: config.exclusionRadius || 35,
+        minSpacing: config.minSpacing || 15,
+        types: {
+            pine: { weight: config.types?.pine?.weight ?? 0.9 },
+            oak: { weight: config.types?.oak?.weight ?? 0.1 }
+        }
+    };
+}
+
 // Function to create more complex trees (optimized for performance with LOD)
 function createMoreComplexTrees() {
     // Initialize shared materials if not already done
@@ -425,14 +498,21 @@ function createMoreComplexTrees() {
         initSharedMaterials();
     }
 
-    const treeCount = PERFORMANCE.treeCount;
-    const treeRadius = 380; // Increased radius to place trees on the extended terrain
-    const minDistanceFromCenter = 35; // Keep trees outside the flattened portal area
+    // Get tree config from map
+    const treeSettings = getTreeSettings();
+    const treeCount = treeSettings.count;
+    const treeRadius = treeSettings.radius;
+    const minDistanceFromCenter = treeSettings.exclusionRadius;
+    const minSpacing = treeSettings.minSpacing;
+    const oakWeight = treeSettings.types.oak.weight;
+
     const detail = PERFORMANCE.treeDetail;
     const lodDistance = PERFORMANCE.rendering.lodDistance;
 
     // Clear existing tree data
     treeData = [];
+
+    console.log(`Creating ${treeCount} trees (radius: ${treeRadius}, exclusion: ${minDistanceFromCenter}, oak weight: ${oakWeight})`);
 
     for (let i = 0; i < treeCount; i++) {
         // Distribute trees in a circular area, avoiding the center
@@ -440,11 +520,10 @@ function createMoreComplexTrees() {
         const distance = minDistanceFromCenter + Math.random() * (treeRadius - minDistanceFromCenter);
         const x = Math.cos(angle) * distance;
         const z = Math.sin(angle) * distance;
-        
+
         // Check for overlap with existing trees to prevent z-fighting/clipping
         let overlap = false;
-        const minSpacing = 15; // Minimum distance between trees
-        
+
         for (let j = 0; j < treeData.length; j++) {
             const otherTree = treeData[j];
             const dist = Math.sqrt(Math.pow(x - otherTree.position.x, 2) + Math.pow(z - otherTree.position.z, 2));
@@ -453,12 +532,12 @@ function createMoreComplexTrees() {
                 break;
             }
         }
-        
+
         if (overlap) {
             i--; // Try again
             continue;
         }
-        
+
         // Set tree's y position based on terrain height
         const y = getTerrainHeightAt(x, z);
 
@@ -470,10 +549,9 @@ function createMoreComplexTrees() {
 
         let treeGroup, sprite;
         let is3D = distFromChar < lodDistance;
-        
-        // Determine tree type: 10% chance for Autumn Oak, 90% for Standard Pine
-        // We'll store the type in userData to maintain consistency during LOD switches
-        const isOak = Math.random() < 0.1; // Sparsely populate (10%)
+
+        // Determine tree type based on config weights
+        const isOak = Math.random() < oakWeight;
 
         if (is3D) {
             // Create full 3D tree

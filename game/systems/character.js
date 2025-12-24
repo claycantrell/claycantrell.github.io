@@ -1,5 +1,30 @@
 // Character creation and movement logic
 
+// Get character config values from map config, with fallbacks
+function getCharacterSettings() {
+    // getCharacterConfig is defined in map-loader.js (character movement settings)
+    const config = typeof getCharacterConfig === 'function' ? getCharacterConfig() : {};
+    // getSpawnConfig is defined in map-loader.js (spawn position - root level in config)
+    const spawnConfig = typeof getSpawnConfig === 'function' ? getSpawnConfig() : {};
+    // getTerrainConfig is defined in map-loader.js (boundary is in terrain config)
+    const terrainConfig = typeof getTerrainConfig === 'function' ? getTerrainConfig() : {};
+
+    return {
+        moveSpeed: config.moveSpeed ?? 20.0,
+        flySpeed: config.flySpeed ?? 15.0,
+        rotationSpeed: config.rotationSpeed ?? 2.0,
+        gravity: config.gravity ?? 25.0,
+        boundary: terrainConfig.boundary ?? 120,
+        spawn: {
+            position: {
+                x: spawnConfig.position?.x ?? 0,
+                z: spawnConfig.position?.z ?? 0
+            },
+            rotation: spawnConfig.rotation ?? 0
+        }
+    };
+}
+
 // Function to create character
 function createCharacter() {
     const group = new THREE.Group();
@@ -39,16 +64,31 @@ function createCharacter() {
     return group;
 }
 
-// Character movement calculations (called from game.js)
+// Initialize character position from config (call after terrain is ready)
+function initCharacterSpawn(charGroup) {
+    const charConfig = getCharacterSettings();
+    const spawnX = charConfig.spawn.position.x;
+    const spawnZ = charConfig.spawn.position.z;
+
+    // Get terrain height at spawn point
+    const spawnY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(spawnX, spawnZ) + 1 : 1;
+
+    charGroup.position.set(spawnX, spawnY, spawnZ);
+    charGroup.rotation.y = charConfig.spawn.rotation;
+
+    console.log(`Character spawned at (${spawnX}, ${spawnY.toFixed(2)}, ${spawnZ}) rotation: ${charConfig.spawn.rotation}`);
+}
+
 // Character movement calculations (called from game.js) - Raycasting-based terrain following
 function updateCharacterMovement(delta) {
     if (!isTerrainReady) return; // Do not run movement logic until terrain is ready
 
-    // Movement parameters
-    const rotationSpeed = 2.0;
-    const moveSpeed = 20.0;
-    const flySpeed = 15.0;
-    const gravity = 25.0;
+    // Get movement parameters from config
+    const charConfig = getCharacterSettings();
+    const rotationSpeed = charConfig.rotationSpeed;
+    const moveSpeed = charConfig.moveSpeed;
+    const flySpeed = charConfig.flySpeed;
+    const gravity = charConfig.gravity;
 
     // Handle rotation
     if (rotateLeft) {
@@ -143,8 +183,8 @@ function updateCharacterMovement(delta) {
         }
     }
 
-    // Boundary check
-    const boundary = 120;
+    // Boundary check using config value
+    const boundary = charConfig.boundary;
     character.position.x = Math.max(-boundary, Math.min(boundary, character.position.x));
     character.position.z = Math.max(-boundary, Math.min(boundary, character.position.z));
 

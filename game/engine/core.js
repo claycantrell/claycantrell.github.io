@@ -84,17 +84,23 @@ function init() {
         return;
     }
 
+    // Get rendering config from map
+    const renderConfig = typeof getRenderingConfig === 'function' ? getRenderingConfig() : {};
+    const backgroundColor = renderConfig.backgroundColor || '#191970';
+    const fogColor = renderConfig.fogColor || '#000000';
+    const baseFogDensity = renderConfig.fogDensity || 0.003;
+
     // Scene setup
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x191970); // Black background for infinite dark void
+    scene.background = new THREE.Color(backgroundColor);
     // Fog adds overhead - can disable for even lower load
     // Exponential fog to fade into darkness seamlessly
     // Initial fog density - extended range for brighter times
-    const minFogDensity = 0.003; // Even less fog for brightest times
-    const maxFogDensity = 0.034;
+    const minFogDensity = baseFogDensity;
+    const maxFogDensity = baseFogDensity * 11; // Scale max fog based on config
     const fogCycleDuration = 4 * 60 * 1000; // 4 minutes in milliseconds (twice as long)
-    
-    scene.fog = new THREE.FogExp2(0x000000, minFogDensity); // Black exponential fog
+
+    scene.fog = new THREE.FogExp2(fogColor, minFogDensity);
 
     // Start fog density transition loop
     // Use the shared time system for synchronization
@@ -155,14 +161,18 @@ function init() {
         1000
     );
 
-    // Add ambient light for general illumination
-    // Reduced intensity slightly to let directional light provide contrast
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
+    // Add ambient light for general illumination (config-driven)
+    const ambientIntensity = renderConfig.ambientLight?.intensity ?? 0.5;
+    const ambientColor = renderConfig.ambientLight?.color || '#ffffff';
+    const ambientLight = new THREE.AmbientLight(ambientColor, ambientIntensity);
     scene.add(ambientLight);
 
-    // Add directional light (sun/moon)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Stronger directional light
-    directionalLight.position.set(50, 100, 50);
+    // Add directional light (sun/moon) (config-driven)
+    const directionalIntensity = renderConfig.directionalLight?.intensity ?? 1.0;
+    const directionalColor = renderConfig.directionalLight?.color || '#ffffff';
+    const directionalPos = renderConfig.directionalLight?.position || { x: 50, y: 100, z: 50 };
+    const directionalLight = new THREE.DirectionalLight(directionalColor, directionalIntensity);
+    directionalLight.position.set(directionalPos.x, directionalPos.y, directionalPos.z);
     scene.add(directionalLight);
 
     // Renderer setup - Optimized for low-end hardware
@@ -188,13 +198,19 @@ function init() {
     // Ground with Flat Shading - now generated with hills
     createHillyGround();
 
-    // Character setup - position will be set by multiplayer spawn or default
+    // Character setup - position will be set from map config or multiplayer
     character = createCharacter();
-    // Default spawn position (used if multiplayer not available)
-    const spawnHeight = getTerrainHeightAt(-50, -50) + 1.0;
-    character.position.set(-50, spawnHeight, -50);
-    character.rotation.y = Math.PI / 4;
     scene.add(character);
+
+    // Initialize spawn position from config (uses character.js config)
+    if (typeof initCharacterSpawn === 'function') {
+        initCharacterSpawn(character);
+    } else {
+        // Fallback to default spawn if function not available
+        const spawnHeight = getTerrainHeightAt(-50, -50) + 1.0;
+        character.position.set(-50, spawnHeight, -50);
+        character.rotation.y = Math.PI / 4;
+    }
 
     // Create Portals (place them on the terrain)
     createPortals();

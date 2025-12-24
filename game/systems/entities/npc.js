@@ -3,13 +3,25 @@
 let npc = null;
 let npcState = 'wandering'; // 'wandering' or 'staring'
 let npcWanderTarget = null;
-let npcWanderSpeed = 5.0;
-let npcDetectionDistance = 15.0; // Distance at which NPC stops and stares
-let npcLeaveDistance = 20.0; // Distance at which NPC resumes wandering
-let npcWanderRadius = 100.0; // How far NPC can wander from spawn (entire map)
 let npcSpawnPosition = new THREE.Vector3(0, 0, 0);
 let npcHasGreeted = false; // Track if NPC has greeted player
 let npcIsNearby = false; // Track if player is near NPC
+
+// Get NPC config values from map config, with fallbacks
+function getNPCConfig() {
+    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
+    return {
+        enabled: config.npc?.enabled ?? true,
+        speed: config.npc?.speed ?? 5.0,
+        detectionDistance: config.npc?.detectionDistance ?? 15.0,
+        leaveDistance: config.npc?.leaveDistance ?? 20.0,
+        wanderRadius: config.npc?.wanderRadius ?? 100.0,
+        spawnRadius: {
+            min: config.npc?.spawnRadius?.min ?? 29.5,
+            max: config.npc?.spawnRadius?.max ?? 49.5
+        }
+    };
+}
 
 // Create NPC (purple version of player character)
 function createNPC(spawnX = 0, spawnZ = 0) {
@@ -65,29 +77,37 @@ function createNPC(spawnX = 0, spawnZ = 0) {
 
 // Initialize NPC
 function initNPC() {
-    // Spawn NPC near the welcome doors (portals are at radius ~19.5)
-    // Spawn within a decent range of portals but can wander anywhere
-    const portalRadius = 19.5;
-    
+    const config = getNPCConfig();
+
+    // Check if NPC is enabled for this map
+    if (!config.enabled) {
+        console.log("NPC disabled for this map");
+        return;
+    }
+
     // Use seeded random for consistent spawn
     const seedOffset = 9999;
-    const spawnRadius = portalRadius + 10 + seededRandom(seedOffset) * 20; 
+    const spawnRadius = config.spawnRadius.min + seededRandom(seedOffset) * (config.spawnRadius.max - config.spawnRadius.min);
     const spawnAngle = seededRandom(seedOffset + 1) * Math.PI * 2;
-    
+
     const spawnX = Math.cos(spawnAngle) * spawnRadius;
     const spawnZ = Math.sin(spawnAngle) * spawnRadius;
     npc = createNPC(spawnX, spawnZ);
+
+    console.log(`NPC spawned at radius ${spawnRadius.toFixed(1)}`);
 }
 
 // Update NPC behavior
 function updateNPC(delta) {
+    const config = getNPCConfig();
+
     // If we are NOT the host and multiplayer is active, skip update logic (let sync handle it)
     // Check global isAnimalHost flag from animal-sync.js
     if (typeof isAnimalHost !== 'undefined' && !isAnimalHost && typeof isConnected !== 'undefined' && isConnected) {
         // Update distance/nearby status for CHAT even if movement is synced
         // This allows non-hosts to interact with Scribe chat
         const dist = npc.position.distanceTo(character.position);
-        npcIsNearby = dist < npcDetectionDistance;
+        npcIsNearby = dist < config.detectionDistance;
         
         if (npcIsNearby && !npcHasGreeted && typeof addChatMessage === 'function') {
              const greetings = [
@@ -101,7 +121,7 @@ function updateNPC(delta) {
             npcHasGreeted = true;
         }
         // Reset greeted if far away
-        if (dist > npcLeaveDistance) {
+        if (dist > config.leaveDistance) {
             npcHasGreeted = false;
             npcIsNearby = false;
         }
@@ -114,7 +134,7 @@ function updateNPC(delta) {
 
     if (npcState === 'wandering') {
         // Check if player is close enough to trigger stare
-        if (distanceToPlayer < npcDetectionDistance) {
+        if (distanceToPlayer < config.detectionDistance) {
             npcState = 'staring';
             npcIsNearby = true;
             // Stop moving immediately
@@ -161,7 +181,7 @@ function updateNPC(delta) {
                 } else {
                     // Move toward target
                     const direction = new THREE.Vector3().subVectors(npcWanderTarget, npc.position).normalize();
-                    npc.position.addScaledVector(direction, npcWanderSpeed * delta);
+                    npc.position.addScaledVector(direction, config.speed * delta);
 
                     // Update NPC height to follow terrain
                     const terrainHeight = getTerrainHeightAt(npc.position.x, npc.position.z);
@@ -175,7 +195,7 @@ function updateNPC(delta) {
         }
     } else if (npcState === 'staring') {
         // Check if player has left
-        if (distanceToPlayer > npcLeaveDistance) {
+        if (distanceToPlayer > config.leaveDistance) {
             npcState = 'wandering';
             npcIsNearby = false;
             npcHasGreeted = false; // Reset greeting for next encounter

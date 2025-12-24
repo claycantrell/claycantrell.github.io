@@ -21,7 +21,7 @@
       "mountainHeight": 120
     },
     "boundary": 120,
-    "color": "#4a7c4e"
+    "color": "#004d00"
   },
 
   "spawn": {
@@ -75,7 +75,7 @@
 
   "rendering": {
     "backgroundColor": "#191970",
-    "fogColor": "#191970",
+    "fogColor": "#000000",
     "fogDensity": 0.003,
     "ambientLight": { "color": "#ffffff", "intensity": 0.5 },
     "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } },

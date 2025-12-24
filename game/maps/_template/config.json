@@ -1,6 +1,6 @@
 {
-  "id": "new-map",
-  "name": "New Map",
+  "id": "my-new-map",
+  "name": "My New Map",
   "description": "Description of your map",
   "version": "1.0",
 
@@ -21,7 +21,7 @@
       "mountainHeight": 120
     },
     "boundary": 120,
-    "color": "#4a7c4e"
+    "color": "#004d00"
   },
 
   "spawn": {
@@ -29,15 +29,17 @@
     "rotation": 0
   },
 
-  "portals": [],
+  "portals": [
+    { "name": "PORTAL 1", "angle": 0, "color": "#ff0000" },
+    { "name": "PORTAL 2", "angle": 180, "color": "#00ff00" }
+  ],
   "portalRadius": 19.5,
 
   "trees": {
     "count": 500,
-    "radius": 300,
-    "exclusionRadius": 30,
+    "radius": 380,
+    "exclusionRadius": 35,
     "minSpacing": 15,
-    "lodDistance": 80,
     "types": {
       "pine": { "weight": 0.9 },
       "oak": { "weight": 0.1 }
@@ -46,40 +48,35 @@
 
   "entities": {
     "npc": {
-      "enabled": false,
-      "spawnRadius": { "min": 20, "max": 50 },
+      "enabled": true,
+      "spawnRadius": { "min": 29.5, "max": 49.5 },
       "wanderRadius": 100,
       "detectionDistance": 15,
       "leaveDistance": 20,
       "speed": 5.0
     },
-    "deer": { "count": 10, "spawnRadius": { "min": 60, "max": 300 } },
-    "bunnies": { "count": 15, "spawnRadius": { "min": 40, "max": 300 } },
-    "birds": { "count": 20, "spawnRadius": { "min": 0, "max": 250 }, "baseHeight": 20 }
+    "deer": { "count": 10 },
+    "bunnies": { "count": 10 },
+    "birds": { "count": 20 }
   },
 
   "character": {
     "moveSpeed": 20.0,
     "rotationSpeed": 2.0,
     "flySpeed": 15.0,
-    "gravity": 25.0,
-    "collisionRadius": 3.0
+    "gravity": 25.0
   },
 
   "rendering": {
     "backgroundColor": "#191970",
-    "fogColor": "#191970",
+    "fogColor": "#000000",
     "fogDensity": 0.003,
     "ambientLight": { "color": "#ffffff", "intensity": 0.5 },
-    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } },
-    "maxDrawDistance": 300,
-    "lodDistance": 80,
-    "lodUpdateInterval": 500
+    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 50, "y": 100, "z": 50 } }
   },
 
   "audio": {
     "background": "assets/audio/background.mp3",
-    "volume": 0.5,
-    "loop": true
+    "volume": 0.5
   }
 }

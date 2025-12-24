@@ -2,7 +2,12 @@
 // Receives state from server, updates visual models.
 
 let bunnyList = [];
-const BUNNY_COUNT = 20; // Must match server
+
+// Get bunny count from map config, fallback to default
+function getBunnyCount() {
+    const config = typeof getEntityConfig === 'function' ? getEntityConfig() : {};
+    return config.bunnies?.count || 20;
+}
 
 // Create a single bunny visual entity
 function createBunny(id, x, z) {
