@@ -2,9 +2,9 @@
 
 // Initialize UI
 function initUI() {
-    // Exit Button -> Home
+    // Exit Button -> Home (relative path for GitHub Pages compatibility)
     document.getElementById('exit-button').addEventListener('click', () => {
-        window.location.href = '/pages/home.html';
+        window.location.href = '../pages/home.html';
     });
 
     // Map Button -> Open map menu
@@ -40,13 +40,21 @@ function showNotification(message) {
     }, 2000);
 }
 
-// Fade out function
+// Fade out function - navigates to the other map
 function fadeOutToWhite() {
     const overlay = document.getElementById('white-overlay');
     overlay.style.opacity = '1';  // start fading in
-    // After the transition, redirect to home.html
+
+    // Get current map from URL or fallback to grasslands
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentMap = urlParams.get('map') || 'grasslands';
+
+    // Switch to the other map
+    const targetMap = currentMap === 'desert' ? 'grasslands' : 'desert';
+
+    // After the transition, redirect to the other map
     setTimeout(() => {
-        window.location.href = '/pages/home.html';
+        window.location.href = window.location.pathname + '?map=' + targetMap;
     }, 2000);
 }
 

@@ -81,14 +81,14 @@ canvas {
     position: absolute;
     top: 2%;
     right: 2%;
-    padding: 15px 30px;
+    padding: 10px 20px;
     background-color: rgba(139, 69, 19, 0.95);
     color: #F5DEB3;
-    border: 4px solid #8B4513;
-    border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    border: 3px solid #8B4513;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
     font-family: 'Press Start 2P', cursive;
-    font-size: 32px;
+    font-size: 16px;
     cursor: pointer;
     z-index: 40;
     /* Above most elements */
@@ -98,8 +98,9 @@ canvas {
     background-color: rgba(139, 69, 19, 1);
 }
 
-/* Map button styling */
+/* Map button styling - hidden by default */
 #map-button {
+    display: none;
     position: absolute;
     top: 2%;
     left: 2%;
@@ -119,6 +120,28 @@ canvas {
     background-color: rgba(74, 124, 78, 1);
 }
 
+/* Instruction panel in top right */
+#info-panel {
+    position: absolute;
+    top: 70px;
+    right: 2%;
+    padding: 12px 16px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #F5DEB3;
+    border: 2px solid #8B4513;
+    border-radius: 8px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    line-height: 1.8;
+    z-index: 40;
+    max-width: 200px;
+}
+
+#info-panel .key {
+    color: #FFFF00;
+    font-weight: bold;
+}
+
 /* Adjustments for smaller screens */
 @media (max-width: 480px) {
     #instruction-message {
@@ -132,14 +155,22 @@ canvas {
 
     /* Scale down the exit button */
     #exit-button {
-        font-size: 62px;
-        padding: 10px 20px;
+        font-size: 12px;
+        padding: 8px 16px;
     }
 
     /* Scale down the map button */
     #map-button {
         font-size: 16px;
         padding: 10px 20px;
+    }
+
+    /* Scale down info panel */
+    #info-panel {
+        top: 55px;
+        font-size: 8px;
+        padding: 8px 12px;
+        max-width: 150px;
     }
 }
 

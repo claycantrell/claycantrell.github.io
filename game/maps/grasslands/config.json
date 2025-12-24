@@ -34,10 +34,7 @@
   },
 
   "portals": [
-    { "name": "FOREST", "angle": 45, "color": "#228B22" },
-    { "name": "DESERT", "angle": 135, "color": "#C2B280" },
-    { "name": "TUNDRA", "angle": 225, "color": "#708090" },
-    { "name": "JUNGLE", "angle": 315, "color": "#006400" }
+    { "name": "DESERT", "angle": 0, "color": "#C2B280" }
   ],
   "portalRadius": 50,
 

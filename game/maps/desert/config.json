@@ -38,10 +38,7 @@
   },
 
   "portals": [
-    { "name": "OASIS", "angle": 45, "color": "#00BFFF" },
-    { "name": "PYRAMID", "angle": 135, "color": "#FFD700" },
-    { "name": "RUINS", "angle": 225, "color": "#8B4513" },
-    { "name": "MIRAGE", "angle": 315, "color": "#FF6347" }
+    { "name": "GRASSLANDS", "angle": 0, "color": "#228B22" }
   ],
   "portalRadius": 50,
 
