@@ -90,7 +90,7 @@ const BIOMES = {
         id: 'forest',
         name: 'Forest',
         params: { temp: 0, humid: 0.6, cont: 0.15, erosion: 0.15, weird: 0 },
-        color: 0x228B22,
+        color: 0x1A5C1A,
         vegetation: { density: 0.85, types: { oak: 0.6, pine: 0.4 } },
         entities: { deer: 1.5, bunny: 0.8, bird: 1.2 }
     },
@@ -106,7 +106,7 @@ const BIOMES = {
         id: 'meadow',
         name: 'Meadow',
         params: { temp: 0, humid: 0.2, cont: 0.2, erosion: 0.3, weird: 0 },
-        color: 0x90EE90,
+        color: 0x7DB37D,
         vegetation: { density: 0.08, types: { oak: 0.8, pine: 0.2 } },
         entities: { deer: 0.8, bunny: 1.2, bird: 1.0 }
     },
@@ -132,7 +132,7 @@ const BIOMES = {
         id: 'warmForest',
         name: 'Warm Forest',
         params: { temp: 0.4, humid: 0.5, cont: 0.15, erosion: 0.2, weird: 0 },
-        color: 0x32CD32,
+        color: 0x2E7D32,
         vegetation: { density: 0.75, types: { oak: 0.9, pine: 0.1 } },
         entities: { deer: 1.2, bunny: 0.6, bird: 1.0 }
     },

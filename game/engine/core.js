@@ -3,6 +3,9 @@
 let scene, camera, renderer;
 let character;
 
+// Lighting references for day/night cycle
+let ambientLight, directionalLight, sunMesh, moonMesh;
+
 // Shared materials (declared here, initialized in performance.js)
 let sharedMaterials = {};
 let moveForward = false,
@@ -102,51 +105,127 @@ function init() {
 
     scene.fog = new THREE.FogExp2(fogColor, minFogDensity);
 
-    // Start fog density transition loop
+    // Start day/night cycle loop
     // Use the shared time system for synchronization
-    
-    // Add fog update to animation loop via a hook or interval
-    // Since we can't easily modify the main loop from here without restructuring,
-    // we'll use a setInterval to update the fog density independently
-    // 30 FPS update for fog is plenty smooth
+    // 30 FPS update is smooth enough for atmospheric changes
     setInterval(() => {
-        // Use shared phase calculation
+        // Use shared phase calculation (0 = day, 1 = night)
         let phase;
         if (typeof getDayNightPhase === 'function') {
             phase = getDayNightPhase();
         } else {
-             // Fallback if time-sync.js not loaded - use same smooth asymmetric calculation
-             const elapsedTime = Date.now() - fogStartTime;
+             // Fallback if time-sync.js not loaded
+             const elapsedTime = Date.now();
              const rawPhase = (elapsedTime % fogCycleDuration) / fogCycleDuration;
-
-             // Same asymmetric calculation as time-sync.js
              const adjustedPhase = Math.pow(rawPhase, 0.8);
              phase = (Math.sin(adjustedPhase * Math.PI * 2) + 1) / 2;
         }
 
+        if (!scene) return;
+
+        // === FOG DENSITY ===
         const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * phase;
-        
-        if (scene && scene.fog) {
+        if (scene.fog) {
             scene.fog.density = currentDensity;
+        }
 
-            // Interpolate background color (Sky)
-            // Phase 1 (max density/foggy) -> Midnight Blue (0x191970)
-            // Phase 0 (min density/clear) -> Bright Sky Blue (0x00BFFF) - brighter than Light Blue
-            // Note: User requested Midnight Blue at foggiest, and brighter times than current max.
+        // === SKY COLOR ===
+        // Day (phase 0): Bright Sky Blue (0, 191, 255)
+        // Night (phase 1): Midnight Blue (25, 25, 112)
+        const skyR = (0 + (25 - 0) * phase) / 255;
+        const skyG = (191 + (25 - 191) * phase) / 255;
+        const skyB = (255 + (112 - 255) * phase) / 255;
+        scene.background.setRGB(skyR, skyG, skyB);
 
-            // Midnight Blue RGB: (25, 25, 112)
-            // Bright Sky Blue RGB: (0, 191, 255) - brighter and more vibrant than Light Blue (135, 206, 235)
+        // === AMBIENT LIGHT ===
+        // Day: brighter (0.7), Night: dimmer (0.15)
+        if (ambientLight) {
+            const ambientDay = 0.7;
+            const ambientNight = 0.15;
+            ambientLight.intensity = ambientDay + (ambientNight - ambientDay) * phase;
+        }
 
-            // Interpolate based on phase (0 to 1)
-            // When phase is 1 (foggiest), we want Midnight Blue (25, 25, 112)
-            // When phase is 0 (clearest), we want Bright Sky Blue (0, 191, 255)
+        // === DIRECTIONAL LIGHT (SUN/MOON) ===
+        if (directionalLight) {
+            // Intensity: Day (1.2) -> Night (0.2)
+            const sunIntensity = 1.2;
+            const moonIntensity = 0.2;
+            directionalLight.intensity = sunIntensity + (moonIntensity - sunIntensity) * phase;
 
-            const r = (0 + (25 - 0) * phase) / 255;
-            const g = (191 + (25 - 191) * phase) / 255;
-            const b = (255 + (112 - 255) * phase) / 255;
-            
-            // ONLY update the background color, NOT the fog color
-            scene.background.setRGB(r, g, b);
+            // Color transition:
+            // Day (phase 0-0.3): Warm white (255, 250, 230)
+            // Sunset/rise (phase 0.3-0.5): Orange-pink (255, 150, 100)
+            // Night (phase 0.5-1): Cool blue-white (180, 200, 255)
+            let lightR, lightG, lightB;
+            if (phase < 0.3) {
+                // Daytime - warm white
+                lightR = 255; lightG = 250; lightB = 230;
+            } else if (phase < 0.5) {
+                // Sunset transition (0.3 -> 0.5)
+                const t = (phase - 0.3) / 0.2;
+                lightR = 255;
+                lightG = 250 - (250 - 150) * t;
+                lightB = 230 - (230 - 100) * t;
+            } else if (phase < 0.7) {
+                // Dusk to night transition (0.5 -> 0.7)
+                const t = (phase - 0.5) / 0.2;
+                lightR = 255 - (255 - 180) * t;
+                lightG = 150 + (200 - 150) * t;
+                lightB = 100 + (255 - 100) * t;
+            } else {
+                // Night - cool moonlight
+                lightR = 180; lightG = 200; lightB = 255;
+            }
+            directionalLight.color.setRGB(lightR / 255, lightG / 255, lightB / 255);
+
+            // === SUN/MOON POSITION ===
+            // Sun/moon at far distance, always follow camera so unreachable
+            if (!camera) return;
+            const camPos = camera.position;
+
+            // Push to near camera far clip (900 of 1000) so unreachable
+            const orbitDistance = 900;
+
+            // Time of day angle
+            // phase 0 = noon (sun at zenith), phase 0.5 = midnight (sun below)
+            const timeAngle = phase * Math.PI * 2;
+            const sunAngle = Math.PI / 2 - timeAngle;
+
+            // Sun: circular arc in sky, always same distance from camera
+            const sunDirX = Math.cos(sunAngle) * 0.7; // Horizontal component
+            const sunDirY = Math.sin(sunAngle);        // Vertical component
+            const sunDirZ = Math.cos(sunAngle) * 0.3; // Slight depth
+
+            if (sunMesh) {
+                sunMesh.position.set(
+                    camPos.x + sunDirX * orbitDistance,
+                    camPos.y + sunDirY * orbitDistance,
+                    camPos.z + sunDirZ * orbitDistance
+                );
+                sunMesh.visible = sunDirY > -0.1;
+            }
+
+            // Moon: opposite side of sun
+            const moonAngle = sunAngle + Math.PI;
+            const moonDirX = Math.cos(moonAngle) * 0.7;
+            const moonDirY = Math.sin(moonAngle);
+            const moonDirZ = Math.cos(moonAngle) * 0.3;
+
+            if (moonMesh) {
+                moonMesh.position.set(
+                    camPos.x + moonDirX * orbitDistance,
+                    camPos.y + moonDirY * orbitDistance,
+                    camPos.z + moonDirZ * orbitDistance
+                );
+                moonMesh.visible = moonDirY > -0.1;
+            }
+
+            // Directional light follows whichever is higher (sun or moon)
+            if (sunDirY > moonDirY) {
+                directionalLight.position.set(sunDirX * 100, Math.max(sunDirY * 100, 50), sunDirZ * 100);
+            } else {
+                directionalLight.position.set(moonDirX * 100, Math.max(moonDirY * 100, 50), moonDirZ * 100);
+            }
         }
     }, 33);
 
@@ -164,16 +243,29 @@ function init() {
     // Add ambient light for general illumination (config-driven)
     const ambientIntensity = renderConfig.ambientLight?.intensity ?? 0.5;
     const ambientColor = renderConfig.ambientLight?.color || '#ffffff';
-    const ambientLight = new THREE.AmbientLight(ambientColor, ambientIntensity);
+    ambientLight = new THREE.AmbientLight(ambientColor, ambientIntensity);
     scene.add(ambientLight);
 
     // Add directional light (sun/moon) (config-driven)
     const directionalIntensity = renderConfig.directionalLight?.intensity ?? 1.0;
     const directionalColor = renderConfig.directionalLight?.color || '#ffffff';
     const directionalPos = renderConfig.directionalLight?.position || { x: 50, y: 100, z: 50 };
-    const directionalLight = new THREE.DirectionalLight(directionalColor, directionalIntensity);
+    directionalLight = new THREE.DirectionalLight(directionalColor, directionalIntensity);
     directionalLight.position.set(directionalPos.x, directionalPos.y, directionalPos.z);
     scene.add(directionalLight);
+
+    // Create visual sun (yellow glowing sphere at distance 900)
+    const sunGeometry = new THREE.SphereGeometry(40, 16, 16);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+    sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+    scene.add(sunMesh);
+
+    // Create visual moon (pale blue sphere, starts hidden)
+    const moonGeometry = new THREE.SphereGeometry(25, 16, 16);
+    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xCCDDFF });
+    moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+    moonMesh.visible = false;
+    scene.add(moonMesh);
 
     // Renderer setup - Optimized for low-end hardware
     renderer = new THREE.WebGLRenderer({ 

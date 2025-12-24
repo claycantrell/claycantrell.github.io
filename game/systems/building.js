@@ -142,7 +142,7 @@ function onBuildKeyDown(event) {
 }
 
 function onBuildMouseMove(event) {
-    if (!isBuildMode || !window.groundMesh) return;
+    if (!isBuildMode) return;
 
     // Calculate mouse position in normalized device coordinates
     buildMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -152,24 +152,37 @@ function onBuildMouseMove(event) {
 }
 
 function updateGhostPosition() {
-    if (!buildGhost || !camera || !window.groundMesh) return;
+    if (!buildGhost || !camera) return;
 
     buildRaycaster.setFromCamera(buildMouse, camera);
-    
-    // Create array of objects to intersect (ground + placed objects)
-    const intersectObjects = [window.groundMesh];
-    
+
+    // Collect all terrain meshes (single groundMesh or chunk meshes)
+    const intersectObjects = [];
+
+    // Check for single-mesh terrain
+    if (window.groundMesh) {
+        intersectObjects.push(window.groundMesh);
+    }
+
+    // Check for chunked terrain
+    if (typeof loadedChunks !== 'undefined') {
+        for (const chunk of loadedChunks.values()) {
+            if (chunk.mesh) {
+                intersectObjects.push(chunk.mesh);
+            }
+        }
+    }
+
     // Add all placed objects to intersection check
-    // We filter objects to only include building blocks (those with specific geometries)
-    // Or just check all objects and filter out characters/animals later
     if (typeof objects !== 'undefined') {
         objects.forEach(obj => {
-            // Only add meshes that are part of the scene and visible
-            if (obj.isMesh && obj.visible && obj !== buildGhost && obj !== window.groundMesh) {
+            if (obj.isMesh && obj.visible && obj !== buildGhost) {
                 intersectObjects.push(obj);
             }
         });
     }
+
+    if (intersectObjects.length === 0) return;
 
     // Intersect with ground AND placed objects
     const intersects = buildRaycaster.intersectObjects(intersectObjects);
@@ -178,15 +191,16 @@ function updateGhostPosition() {
         const intersection = intersects[0];
         const point = intersection.point;
         const normal = intersection.face.normal;
-        
-        // If we hit an object (not ground), we want to build ON TOP of it (or on the side)
-        // Adjust position based on the face normal we hit
-        
+
         let position = point.clone();
-        
-        // If hitting the ground, behavior is standard
-        if (intersection.object === window.groundMesh) {
-             // Adjust height based on object type (center point offset)
+
+        // Check if we hit terrain (groundMesh or chunk)
+        const isGround = intersection.object === window.groundMesh ||
+            (typeof loadedChunks !== 'undefined' &&
+             [...loadedChunks.values()].some(c => c.mesh === intersection.object));
+
+        if (isGround) {
+            // Hitting ground - adjust height based on object type
             let yOffset = 0;
             switch(buildType) {
                 case 0: yOffset = 1.5; break; // Stone radius
@@ -196,32 +210,17 @@ function updateGhostPosition() {
             position.y += yOffset;
         } else {
             // Hitting another object - stack based on normal
-            // Move the center of the new object away from the hit point along the normal
-            // distance = height/radius of the new object
-            
             let offsetDistance = 0;
-             switch(buildType) {
-                case 0: offsetDistance = 1.4; break; // Slightly less than radius to embed slightly
-                case 1: offsetDistance = 2.0; break; 
-                case 2: offsetDistance = 1.5; break; 
+            switch(buildType) {
+                case 0: offsetDistance = 1.4; break;
+                case 1: offsetDistance = 2.0; break;
+                case 2: offsetDistance = 1.5; break;
             }
-            
-            // For vertical stacking (most common), if normal is roughly up
-            if (normal.y > 0.5) {
-                // Just stack vertically
-                // Find the top of the object we hit? 
-                // Simpler: Just place at intersection point + offset
-                 position.add(normal.clone().multiplyScalar(offsetDistance));
-            } else {
-                // Side placement - might be tricky with simple shapes, but let's try
-                 position.add(normal.clone().multiplyScalar(offsetDistance));
-            }
+            position.add(normal.clone().multiplyScalar(offsetDistance));
         }
 
         buildGhost.position.copy(position);
         buildGhost.rotation.y = buildRotation;
-        
-        // If stacking, maybe align rotation to surface? For now keep vertical.
     }
 }
 

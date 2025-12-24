@@ -51,7 +51,7 @@ const SHRUB_TYPES = {
         types: [
             { name: 'fern', color: 0x32cd32, height: 1.5, width: 2, weight: 0.4 },
             { name: 'bush', color: 0x228b22, height: 2, width: 2.5, weight: 0.35 },
-            { name: 'wildflower', color: 0x90ee90, height: 0.8, width: 1, weight: 0.25 }
+            { name: 'wildflower', color: 0x7DB37D, height: 0.8, width: 1, weight: 0.25 }
         ]
     },
 
@@ -67,7 +67,7 @@ const SHRUB_TYPES = {
     meadow: {
         density: 0.35,
         types: [
-            { name: 'wildflower', color: 0x90ee90, height: 0.8, width: 1, weight: 0.4 },
+            { name: 'wildflower', color: 0x7DB37D, height: 0.8, width: 1, weight: 0.4 },
             { name: 'grassClump', color: 0x7cba3d, height: 1, width: 1.5, weight: 0.35 },
             { name: 'smallBush', color: 0x6b8e23, height: 1.2, width: 1.5, weight: 0.25 }
         ]
@@ -285,7 +285,7 @@ function createShrubSprite(x, z, shrubType, terrainHeight) {
 
     const geometry = new THREE.ShapeGeometry(shape);
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = height / 2;
+    // Shape starts at y=0, no offset needed
     spriteGroup.add(mesh);
 
     // Position in world
