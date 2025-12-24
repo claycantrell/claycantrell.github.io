@@ -193,14 +193,30 @@ function handleServerMessage(data) {
              }
              break;
 
+        case 'playersOnMap':
+             // Handle list of players on this map (when joining/switching maps)
+             // First clear any existing other players (they're on a different map)
+             if (typeof otherPlayers !== 'undefined') {
+                 otherPlayers.forEach((player, id) => {
+                     removeOtherPlayer(id);
+                 });
+             }
+             // Add players on this map
+             if (data.players && Array.isArray(data.players)) {
+                 console.log(`Found ${data.players.length} players on this map`);
+                 data.players.forEach(player => {
+                     addOtherPlayer(player.id, player.position, player.rotation);
+                 });
+             }
+             break;
+
         case 'objectBuilt':
-             // Handle new object built by another player
-             if (data.object.ownerId !== playerId && typeof placeObject === 'function') {
-                 placeObject(data.object);
-                 // Optional: Show message
-                 if (typeof addSystemMessage === 'function') {
-                     const typeName = ['Stone', 'Pillar', 'Crystal'][data.object.type] || 'Object';
-                     addSystemMessage(`Someone built a ${typeName}`);
+             // Handle object built or removed by another player
+             if (typeof placeObject === 'function') {
+                 // For removals, always process (we didn't do it locally)
+                 // For placements, skip if we're the owner (we already placed it)
+                 if (data.object.action === 'remove' || data.object.ownerId !== playerId) {
+                     placeObject(data.object);
                  }
              }
              break;

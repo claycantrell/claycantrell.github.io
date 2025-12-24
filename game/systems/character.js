@@ -117,33 +117,80 @@ function updateCharacterMovement(delta) {
     moveX = forward.x * moveZ;
     moveZ = forward.z * moveZ;
 
-    // Move character horizontally first
-    character.position.x += moveX;
-    character.position.z += moveZ;
+    // Block collision constants
+    const BLOCK_SIZE = 2; // Must match GRID_SIZE in building.js
+    const BLOCK_HALF = BLOCK_SIZE / 2;
+    const CHAR_RADIUS = 0.6; // Character collision radius
 
-    // Check for collision with objects
-    for (let i = 0; i < objects.length; i++) {
-        const obj = objects[i];
-        
-        // Skip ground plane and portals
-        if (obj.geometry && obj.geometry.type === 'PlaneGeometry') continue;
-        // Also check if it's a build object (MeshStandardMaterial)
-        
-        // Simple bounding box/distance check
-        const dist = character.position.distanceTo(obj.position);
-        
-        // If it's a build object (approximate radius check)
-        if (dist < 3.0) { // Collision radius
-            // Simple push-back
-            const dir = new THREE.Vector3().subVectors(character.position, obj.position).normalize();
-            character.position.add(dir.multiplyScalar(0.5));
+    // Helper function to check if a position collides with any block
+    function collidesWithBlock(testX, testZ, charY) {
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (!obj || !obj.userData.isBlock) continue;
+
+            const blockTop = obj.position.y + BLOCK_HALF;
+            const blockBottom = obj.position.y - BLOCK_HALF;
+
+            // Skip if character is on top of this block
+            if (charY >= blockTop - 0.3) continue;
+
+            // Skip if character is below this block
+            if (charY + 2 < blockBottom) continue;
+
+            // Check horizontal overlap (AABB collision)
+            const dx = Math.abs(testX - obj.position.x);
+            const dz = Math.abs(testZ - obj.position.z);
+
+            if (dx < BLOCK_HALF + CHAR_RADIUS && dz < BLOCK_HALF + CHAR_RADIUS) {
+                return obj; // Return the colliding block
+            }
         }
+        return null;
+    }
+
+    // Try to move, but check for collisions
+    const newX = character.position.x + moveX;
+    const newZ = character.position.z + moveZ;
+
+    // Check X movement separately from Z movement (allows sliding along walls)
+    const collideX = collidesWithBlock(newX, character.position.z, character.position.y);
+    const collideZ = collidesWithBlock(character.position.x, newZ, character.position.y);
+
+    if (!collideX) {
+        character.position.x = newX;
+    }
+    if (!collideZ) {
+        character.position.z = newZ;
     }
 
     // Use heightmap to find exact ground height (much faster and reliable than raycasting)
     let groundY = 0;
     if (typeof getTerrainHeightAt === 'function') {
         groundY = getTerrainHeightAt(character.position.x, character.position.z);
+    }
+
+    // Check for block landing (Minecraft-style blocks)
+    let onBlock = false;
+
+    for (let i = 0; i < objects.length; i++) {
+        const obj = objects[i];
+        if (obj && obj.userData.isBlock) {
+            const blockTop = obj.position.y + BLOCK_HALF;
+            const dx = Math.abs(character.position.x - obj.position.x);
+            const dz = Math.abs(character.position.z - obj.position.z);
+
+            // Check if character is within block's horizontal bounds
+            if (dx < BLOCK_HALF + 0.3 && dz < BLOCK_HALF + 0.3) {
+                // Check if character is above the block (within landing range)
+                if (character.position.y >= blockTop - 0.5 && character.position.y <= blockTop + 3) {
+                    // Only use this block if it's higher than current ground
+                    if (blockTop > groundY) {
+                        groundY = blockTop;
+                        onBlock = true;
+                    }
+                }
+            }
+        }
     }
 
     // Check for tree landing
@@ -192,14 +239,34 @@ function updateCharacterMovement(delta) {
     character.position.x = Math.max(-boundary, Math.min(boundary, character.position.x));
     character.position.z = Math.max(-boundary, Math.min(boundary, character.position.z));
 
-    // Camera follows character
-    // To show more sky (move character lower on screen), we need to look ABOVE the character
-    // Increasing the Y value in lookAt will tilt the camera UP, pushing the character DOWN on screen
-    const cameraOffset = new THREE.Vector3(0, 7, -15);
-    cameraOffset.applyQuaternion(character.quaternion);
-    camera.position.copy(character.position).add(cameraOffset);
-    // Previously: lookAt(..., y + 1, ...)
-    // Now: lookAt(..., y + 5, ...) to look higher up, shifting character down
-    camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
+    // Camera mode handling
+    if (isFirstPerson) {
+        // First-person: camera at character's eye level, looking forward
+        character.visible = false; // Hide character model in first person
+
+        // Position camera at head height
+        const eyeHeight = 1.8;
+        camera.position.set(
+            character.position.x,
+            character.position.y + eyeHeight,
+            character.position.z
+        );
+
+        // Look in the direction the character is facing
+        const lookDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(character.quaternion);
+        camera.lookAt(
+            character.position.x + lookDirection.x * 10,
+            character.position.y + eyeHeight,
+            character.position.z + lookDirection.z * 10
+        );
+    } else {
+        // Third-person: camera follows behind character
+        character.visible = true; // Show character model
+
+        const cameraOffset = new THREE.Vector3(0, 7, -15);
+        cameraOffset.applyQuaternion(character.quaternion);
+        camera.position.copy(character.position).add(cameraOffset);
+        camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
+    }
 }
 

@@ -13,6 +13,7 @@ let moveForward = false,
     rotateLeft = false,
     rotateRight = false,
     isFlying = false;
+let isFirstPerson = false; // First-person camera mode
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
 const portals = [];
@@ -45,10 +46,10 @@ let pixelRatio;
 
 if (/Mobi|Android/i.test(navigator.userAgent)) {
     // On mobile devices
-    pixelRatio = 0.09;
+    pixelRatio = 0.12;
 } else {
     // On other devices
-    pixelRatio = 0.25;
+    pixelRatio = 0.32;
 }
 
 // Flag to prevent multiple fades

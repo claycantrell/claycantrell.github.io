@@ -1,70 +1,101 @@
-// Build System for placing objects
-// Allows players to place low-poly structures like Minecraft but with non-blocky shapes
+// Minecraft-style Grid Building System
+// Place blocks on a 2-unit grid for LEGO-like building
 
+const GRID_SIZE = 2; // Size of each block
 let isBuildMode = false;
 let buildGhost = null;
 let buildRaycaster = new THREE.Raycaster();
 let buildMouse = new THREE.Vector2();
-let buildType = 0; // 0: Stone, 1: Pillar, 2: Crystal
-const BUILD_TYPES = ['Stone', 'Pillar', 'Crystal'];
-let buildRotation = 0;
+let buildType = 0;
+let placedBlocks = new Map(); // Grid position -> mesh
+
+// Block types with colors
+const BLOCK_TYPES = [
+    { name: 'Dirt', color: 0x8B4513, emissive: false },
+    { name: 'Stone', color: 0x808080, emissive: false },
+    { name: 'Wood', color: 0xDEB887, emissive: false },
+    { name: 'Brick', color: 0xB22222, emissive: false },
+    { name: 'Glass', color: 0x87CEEB, emissive: false, transparent: true },
+    { name: 'Gold', color: 0xFFD700, emissive: true },
+    { name: 'Grass', color: 0x228B22, emissive: false }
+];
+
+// Shared block geometry (reuse for performance)
+let sharedBlockGeometry = null;
 
 function initBuildSystem() {
-    // Create UI overlay for build mode (hidden by default)
+    // Create shared geometry
+    sharedBlockGeometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
+
+    // Create UI overlay
     const buildUI = document.createElement('div');
     buildUI.id = 'build-ui';
-    buildUI.style.position = 'absolute';
-    buildUI.style.bottom = '80px'; // Above the controls/chat
-    buildUI.style.right = '20px';
-    buildUI.style.color = '#fff';
-    buildUI.style.fontFamily = '"Courier New", Courier, monospace';
-    buildUI.style.fontSize = '14px';
-    buildUI.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-    buildUI.style.padding = '10px';
-    buildUI.style.border = '2px solid #fff';
-    buildUI.style.display = 'none';
-    buildUI.style.pointerEvents = 'none'; // Let clicks pass through
+    buildUI.style.cssText = `
+        position: absolute;
+        bottom: 80px;
+        right: 20px;
+        color: #fff;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border: 2px solid #fff;
+        display: none;
+        pointer-events: none;
+    `;
+
+    let blockList = BLOCK_TYPES.map((b, i) => `<div>${i + 1}: ${b.name}</div>`).join('');
     buildUI.innerHTML = `
         <div style="font-weight:bold; margin-bottom:5px; color:#ffff00">BUILD MODE [B]</div>
-        <div>Left Click: Place Object</div>
-        <div>R: Rotate Object</div>
-        <div>Hover over existing objects to stack!</div>
-        <div>1: Stone (Low Poly)</div>
-        <div>2: Pillar (Cylinder)</div>
-        <div>3: Crystal (Shard)</div>
-        <div id="current-build-type" style="margin-top:5px; color:#00ff00">Selected: Stone</div>
+        <div>Left Click: Place Block</div>
+        <div>Right Click: Remove Block</div>
+        <div>Scroll: Change Block</div>
+        ${blockList}
+        <div id="current-build-type" style="margin-top:5px; color:#00ff00">Selected: ${BLOCK_TYPES[0].name}</div>
+        <div id="grid-pos" style="color:#aaa"></div>
     `;
     document.body.appendChild(buildUI);
 
-    // Create ghost object material
-    const ghostMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
-        transparent: true,
-        opacity: 0.5,
-        wireframe: true
-    });
-
-    // Create initial ghost
+    // Create ghost block
     updateGhostGeometry();
-    
-    // Listen for events
+
+    // Event listeners
     document.addEventListener('mousemove', onBuildMouseMove, false);
     document.addEventListener('mousedown', onBuildMouseDown, false);
     document.addEventListener('keydown', onBuildKeyDown, false);
+    document.addEventListener('wheel', onBuildScroll, false);
+    document.addEventListener('contextmenu', (e) => {
+        if (isBuildMode) e.preventDefault();
+    });
+}
+
+// Snap world position to grid
+function snapToGrid(x, y, z) {
+    return {
+        x: Math.round(x / GRID_SIZE) * GRID_SIZE,
+        y: Math.round(y / GRID_SIZE) * GRID_SIZE,
+        z: Math.round(z / GRID_SIZE) * GRID_SIZE
+    };
+}
+
+// Get grid key for position
+function gridKey(x, y, z) {
+    const snapped = snapToGrid(x, y, z);
+    return `${snapped.x},${snapped.y},${snapped.z}`;
 }
 
 function toggleBuildMode() {
     isBuildMode = !isBuildMode;
     const ui = document.getElementById('build-ui');
-    
+
     if (isBuildMode) {
         ui.style.display = 'block';
         if (buildGhost) buildGhost.visible = true;
-        showNotification("Build Mode ENABLED");
+        showNotification("Build Mode ON - Left click to place, Right click to remove");
     } else {
         ui.style.display = 'none';
         if (buildGhost) buildGhost.visible = false;
-        showNotification("Build Mode DISABLED");
+        showNotification("Build Mode OFF");
     }
 }
 
@@ -73,78 +104,58 @@ function updateGhostGeometry() {
         scene.remove(buildGhost);
     }
 
-    let geometry;
-    const color = new THREE.Color();
-
-    switch(buildType) {
-        case 0: // Stone
-            geometry = new THREE.DodecahedronGeometry(1.5, 0); // Low poly sphere/rock
-            color.setHex(0x888888);
-            break;
-        case 1: // Pillar
-            geometry = new THREE.CylinderGeometry(0.8, 1, 4, 6); // Hexagonal pillar
-            color.setHex(0xaaaaaa);
-            break;
-        case 2: // Crystal
-            geometry = new THREE.ConeGeometry(0.8, 3, 4); // Pyramid/shard
-            color.setHex(0x00ffff);
-            break;
-    }
-
+    const blockDef = BLOCK_TYPES[buildType];
     const material = new THREE.MeshBasicMaterial({
-        color: color,
+        color: blockDef.color,
         transparent: true,
         opacity: 0.5,
         wireframe: true
     });
 
-    buildGhost = new THREE.Mesh(geometry, material);
+    buildGhost = new THREE.Mesh(sharedBlockGeometry || new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95), material);
     buildGhost.visible = isBuildMode;
     scene.add(buildGhost);
-    
-    // Update UI text
+
+    // Update UI
     const typeLabel = document.getElementById('current-build-type');
     if (typeLabel) {
-        typeLabel.textContent = `Selected: ${BUILD_TYPES[buildType]}`;
+        typeLabel.textContent = `Selected: ${blockDef.name}`;
     }
 }
 
 function onBuildKeyDown(event) {
-    // Ignore if typing in chat
     const chatInput = document.getElementById('chat-input');
     if (chatInput && document.activeElement === chatInput) return;
 
     if (event.code === 'KeyB') {
         toggleBuildMode();
+        return;
     }
 
     if (!isBuildMode) return;
 
-    switch(event.key) {
-        case '1':
-            buildType = 0;
-            updateGhostGeometry();
-            break;
-        case '2':
-            buildType = 1;
-            updateGhostGeometry();
-            break;
-        case '3':
-            buildType = 2;
-            updateGhostGeometry();
-            break;
-        case 'r':
-        case 'R':
-            buildRotation += Math.PI / 4;
-            if (buildGhost) buildGhost.rotation.y = buildRotation;
-            break;
+    // Number keys 1-7 for block types
+    const num = parseInt(event.key);
+    if (num >= 1 && num <= BLOCK_TYPES.length) {
+        buildType = num - 1;
+        updateGhostGeometry();
     }
+}
+
+function onBuildScroll(event) {
+    if (!isBuildMode) return;
+
+    if (event.deltaY > 0) {
+        buildType = (buildType + 1) % BLOCK_TYPES.length;
+    } else {
+        buildType = (buildType - 1 + BLOCK_TYPES.length) % BLOCK_TYPES.length;
+    }
+    updateGhostGeometry();
 }
 
 function onBuildMouseMove(event) {
     if (!isBuildMode) return;
 
-    // Calculate mouse position in normalized device coordinates
     buildMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     buildMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -156,27 +167,28 @@ function updateGhostPosition() {
 
     buildRaycaster.setFromCamera(buildMouse, camera);
 
-    // Collect all terrain meshes (single groundMesh or chunk meshes)
+    // Collect intersectable objects
     const intersectObjects = [];
 
-    // Check for single-mesh terrain
+    // Terrain
     if (window.groundMesh) {
         intersectObjects.push(window.groundMesh);
     }
-
-    // Check for chunked terrain
     if (typeof loadedChunks !== 'undefined') {
         for (const chunk of loadedChunks.values()) {
-            if (chunk.mesh) {
-                intersectObjects.push(chunk.mesh);
-            }
+            if (chunk.mesh) intersectObjects.push(chunk.mesh);
         }
     }
 
-    // Add all placed objects to intersection check
+    // Placed blocks
+    placedBlocks.forEach((mesh) => {
+        if (mesh !== buildGhost) intersectObjects.push(mesh);
+    });
+
+    // Also check global objects array
     if (typeof objects !== 'undefined') {
         objects.forEach(obj => {
-            if (obj.isMesh && obj.visible && obj !== buildGhost) {
+            if (obj.isMesh && obj.visible && obj !== buildGhost && obj.userData.isBlock) {
                 intersectObjects.push(obj);
             }
         });
@@ -184,147 +196,210 @@ function updateGhostPosition() {
 
     if (intersectObjects.length === 0) return;
 
-    // Intersect with ground AND placed objects
     const intersects = buildRaycaster.intersectObjects(intersectObjects);
 
     if (intersects.length > 0) {
-        const intersection = intersects[0];
-        const point = intersection.point;
-        const normal = intersection.face.normal;
+        const hit = intersects[0];
+        const point = hit.point;
+        const normal = hit.face.normal;
 
-        let position = point.clone();
+        let gridPos;
 
-        // Check if we hit terrain (groundMesh or chunk)
-        const isGround = intersection.object === window.groundMesh ||
-            (typeof loadedChunks !== 'undefined' &&
-             [...loadedChunks.values()].some(c => c.mesh === intersection.object));
+        // Check if we hit a block or terrain
+        const hitBlock = hit.object.userData && hit.object.userData.isBlock;
 
-        if (isGround) {
-            // Hitting ground - adjust height based on object type
-            let yOffset = 0;
-            switch(buildType) {
-                case 0: yOffset = 1.5; break; // Stone radius
-                case 1: yOffset = 2.0; break; // Pillar half height
-                case 2: yOffset = 1.5; break; // Crystal half height
-            }
-            position.y += yOffset;
+        if (hitBlock) {
+            // Hit a block - place adjacent to it based on face normal
+            const blockPos = hit.object.position;
+            gridPos = {
+                x: blockPos.x + normal.x * GRID_SIZE,
+                y: blockPos.y + normal.y * GRID_SIZE,
+                z: blockPos.z + normal.z * GRID_SIZE
+            };
         } else {
-            // Hitting another object - stack based on normal
-            let offsetDistance = 0;
-            switch(buildType) {
-                case 0: offsetDistance = 1.4; break;
-                case 1: offsetDistance = 2.0; break;
-                case 2: offsetDistance = 1.5; break;
-            }
-            position.add(normal.clone().multiplyScalar(offsetDistance));
+            // Hit terrain - snap to grid, place on top
+            gridPos = snapToGrid(point.x, point.y + GRID_SIZE / 2, point.z);
         }
 
-        buildGhost.position.copy(position);
-        buildGhost.rotation.y = buildRotation;
+        buildGhost.position.set(gridPos.x, gridPos.y, gridPos.z);
+
+        // Update grid position display
+        const gridPosLabel = document.getElementById('grid-pos');
+        if (gridPosLabel) {
+            gridPosLabel.textContent = `Grid: ${gridPos.x}, ${gridPos.y}, ${gridPos.z}`;
+        }
     }
 }
 
 function onBuildMouseDown(event) {
-    if (!isBuildMode || event.button !== 0) return; // Only left click
-    
-    // Prevent placing if clicking on UI (though pointer-events: none handles most)
-    
-    placeObject();
+    if (!isBuildMode) return;
+
+    if (event.button === 0) {
+        // Left click - place block
+        placeBlock();
+    } else if (event.button === 2) {
+        // Right click - remove block
+        removeBlock();
+    }
 }
 
-// Place object function - can be called locally or from network
-function placeObject(networkData = null) {
-    // If networkData is provided, use it. Otherwise use local buildGhost state.
-    
-    let position, rotationY, type, colorHex, rotationX = 0, rotationZ = 0;
-    
+function placeBlock(networkData = null) {
+    let position, type, colorHex;
+
     if (networkData) {
-        // Network placement
         position = new THREE.Vector3(networkData.x, networkData.y, networkData.z);
-        rotationY = networkData.ry;
-        rotationX = networkData.rx || 0;
-        rotationZ = networkData.rz || 0;
-        type = networkData.type;
-        colorHex = networkData.color;
+        type = (typeof networkData.type === 'number') ? networkData.type : 0;
+        type = Math.max(0, Math.min(type, BLOCK_TYPES.length - 1)); // Clamp to valid range
+        colorHex = networkData.color || BLOCK_TYPES[type].color;
     } else {
-        // Local placement
         if (!buildGhost || !buildGhost.visible) return;
-        
+
         position = buildGhost.position.clone();
-        rotationY = buildRotation;
         type = buildType;
-        
-        // Use HSL for guaranteed color visibility
-        const hue = Math.floor(Math.random() * 360); 
-        const saturation = 60 + Math.floor(Math.random() * 30); 
-        const lightness = 70 + Math.floor(Math.random() * 20); 
-        
-        const color = new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
-        colorHex = color.getHex();
-        
-        // Add random slight variation to rotation/scale for organic feel (except pillar height)
-        if (type === 0) {
-            rotationX = Math.random() * Math.PI;
-            rotationZ = Math.random() * Math.PI;
-        }
+        colorHex = BLOCK_TYPES[type].color;
     }
 
-    let geometry;
+    // Check if position already occupied
+    const key = gridKey(position.x, position.y, position.z);
+    if (placedBlocks.has(key)) {
+        return; // Already a block here
+    }
+
+    const blockDef = BLOCK_TYPES[type];
+    if (!blockDef) {
+        console.error('Invalid block type:', type);
+        return;
+    }
+
+    // Create material based on block type
     let material;
-    
-    switch(type) {
-        case 0: // Stone
-            geometry = new THREE.DodecahedronGeometry(1.5, 0);
-            material = new THREE.MeshLambertMaterial({ // Use Lambert for better color + simple shading
-                color: colorHex
-            });
-            break;
-        case 1: // Pillar
-            geometry = new THREE.CylinderGeometry(0.8, 1, 4, 6);
-            material = new THREE.MeshLambertMaterial({ 
-                color: colorHex
-            });
-            break;
-        case 2: // Crystal
-            geometry = new THREE.ConeGeometry(0.8, 3, 4);
-            material = new THREE.MeshPhongMaterial({ // Phong for shininess on crystals
-                color: colorHex,
-                emissive: colorHex,
-                emissiveIntensity: 0.2,
-                transparent: true,
-                opacity: 0.9,
-                shininess: 100
-            });
-            break;
+    if (blockDef.transparent) {
+        material = new THREE.MeshLambertMaterial({
+            color: colorHex,
+            transparent: true,
+            opacity: 0.6
+        });
+    } else if (blockDef.emissive) {
+        material = new THREE.MeshLambertMaterial({
+            color: colorHex,
+            emissive: colorHex,
+            emissiveIntensity: 0.3
+        });
+    } else {
+        material = new THREE.MeshLambertMaterial({
+            color: colorHex
+        });
     }
 
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(sharedBlockGeometry, material);
     mesh.position.copy(position);
-    mesh.rotation.y = rotationY;
-    mesh.rotation.x = rotationX;
-    mesh.rotation.z = rotationZ;
+    mesh.userData.isBlock = true;
+    mesh.userData.blockType = type;
+    mesh.userData.gridKey = key;
 
     scene.add(mesh);
-    
-    // Important: Add to objects array for collision detection
+    placedBlocks.set(key, mesh);
+
+    // Add to objects array
     if (typeof objects !== 'undefined') {
         objects.push(mesh);
-    } else if (window.objects) {
-        window.objects.push(mesh);
     }
-    
-    // If this was a local placement, send to server
+
+    // Send to server
     if (!networkData && typeof sendBuildToServer === 'function') {
         sendBuildToServer({
+            action: 'place',
             type: type,
             x: position.x,
             y: position.y,
             z: position.z,
-            ry: rotationY,
-            rx: rotationX,
-            rz: rotationZ,
             color: colorHex
         });
     }
 }
 
+function removeBlock() {
+    if (!camera) return;
+
+    buildRaycaster.setFromCamera(buildMouse, camera);
+
+    // Only check placed blocks
+    const blockMeshes = Array.from(placedBlocks.values());
+
+    const intersects = buildRaycaster.intersectObjects(blockMeshes);
+
+    if (intersects.length > 0) {
+        const hit = intersects[0];
+        const mesh = hit.object;
+        const key = mesh.userData.gridKey;
+
+        if (key && placedBlocks.has(key)) {
+            scene.remove(mesh);
+            placedBlocks.delete(key);
+
+            // Remove from objects array
+            if (typeof objects !== 'undefined') {
+                const idx = objects.indexOf(mesh);
+                if (idx > -1) objects.splice(idx, 1);
+            }
+
+            // Dispose material (geometry is shared)
+            mesh.material.dispose();
+
+            // Send to server
+            if (typeof sendBuildToServer === 'function') {
+                const pos = mesh.position;
+                sendBuildToServer({
+                    action: 'remove',
+                    x: pos.x,
+                    y: pos.y,
+                    z: pos.z
+                });
+            }
+        }
+    }
+}
+
+// Handle network placement (called from client.js)
+function placeObject(networkData) {
+    // Ensure scene is ready
+    if (typeof scene === 'undefined' || !scene) {
+        console.warn('placeObject: scene not ready, retrying in 100ms');
+        setTimeout(() => placeObject(networkData), 100);
+        return;
+    }
+
+    // Initialize shared geometry if needed
+    if (!sharedBlockGeometry) {
+        sharedBlockGeometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
+    }
+
+    if (networkData.action === 'remove') {
+        // Remove block at position
+        const key = gridKey(networkData.x, networkData.y, networkData.z);
+        if (placedBlocks.has(key)) {
+            const mesh = placedBlocks.get(key);
+            scene.remove(mesh);
+            placedBlocks.delete(key);
+            if (typeof objects !== 'undefined') {
+                const idx = objects.indexOf(mesh);
+                if (idx > -1) objects.splice(idx, 1);
+            }
+            mesh.material.dispose();
+        }
+    } else {
+        // Place block - snap to grid for compatibility with old data
+        const snapped = snapToGrid(networkData.x, networkData.y, networkData.z);
+        const blockType = (typeof networkData.type === 'number') ? networkData.type : 0;
+        const safeType = Math.max(0, Math.min(blockType, BLOCK_TYPES.length - 1));
+
+        const gridData = {
+            x: snapped.x,
+            y: snapped.y,
+            z: snapped.z,
+            type: safeType,
+            color: networkData.color || BLOCK_TYPES[safeType].color
+        };
+        placeBlock(gridData);
+    }
+}

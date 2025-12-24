@@ -39,6 +39,13 @@ function onKeyDown(event) {
         case 'Space':
             isFlying = true;
             break;
+        case 'KeyV':
+            // Toggle first-person view
+            isFirstPerson = !isFirstPerson;
+            if (typeof showNotification === 'function') {
+                showNotification(isFirstPerson ? 'First Person Mode' : 'Third Person Mode');
+            }
+            break;
     }
 }
 
@@ -236,6 +243,7 @@ function resetMovementFlags() {
     rotateLeft = false;
     rotateRight = false;
     isFlying = false;
+    // Note: isFirstPerson is NOT reset - it's a view preference, not a movement state
     activeKeys.clear();
 }
 

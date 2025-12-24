@@ -754,7 +754,8 @@ wss.on('connection', (ws) => {
     
     // Generate unique player ID
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    ws.playerId = playerId; // Store on websocket for map filtering
+
     // Get spawn point for new player
     const spawnPoint = getNextSpawnPoint();
     const initialPosition = {
@@ -809,25 +810,55 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'setMap') {
                 // Player is telling us which map they're on
-                const mapId = data.mapId || 'grasslands';
+                const newMapId = data.mapId || 'grasslands';
                 const player = players.get(playerId);
+                const oldMapId = player ? player.mapId : null;
+
+                // Update player's map
                 if (player) {
-                    player.mapId = mapId;
+                    player.mapId = newMapId;
                     players.set(playerId, player);
                 }
 
+                // If changing maps, notify old map that player left
+                if (oldMapId && oldMapId !== newMapId) {
+                    broadcastToSameMap(ws, oldMapId, {
+                        type: 'playerLeft',
+                        id: playerId
+                    });
+                }
+
                 // Initialize map's build array if needed
-                if (!ENTITIES.builtObjects[mapId]) {
-                    ENTITIES.builtObjects[mapId] = [];
+                if (!ENTITIES.builtObjects[newMapId]) {
+                    ENTITIES.builtObjects[newMapId] = [];
                 }
 
                 // Send existing built objects for this map
                 ws.send(JSON.stringify({
                     type: 'builtObjects',
-                    objects: ENTITIES.builtObjects[mapId] || []
+                    objects: ENTITIES.builtObjects[newMapId] || []
                 }));
 
-                console.log(`Player ${playerId} joined map: ${mapId}`);
+                // Send list of players already on this map
+                const playersOnMap = [];
+                players.forEach((pdata, pid) => {
+                    if (pid !== playerId && pdata.mapId === newMapId) {
+                        playersOnMap.push({
+                            id: pid,
+                            position: pdata.position,
+                            rotation: pdata.rotation
+                        });
+                    }
+                });
+
+                if (playersOnMap.length > 0) {
+                    ws.send(JSON.stringify({
+                        type: 'playersOnMap',
+                        players: playersOnMap
+                    }));
+                }
+
+                console.log(`Player ${playerId} joined map: ${newMapId}`);
             }
             else if (data.type === 'update') {
                 // ... existing update logic ...
@@ -840,8 +871,8 @@ wss.on('connection', (ws) => {
                     mapId: mapId
                 });
 
-                // Broadcast to all other players
-                broadcastToOthers(ws, {
+                // Broadcast to players on the same map only
+                broadcastToSameMap(ws, mapId, {
                     type: 'playerUpdate',
                     id: playerId,
                     position: data.position,
@@ -867,7 +898,7 @@ wss.on('connection', (ws) => {
                 });
             }
             else if (data.type === 'build') {
-                // Handle new build object
+                // Handle build events (place or remove)
                 const buildData = data.data;
                 const player = players.get(playerId);
                 const mapId = player ? player.mapId : 'grasslands';
@@ -877,45 +908,59 @@ wss.on('connection', (ws) => {
                     ENTITIES.builtObjects[mapId] = [];
                 }
 
-                // Add ID and timestamp
-                const objectId = `build_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                const newObject = {
-                    id: objectId,
-                    type: buildData.type,
-                    x: buildData.x,
-                    y: buildData.y,
-                    z: buildData.z,
-                    ry: buildData.ry,
-                    rx: buildData.rx || 0,
-                    rz: buildData.rz || 0,
-                    color: buildData.color,
-                    ownerId: playerId,
-                    mapId: mapId
-                };
+                if (buildData.action === 'remove') {
+                    // Remove block at position
+                    const removeX = buildData.x;
+                    const removeY = buildData.y;
+                    const removeZ = buildData.z;
 
-                // Store in map-specific array
-                ENTITIES.builtObjects[mapId].push(newObject);
+                    // Find and remove matching object
+                    const idx = ENTITIES.builtObjects[mapId].findIndex(obj =>
+                        obj.x === removeX && obj.y === removeY && obj.z === removeZ
+                    );
 
-                // Limit total objects per map to prevent server crash
-                if (ENTITIES.builtObjects[mapId].length > 200) {
-                    ENTITIES.builtObjects[mapId].shift(); // Remove oldest
-                }
-
-                // Broadcast only to players on the same map
-                wss.clients.forEach((client) => {
-                    if (client.readyState === WebSocket.OPEN) {
-                        // Find player for this client and check mapId
-                        for (const [pid, pdata] of players.entries()) {
-                            if (pdata.mapId === mapId) {
-                                client.send(JSON.stringify({
-                                    type: 'objectBuilt',
-                                    object: newObject
-                                }));
-                                break;
-                            }
-                        }
+                    if (idx !== -1) {
+                        ENTITIES.builtObjects[mapId].splice(idx, 1);
                     }
-                });
+
+                    // Broadcast removal to players on same map
+                    broadcastToSameMap(null, mapId, {
+                        type: 'objectBuilt',
+                        object: {
+                            action: 'remove',
+                            x: removeX,
+                            y: removeY,
+                            z: removeZ
+                        }
+                    });
+                } else {
+                    // Place block
+                    const objectId = `build_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const newObject = {
+                        id: objectId,
+                        type: buildData.type,
+                        x: buildData.x,
+                        y: buildData.y,
+                        z: buildData.z,
+                        color: buildData.color,
+                        ownerId: playerId,
+                        mapId: mapId
+                    };
+
+                    // Store in map-specific array
+                    ENTITIES.builtObjects[mapId].push(newObject);
+
+                    // Limit total objects per map to prevent server crash
+                    if (ENTITIES.builtObjects[mapId].length > 500) {
+                        ENTITIES.builtObjects[mapId].shift(); // Remove oldest
+                    }
+
+                    // Broadcast to players on same map (excluding sender, they already placed it)
+                    broadcastToSameMap(ws, mapId, {
+                        type: 'objectBuilt',
+                        object: newObject
+                    });
+                }
             }
         } catch (error) {
             console.error('Error parsing message:', error);
@@ -924,10 +969,15 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         console.log(`Player disconnected: ${playerId}`);
+
+        // Get player's map before deleting
+        const player = players.get(playerId);
+        const mapId = player ? player.mapId : 'grasslands';
+
         players.delete(playerId);
 
-        // Broadcast player left to all others
-        broadcastToOthers(ws, {
+        // Broadcast player left to players on same map only
+        broadcastToSameMap(ws, mapId, {
             type: 'playerLeft',
             id: playerId
         });
@@ -942,6 +992,22 @@ function broadcastToOthers(sender, message) {
     wss.clients.forEach((client) => {
         if (client !== sender && client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(message));
+        }
+    });
+}
+
+// Broadcast to other players on the same map only
+function broadcastToSameMap(sender, senderMapId, message) {
+    wss.clients.forEach((client) => {
+        if (client !== sender && client.readyState === WebSocket.OPEN) {
+            // Check if this client is on the same map
+            const clientPlayerId = client.playerId;
+            if (clientPlayerId) {
+                const clientData = players.get(clientPlayerId);
+                if (clientData && clientData.mapId === senderMapId) {
+                    client.send(JSON.stringify(message));
+                }
+            }
         }
     });
 }
