@@ -44,87 +44,8 @@
         </div>
     </div>
 
-    <!-- Import map to resolve 'three' module for ES6 imports -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
-            "three/addons/": "https://threejs.org/examples/jsm/"
-        }
-    }
-    </script>
-
-    <!-- Include Three.js library from CDN (UMD build for global THREE) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- Noise library for terrain generation -->
-    <script src="https://cdn.jsdelivr.net/npm/simplex-noise@2.4.0/simplex-noise.js"></script>
-
-    <!-- Include FontLoader and TextGeometry as ES6 modules and make them available globally -->
-    <script type="module">
-        // Use threejs.org examples CDN with import map for 'three' dependency
-        import { FontLoader } from 'https://threejs.org/examples/jsm/loaders/FontLoader.js';
-        import { TextGeometry } from 'https://threejs.org/examples/jsm/geometries/TextGeometry.js';
-        // Make them available globally on THREE namespace
-        window.THREE.FontLoader = FontLoader;
-        window.THREE.TextGeometry = TextGeometry;
-        // Signal that modules are loaded
-        window.THREE_MODULES_LOADED = true;
-        // Dispatch event to notify other scripts
-        window.dispatchEvent(new Event('threeModulesLoaded'));
-    </script>
-
-    <!-- ===== ENGINE ===== -->
-    <script src="engine/performance.js"></script>
-    <script src="engine/utils/random.js"></script>
-
-    <!-- ===== MAP SYSTEM ===== -->
-    <script src="maps/map-loader.js"></script>
-
-    <!-- ===== GAME SYSTEMS ===== -->
-    <script src="systems/character.js"></script>
-    <script src="systems/climate.js"></script>
-    <script src="systems/biomes.js"></script>
-    <script src="systems/water.js"></script>
-    <script src="systems/chunks.js"></script>
-    <script src="systems/terrain.js"></script>
-    <script src="systems/trees.js"></script>
-    <script src="systems/shrubs.js"></script>
-    <script src="systems/portals.js"></script>
-    <script src="systems/entities/npc.js"></script>
-    <script src="systems/entities/deer.js"></script>
-    <script src="systems/entities/bunny.js"></script>
-    <script src="systems/entities/bird.js"></script>
-    <script src="systems/entities/entity-registry.js"></script>
-
-    <!-- ===== ENGINE CORE ===== -->
-    <script src="engine/core.js"></script>
-
-    <!-- ===== MULTIPLAYER ===== -->
-    <script src="multiplayer/player-utils.js"></script>
-    <script src="multiplayer/time-sync.js"></script>
-    <script src="multiplayer/sync.js"></script>
-
-    <!-- ===== ENGINE SYSTEMS ===== -->
-    <script src="engine/input.js"></script>
-    <script src="engine/audio.js"></script>
-    <script src="engine/ui.js"></script>
-
-    <!-- ===== GAME SYSTEMS ===== -->
-    <script src="systems/chat.js"></script>
-
-    <!-- ===== MULTIPLAYER ===== -->
-    <script src="multiplayer/client.js"></script>
-    <script src="multiplayer/other-players.js"></script>
-
-    <!-- ===== GAME SYSTEMS ===== -->
-    <script src="systems/building.js"></script>
-
-    <!-- ===== MAP MENU ===== -->
-    <script src="maps/map-menu.js"></script>
-
-    <!-- ===== MAIN GAME LOOP ===== -->
-    <script src="engine/game.js"></script>
+    <!-- Main game module (Vite bundled) -->
+    <script type="module" src="./src/main.js"></script>
 
     <!-- White Overlay for fade-out effect -->
     <div id="white-overlay"></div>
