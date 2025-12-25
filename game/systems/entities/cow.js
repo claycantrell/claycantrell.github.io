@@ -1,27 +1,10 @@
-// Cow system for 3D Demo (Client-Side Rendering Only)
-// Based on deer system - stockier body, Holstein coloring, docile behavior
-// Uses Systems registry pattern and shared utilities
+// Cow system for 3D Demo - Refactored to use shared utilities
 
-// CowSystem - manages cow rendering and animation
-const CowSystem = {
-    init() {
-        initCows();
-    },
+// Entity list
+const cowList = getEntityList('cows') || [];
 
-    update(delta) {
-        updateCows(delta);
-    }
-};
-
-// Register with Systems registry
-if (typeof Systems !== 'undefined') {
-    Systems.register('cows', CowSystem);
-}
-
-// Use GAME namespace for centralized entity storage
-const cowList = (typeof GAME !== 'undefined' && GAME.world?.entities)
-    ? GAME.world.entities.cows
-    : [];
+// System registration
+const CowSystem = createEntitySystem('cow', 'cows', initCows, updateCows);
 
 // Create a single cow visual entity
 function createCow(id, x, z) {
@@ -30,23 +13,22 @@ function createCow(id, x, z) {
     // Holstein cow colors (black and white) or brown
     const isHolstein = Math.random() < 0.7;
     const mainColor = isHolstein ? 0xFFFFFF : 0x8B4513;
-    const spotColor = 0x1a1a1a;
-    const bellyColor = 0xF5DEB3;
 
     const cowMaterial = new THREE.MeshLambertMaterial({ color: mainColor });
-    const spotMaterial = new THREE.MeshLambertMaterial({ color: spotColor });
-    const bellyMaterial = new THREE.MeshLambertMaterial({ color: bellyColor });
+    const spotMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    const bellyMaterial = new THREE.MeshLambertMaterial({ color: 0xF5DEB3 });
     const noseMaterial = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
     const hoofMaterial = new THREE.MeshLambertMaterial({ color: 0x2F2F2F });
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
 
-    // --- Body ---
+    // Body
     const bodyGeo = new THREE.CylinderGeometry(1.0, 1.1, 2.8, 8);
     const body = new THREE.Mesh(bodyGeo, cowMaterial);
     body.rotation.x = Math.PI / 2;
     body.position.y = 2.0;
     group.add(body);
 
-    // --- Spots ---
+    // Spots
     if (isHolstein) {
         const spotGeo = new THREE.SphereGeometry(0.4, 6, 6);
         const numSpots = 3 + Math.floor(Math.random() * 4);
@@ -60,14 +42,14 @@ function createCow(id, x, z) {
         }
     }
 
-    // --- Neck ---
+    // Neck
     const neckGeo = new THREE.CylinderGeometry(0.45, 0.6, 1.2, 6);
     const neck = new THREE.Mesh(neckGeo, cowMaterial);
     neck.position.set(0, 2.6, 1.2);
     neck.rotation.x = -Math.PI / 5;
     group.add(neck);
 
-    // --- Head Group ---
+    // Head group
     const headGroup = new THREE.Group();
     headGroup.position.set(0, 3.0, 1.6);
     group.add(headGroup);
@@ -86,8 +68,8 @@ function createCow(id, x, z) {
     nose.position.set(0, -0.1, 0.72);
     headGroup.add(nose);
 
+    // Eyes
     const eyeGeo = new THREE.SphereGeometry(0.08, 6, 6);
-    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMaterial);
     leftEye.position.set(0.25, 0.1, 0.3);
     headGroup.add(leftEye);
@@ -120,7 +102,7 @@ function createCow(id, x, z) {
     rightHorn.rotation.x = -0.2;
     headGroup.add(rightHorn);
 
-    // --- Legs ---
+    // Legs
     const legGeo = new THREE.CylinderGeometry(0.18, 0.15, 1.4, 6);
     const hoofGeo = new THREE.CylinderGeometry(0.16, 0.18, 0.2, 6);
     const legs = [];
@@ -143,7 +125,7 @@ function createCow(id, x, z) {
     legs.push(createLeg(0.5, -1.0));
     legs.push(createLeg(-0.5, -1.0));
 
-    // --- Udder ---
+    // Udder
     if (Math.random() < 0.6) {
         const udderGeo = new THREE.SphereGeometry(0.3, 6, 6);
         const udderMaterial = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
@@ -153,7 +135,7 @@ function createCow(id, x, z) {
         group.add(udder);
     }
 
-    // --- Tail ---
+    // Tail
     const tailGeo = new THREE.CylinderGeometry(0.05, 0.03, 1.2, 4);
     const tail = new THREE.Mesh(tailGeo, cowMaterial);
     tail.position.set(0, 1.8, -1.5);
@@ -170,45 +152,27 @@ function createCow(id, x, z) {
     const y = getTerrainHeight(x, z);
     group.position.set(x, y, z);
 
-    // Random scale variation
+    // Random scale
     const scale = 0.9 + Math.random() * 0.2;
     group.scale.set(scale, scale, scale);
 
-    // Enable shadows
     enableShadows(group);
-
-    // Add to scene
     addToScene(group);
 
-    return {
-        id: id,
-        group: group,
+    return createEntityObject(id, group, x, y, z, {
         headGroup: headGroup,
         legs: legs,
         tail: tail,
-        targetPos: new THREE.Vector3(x, y, z),
-        targetRot: Math.random() * Math.PI * 2,
-        state: 'IDLE',
-        wanderTimer: Math.random() * 3,
         grazeTimer: 0
-    };
+    });
 }
 
-// Init called by main game
 function initCows() {
     // Cow system ready - animal-spawner.js handles spawning
 }
 
-// Called by animal-sync.js when server sends snapshot
 function updateCowState(serverData) {
-    serverData.forEach(data => {
-        let cow = cowList.find(c => c.id === data.id);
-
-        if (!cow) {
-            cow = createCow(data.id, data.x, data.z);
-            cowList.push(cow);
-        }
-
+    handleServerStateUpdate(serverData, cowList, createCow, (cow, data) => {
         const y = getTerrainHeight(data.x, data.z);
         cow.targetPos.set(data.x, y, data.z);
         cow.targetRot = data.ry;
@@ -216,148 +180,91 @@ function updateCowState(serverData) {
     });
 }
 
-// Render Loop
 function updateCows(delta) {
-    const time = Date.now() * 0.001;
+    const config = getConfigSafe('cow');
+    if (!config) return;
 
-    // Defensive: ensure config exists
-    if (typeof ENTITY_CONFIG === 'undefined' || !ENTITY_CONFIG.cow) {
-        console.warn('ENTITY_CONFIG.cow not available');
-        return;
-    }
-
-    const config = ENTITY_CONFIG.cow;
-    const fleeConfig = config.flee;
-    const wanderConfig = config.wander;
-    const grazeConfig = config.graze;
-    const animConfig = config.animation;
+    const time = getAnimTime();
 
     cowList.forEach(cow => {
         // Local/spawned cow behavior
-        if (cow.id.startsWith('local_') || cow.id.startsWith('spawned_')) {
-            cow.wanderTimer = (cow.wanderTimer || 0) - delta;
-            cow.fleeTimer = (cow.fleeTimer || 0) - delta;
-            cow.grazeTimer = (cow.grazeTimer || 0) - delta;
+        if (isLocalEntity(cow)) {
+            updateEntityTimers(cow, delta);
 
-            const distToPlayer = getDistanceToPlayer(cow.group.position);
             const distToTarget = getDistance2D(cow.group.position, cow.targetPos);
 
-            // Flee behavior - only when player is VERY close
-            if (distToPlayer < fleeConfig.detectRadius && cow.fleeTimer <= 0) {
-                const fleeTarget = calculateFleeTarget(cow.group.position, fleeConfig.distance);
-
-                if (fleeTarget) {
-                    const newY = getTerrainHeight(fleeTarget.x, fleeTarget.z);
-                    cow.targetPos.set(fleeTarget.x, newY, fleeTarget.z);
-                    cow.targetRot = fleeTarget.angle;
-                    cow.state = 'WALK';
-                    cow.fleeTimer = fleeConfig.duration;
-                    cow.wanderTimer = fleeConfig.duration + 1;
-                    cow.grazeTimer = 0;
-                }
+            // Flee behavior (cows only flee when very close)
+            if (handleFleeBehavior(cow, config.flee, 0, 'WALK')) {
+                cow.grazeTimer = 0;
             }
             // Grazing behavior
             else if (cow.state === 'GRAZE' && cow.grazeTimer > 0) {
                 // Keep grazing
             }
-            // Normal wander behavior
+            // Normal wander/graze behavior
             else if (cow.fleeTimer <= 0) {
                 if (cow.wanderTimer <= 0 || distToTarget < 1) {
                     const action = Math.random();
 
-                    if (action < grazeConfig.chance) {
+                    if (action < config.graze.chance) {
+                        // Start grazing
                         cow.state = 'GRAZE';
-                        cow.grazeTimer = grazeConfig.duration * (0.5 + Math.random());
+                        cow.grazeTimer = config.graze.duration * (0.5 + Math.random());
                         cow.wanderTimer = cow.grazeTimer + 1;
                     } else if (action < 0.7) {
+                        // Walk somewhere
                         const wanderTarget = calculateWanderTarget(
                             cow.group.position,
                             cow.group.rotation.y,
-                            wanderConfig.minDistance,
-                            wanderConfig.maxDistance
+                            config.wander.minDistance,
+                            config.wander.maxDistance
                         );
 
                         const newY = getTerrainHeight(wanderTarget.x, wanderTarget.z);
                         cow.targetPos.set(wanderTarget.x, newY, wanderTarget.z);
                         cow.targetRot = wanderTarget.angle;
                         cow.state = 'WALK';
-                        cow.wanderTimer = wanderConfig.moveDuration.min +
-                            Math.random() * (wanderConfig.moveDuration.max - wanderConfig.moveDuration.min);
+                        cow.wanderTimer = config.wander.moveDuration.min +
+                            Math.random() * (config.wander.moveDuration.max - config.wander.moveDuration.min);
                     } else {
+                        // Idle
                         cow.state = 'IDLE';
-                        cow.wanderTimer = wanderConfig.idleDuration.min +
-                            Math.random() * (wanderConfig.idleDuration.max - wanderConfig.idleDuration.min);
+                        cow.wanderTimer = config.wander.idleDuration.min +
+                            Math.random() * (config.wander.idleDuration.max - config.wander.idleDuration.min);
                     }
                 }
             }
         }
 
         // Movement
-        const moveSpeed = cow.state === 'WALK' ? getEntitySpeed('cow') : 0;
-
-        if (moveSpeed > 0) {
-            const dir = new THREE.Vector3().subVectors(cow.targetPos, cow.group.position);
-            dir.y = 0;
-            const dist = dir.length();
-
-            if (dist > 0.5) {
-                dir.normalize().multiplyScalar(moveSpeed * delta);
-
-                // Check for block collisions
-                const newX = cow.group.position.x + dir.x;
-                const newZ = cow.group.position.z + dir.z;
-
-                const collidingBlock = checkBlockCollision(newX, newZ, cow.group.position.y, config.collisionRadius);
-
-                if (collidingBlock) {
-                    const altPath = findAlternativePath(cow.group.position, collidingBlock, moveSpeed, delta, config.collisionRadius);
-                    if (altPath) {
-                        cow.group.position.x = altPath.x;
-                        cow.group.position.z = altPath.z;
-                    }
-                } else {
-                    cow.group.position.add(dir);
-                }
-            }
-
-            // Follow terrain
-            cow.group.position.y = getTerrainHeight(cow.group.position.x, cow.group.position.z);
+        const speed = getMovementSpeed('cow', cow.state);
+        if (speed > 0) {
+            moveEntityTowardTarget(cow, speed, delta, config.collisionRadius);
         }
 
         // Rotation
         if (cow.state === 'WALK') {
-            cow.group.rotation.y = smoothRotateToward(
-                cow.group.rotation.y,
-                cow.targetRot,
-                delta,
-                animConfig.rotationSpeed
-            );
+            rotateEntityTowardTarget(cow, delta, config.animation.rotationSpeed);
         }
 
         // Animations
         if (cow.state === 'WALK') {
-            const cycle = time * animConfig.legSpeed;
-            cow.legs[0].rotation.x = Math.sin(cycle) * animConfig.legSwing;
-            cow.legs[3].rotation.x = Math.sin(cycle) * animConfig.legSwing;
-            cow.legs[1].rotation.x = Math.sin(cycle + Math.PI) * animConfig.legSwing;
-            cow.legs[2].rotation.x = Math.sin(cycle + Math.PI) * animConfig.legSwing;
-            cow.tail.rotation.z = Math.sin(time * 2) * 0.3;
+            animateQuadrupedLegs(cow.legs, time, config.animation.legSpeed, config.animation.legSwing);
+            animateTailSwish(cow.tail, time, 2, 0.3);
         } else if (cow.state === 'GRAZE') {
-            cow.headGroup.rotation.x = 0.4 + Math.sin(time * 2) * 0.1;
-            cow.legs.forEach(leg => leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, 0, delta * 3));
-            cow.tail.rotation.z = Math.sin(time * 1.5) * 0.2;
+            animateGrazing(cow.headGroup, time);
+            resetLegsToNeutral(cow.legs, delta);
+            animateTailSwish(cow.tail, time, 1.5, 0.2);
         } else {
-            cow.headGroup.rotation.x = THREE.MathUtils.lerp(cow.headGroup.rotation.x, 0, delta * 2);
-            cow.legs.forEach(leg => leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, 0, delta * 3));
-            cow.tail.rotation.z = Math.sin(time * 0.5) * 0.15;
+            resetHeadToNeutral(cow.headGroup, delta);
+            resetLegsToNeutral(cow.legs, delta);
+            animateTailSwish(cow.tail, time, 0.5, 0.15);
         }
     });
 }
 
-// Make available globally
-window.initCows = initCows;
-window.updateCows = updateCows;
-window.updateCowState = updateCowState;
-window.CowSystem = CowSystem;
-window.createCow = createCow;
-window.cowList = cowList;
+// Export globals
+exportEntityGlobals('Cow', {
+    initCows, updateCows, updateCowState,
+    CowSystem, cowList, createCow
+});

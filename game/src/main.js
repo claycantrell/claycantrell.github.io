@@ -129,6 +129,9 @@ const scripts = [
     '../engine/utils/collision.js',     // Shared collision detection
     '../engine/utils/terrain.js',       // Cached terrain lookups
     '../engine/utils/behaviors.js',     // Shared entity behaviors
+    '../engine/utils/entity-factory.js', // Entity system boilerplate
+    '../engine/utils/animal-behaviors.js', // Animal flee/wander logic
+    '../engine/utils/animation-utils.js', // Animation utilities
     '../maps/map-loader.js',       // Map configuration
 
     // Layer 2: World Systems
