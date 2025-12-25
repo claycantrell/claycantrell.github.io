@@ -360,12 +360,45 @@ function toggleChat() {
     }
 }
 
+// Handle chat commands (slash commands)
+function handleChatCommand(command) {
+    const cmd = command.toLowerCase().trim();
+    const args = cmd.split(' ').slice(1);
+    const baseCmd = cmd.split(' ')[0];
+
+    switch (baseCmd) {
+        case '/help':
+            addSystemMessage('=== COMMANDS ===');
+            addSystemMessage('/help - Show this help');
+            addSystemMessage('/pos - Show current position');
+            return true;
+
+        case '/pos':
+            if (typeof character !== 'undefined' && character) {
+                const x = character.position.x.toFixed(0);
+                const y = character.position.y.toFixed(0);
+                const z = character.position.z.toFixed(0);
+                addSystemMessage(`Position: X=${x}, Y=${y}, Z=${z}`);
+            } else {
+                addSystemMessage('Character not loaded.');
+            }
+            return true;
+
+        default:
+            if (cmd.startsWith('/')) {
+                addSystemMessage(`Unknown command: ${baseCmd}. Type /help for commands.`);
+                return true;
+            }
+            return false;
+    }
+}
+
 // Send chat message
 async function sendChatMessage() {
     if (!chatInput || !chatMessages) {
         return; // Safety check for Safari
     }
-    
+
     const originalMessage = chatInput.value.trim();
     if (originalMessage.length === 0) {
         return;
@@ -373,6 +406,12 @@ async function sendChatMessage() {
 
     // Clear input first
     chatInput.value = '';
+
+    // Check for commands first
+    if (originalMessage.startsWith('/')) {
+        handleChatCommand(originalMessage);
+        return;
+    }
     
     // Check rate limit before processing
     const rateLimitCheck = checkRateLimit();

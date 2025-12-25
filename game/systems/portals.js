@@ -74,7 +74,7 @@ function createPortals() {
 
         // Portal Frame
         const frameGeometry = new THREE.BoxGeometry(5.2, 10.4, 0.65);
-        const frameMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, flatShading: true });
+        const frameMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
         const frame = new THREE.Mesh(frameGeometry, frameMaterial);
         frame.position.y = 4;
         portalGroup.add(frame);
@@ -83,8 +83,7 @@ function createPortals() {
         const innerGeometry = new THREE.PlaneGeometry(4.55, 9.75);
         const portalColor = portal.color || '#FF0000';
         const innerMaterial = new THREE.MeshBasicMaterial({
-            color: portalColor,
-            flatShading: true
+            color: portalColor
         });
         const innerPortal = new THREE.Mesh(innerGeometry, innerMaterial);
         innerPortal.position.y = 4;

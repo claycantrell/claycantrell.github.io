@@ -50,8 +50,8 @@ const CONFIG = {
             unloadDistance: 8
         },
         entities: {
-            deer: { count: 18, enabled: true, speed: 8.0 },
-            bunnies: { count: 20, enabled: true, speed: 6.0 },
+            deer: { count: 18, enabled: true, speed: 20.0 },
+            bunnies: { count: 20, enabled: true, speed: 20.0 },
             birds: { count: 30, enabled: true, speed: 12.0 },
             npc: { enabled: true, speed: 5.0 }
         },

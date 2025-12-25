@@ -11,6 +11,7 @@ const Systems = {
         'chunks',
         'trees',
         'shrubs',
+        'animalSpawner',
         'npc',
         'deer',
         'bunnies',

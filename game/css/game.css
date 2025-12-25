@@ -367,19 +367,144 @@ canvas {
         font-size: 20px;
         padding: 12px 16px;
     }
-    
+
     #chat-messages {
         font-size: 16px;
         height: 150px;
     }
-    
+
     #chat-input {
         font-size: 16px;
         padding: 10px;
     }
-    
+
     #chat-box.chat-open {
         max-height: 250px;
+    }
+}
+
+/* ============================================
+   Loading Screen - Matches game UI style
+   ============================================ */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+#loading-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#loading-content {
+    text-align: center;
+    padding: var(--spacing-lg);
+    background-color: var(--color-wood-primary);
+    border: var(--border-width-thick) solid var(--color-wood-solid);
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    min-width: 320px;
+    max-width: 450px;
+}
+
+#loading-title {
+    font-family: var(--font-retro);
+    font-size: 28px;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+#loading-subtitle {
+    font-family: var(--font-retro);
+    font-size: 12px;
+    color: var(--color-text);
+    margin-bottom: 24px;
+}
+
+#loading-bar-container {
+    margin: 20px auto;
+    width: 300px;
+}
+
+#loading-bar-border {
+    background: rgba(0, 0, 0, 0.5);
+    border: 3px solid var(--color-wood-solid);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+#loading-bar {
+    height: 24px;
+    width: 0%;
+    background: linear-gradient(180deg,
+        #5a9e5f 0%,
+        #4a7c4e 50%,
+        #3a6c3e 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.2);
+}
+
+#loading-percent {
+    font-family: var(--font-retro);
+    font-size: 16px;
+    color: var(--color-text-secondary);
+    margin-top: 12px;
+}
+
+#loading-status {
+    font-family: var(--font-retro);
+    font-size: 10px;
+    color: var(--color-text);
+    margin-top: 16px;
+    min-height: 16px;
+}
+
+/* Loading animation dots */
+#loading-status::after {
+    content: '';
+    animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+
+/* Mobile adjustments for loading screen */
+@media (max-width: 480px) {
+    #loading-content {
+        min-width: 280px;
+        padding: 20px 16px;
+    }
+
+    #loading-title {
+        font-size: 20px;
+    }
+
+    #loading-bar-container {
+        width: 240px;
+    }
+
+    #loading-percent {
+        font-size: 14px;
+    }
+
+    #loading-status {
+        font-size: 8px;
     }
 }
 

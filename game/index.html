@@ -19,11 +19,26 @@
     <!-- Inline SVG favicon (prevents 404) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a1a2e'/><polygon points='16,4 28,28 4,28' fill='%2300ff88'/></svg>">
 
-    <title>3D Interactive Demo</title>
+    <title>Graceful World</title>
     <link rel="stylesheet" href="css/game.css">
 </head>
 
 <body>
+    <!-- RuneScape-style Loading Screen -->
+    <div id="loading-screen">
+        <div id="loading-content">
+            <div id="loading-title">Graceful World</div>
+            <div id="loading-subtitle">Loading - please wait...</div>
+            <div id="loading-bar-container">
+                <div id="loading-bar-border">
+                    <div id="loading-bar"></div>
+                </div>
+            </div>
+            <div id="loading-percent">0%</div>
+            <div id="loading-status">Initializing...</div>
+        </div>
+    </div>
+
     <div id="notification"></div>
     <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/mute.png" alt="Audio Icon">
 

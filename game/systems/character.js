@@ -189,7 +189,7 @@ function updateCharacterMovement(delta) {
         character.position.z = newZ;
     }
 
-    // Use heightmap to find exact ground height (much faster and reliable than raycasting)
+    // Get terrain height
     let groundY = 0;
     if (typeof getTerrainHeightAt === 'function') {
         groundY = getTerrainHeightAt(character.position.x, character.position.z);

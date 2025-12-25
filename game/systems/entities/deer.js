@@ -137,9 +137,9 @@ function createDeer(id, x, z) {
     };
 }
 
-// Init called by main game, but we wait for server updates to create entities
+// Init called by main game - spawner handles actual spawning
 function initDeer() {
-    // Deer system initialized, waiting for server state
+    // Deer system ready - animal-spawner.js handles spawning
 }
 
 // Called by animal-sync.js when server sends snapshot
@@ -163,31 +163,111 @@ function updateDeerState(serverData) {
     });
 }
 
+// Flee behavior config
+const DEER_FLEE = {
+    detectRadius: 15,    // Start fleeing when player this close
+    fleeRadius: 6,       // Panic flee when player this close
+    fleeDuration: 3,     // How long to keep running
+    fleeDistance: 30     // How far to run
+};
+
+// Get deer speed from config
+function getDeerSpeed() {
+    return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.deer.speed', 8.0) : 8.0;
+}
+
 // Render Loop - Interpolate to target
 function updateDeer(delta) {
     const time = Date.now() * 0.005;
+    const playerPos = typeof character !== 'undefined' && character ? character.position : null;
 
     deerList.forEach(deer => {
-        // Smooth Move
-        deer.group.position.lerp(deer.targetPos, delta * 5);
-        
-        // Smooth Rotate
-        // Simple lerp for rotation (could be improved)
-        let rotDiff = deer.targetRot - deer.group.rotation.y;
-        while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-        while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-        deer.group.rotation.y += rotDiff * delta * 5;
+        // Local/spawned deer wander behavior
+        if (deer.id.startsWith('local_') || deer.id.startsWith('spawned_')) {
+            deer.wanderTimer = (deer.wanderTimer || 0) - delta;
+            deer.fleeTimer = (deer.fleeTimer || 0) - delta;
 
-        // Animations based on State (Visual only)
+            // Check distance to player
+            let distToPlayer = Infinity;
+            if (playerPos) {
+                const dx = deer.group.position.x - playerPos.x;
+                const dz = deer.group.position.z - playerPos.z;
+                distToPlayer = Math.sqrt(dx * dx + dz * dz);
+            }
+
+            // Flee behavior - player too close!
+            if (distToPlayer < DEER_FLEE.detectRadius) {
+                // Run away from player
+                const fleeAngle = Math.atan2(
+                    deer.group.position.x - playerPos.x,
+                    deer.group.position.z - playerPos.z
+                );
+                const fleeDist = DEER_FLEE.fleeDistance + (distToPlayer < DEER_FLEE.fleeRadius ? 20 : 0);
+                const newX = deer.group.position.x + Math.cos(fleeAngle) * fleeDist;
+                const newZ = deer.group.position.z + Math.sin(fleeAngle) * fleeDist;
+                const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
+                deer.targetPos.set(newX, newY, newZ);
+                deer.targetRot = fleeAngle;
+                deer.state = 'RUN';
+                deer.fleeTimer = DEER_FLEE.fleeDuration;
+                deer.wanderTimer = DEER_FLEE.fleeDuration + 1;
+            }
+            // Normal wander behavior (only if not fleeing)
+            else if (deer.fleeTimer <= 0) {
+                const distToTarget = deer.group.position.distanceTo(deer.targetPos);
+
+                if (deer.wanderTimer <= 0 || distToTarget < 2) {
+                    // Pick new random destination
+                    const wanderDist = 15 + Math.random() * 25;
+                    const angle = deer.group.rotation.y + (Math.random() - 0.5) * Math.PI;
+                    const newX = deer.group.position.x + Math.cos(angle) * wanderDist;
+                    const newZ = deer.group.position.z + Math.sin(angle) * wanderDist;
+                    const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
+                    deer.targetPos.set(newX, newY, newZ);
+                    deer.targetRot = Math.atan2(newX - deer.group.position.x, newZ - deer.group.position.z);
+                    deer.state = Math.random() < 0.2 ? 'RUN' : (Math.random() < 0.5 ? 'WALK' : 'IDLE');
+                    deer.wanderTimer = deer.state === 'IDLE' ? (2 + Math.random() * 4) : (4 + Math.random() * 6);
+                }
+            }
+        }
+
+        // Movement speed based on state (uses config speed)
+        const baseSpeed = getDeerSpeed();
+        const moveSpeed = deer.state === 'RUN' ? baseSpeed : (deer.state === 'WALK' ? baseSpeed * 0.4 : 0);
+
+        if (moveSpeed > 0) {
+            // Move toward target at fixed speed
+            const dir = new THREE.Vector3().subVectors(deer.targetPos, deer.group.position);
+            dir.y = 0; // Only horizontal movement
+            const dist = dir.length();
+            if (dist > 0.5) {
+                dir.normalize().multiplyScalar(moveSpeed * delta);
+                deer.group.position.add(dir);
+            }
+            // Update Y to follow terrain
+            const terrainY = typeof getTerrainHeightAt === 'function'
+                ? getTerrainHeightAt(deer.group.position.x, deer.group.position.z) : 0;
+            deer.group.position.y = terrainY;
+        }
+
+        // Smooth Rotate toward movement direction
         if (deer.state === 'WALK' || deer.state === 'RUN') {
-            const legSpeed = deer.state === 'RUN' ? 25 : 10;
+            let rotDiff = deer.targetRot - deer.group.rotation.y;
+            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+            deer.group.rotation.y += rotDiff * delta * 3;
+        }
+
+        // Animations based on State
+        if (deer.state === 'WALK' || deer.state === 'RUN') {
+            const legSpeed = deer.state === 'RUN' ? 20 : 8;
             const cycle = time * legSpeed;
-            deer.legs[0].rotation.x = Math.sin(cycle) * 0.6;
-            deer.legs[3].rotation.x = Math.sin(cycle) * 0.6;
-            deer.legs[1].rotation.x = Math.sin(cycle + Math.PI) * 0.6;
-            deer.legs[2].rotation.x = Math.sin(cycle + Math.PI) * 0.6;
+            deer.legs[0].rotation.x = Math.sin(cycle) * 0.5;
+            deer.legs[3].rotation.x = Math.sin(cycle) * 0.5;
+            deer.legs[1].rotation.x = Math.sin(cycle + Math.PI) * 0.5;
+            deer.legs[2].rotation.x = Math.sin(cycle + Math.PI) * 0.5;
         } else {
-             deer.legs.forEach(leg => leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, 0, delta * 5));
+            deer.legs.forEach(leg => leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, 0, delta * 3));
         }
     });
 }

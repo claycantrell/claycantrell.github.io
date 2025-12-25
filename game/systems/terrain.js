@@ -61,6 +61,11 @@ function initTerrainConfig() {
         initWaterSystem(terrainConfig.seed);
     }
 
+    // Initialize cave system
+    if (typeof initCaveSystem === 'function') {
+        initCaveSystem(terrainConfig.seed);
+    }
+
     return terrainConfig;
 }
 
@@ -663,8 +668,7 @@ function createSingleMeshTerrain() {
 
     // Create material with vertex colors
     const groundMaterial = new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        flatShading: true
+        vertexColors: true
     });
 
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);

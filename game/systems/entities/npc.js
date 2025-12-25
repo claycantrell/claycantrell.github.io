@@ -54,8 +54,7 @@ function createNPC(spawnX = 0, spawnZ = 0) {
     const bodySegments = PERFORMANCE.characterDetail.bodySegments;
     const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, bodySegments);
     const bodyMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8000FF, // Purple color
-        flatShading: true
+        color: 0x8000FF // Purple color
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     group.add(body);
@@ -64,8 +63,7 @@ function createNPC(spawnX = 0, spawnZ = 0) {
     const headSegments = PERFORMANCE.characterDetail.headSegments;
     const headGeometry = new THREE.SphereGeometry(0.5, headSegments, headSegments);
     const headMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFFFF00, // Yellow (like player)
-        flatShading: true
+        color: 0xFFFF00 // Yellow (like player)
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1.5;
@@ -74,9 +72,8 @@ function createNPC(spawnX = 0, spawnZ = 0) {
     // Cone Hat with Flat Shading - Purple
     const hatSegments = PERFORMANCE.characterDetail.hatSegments;
     const hatGeometry = new THREE.ConeGeometry(0.6, 1, hatSegments);
-    const hatMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0x8000FF, // Purple
-        flatShading: true 
+    const hatMaterial = new THREE.MeshBasicMaterial({
+        color: 0x8000FF // Purple
     });
     const hat = new THREE.Mesh(hatGeometry, hatMaterial);
     hat.position.y = 2.3;

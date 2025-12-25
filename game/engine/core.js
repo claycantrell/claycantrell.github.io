@@ -281,6 +281,11 @@ function init() {
     // Initialize Birds
     initBirds();
 
+    // Initialize Animal Spawner (Minecraft-style chunk spawning)
+    if (typeof initAnimalSpawner === 'function') {
+        initAnimalSpawner();
+    }
+
     // Initialize audio (audio.js will handle setup)
     initAudio();
 
@@ -324,6 +329,11 @@ async function startGame() {
         return;
     }
 
+    // Update loading progress
+    if (typeof updateLoadingProgress === 'function') {
+        updateLoadingProgress(96, 'Loading map config');
+    }
+
     // Load map configuration first
     const mapId = getMapIdFromUrl() || 'grasslands';
     if (typeof gameLog === 'function') gameLog('Loading map:', mapId);
@@ -344,6 +354,11 @@ async function startGame() {
         }
     }
 
+    // Update loading progress
+    if (typeof updateLoadingProgress === 'function') {
+        updateLoadingProgress(98, 'Loading fonts');
+    }
+
     const loader = new THREE.FontLoader();
     loader.load(
         'https://threejs.org/examples/fonts/droid/droid_sans_mono_regular.typeface.json',
@@ -355,7 +370,15 @@ async function startGame() {
             init();
             // Start the animation loop
             animate();
-            // After 3 seconds, fade out the instructional message
+            // Hide loading screen and fade out instructions
+            if (typeof updateLoadingProgress === 'function') {
+                updateLoadingProgress(100, 'Ready!');
+            }
+            setTimeout(() => {
+                if (typeof hideLoadingScreen === 'function') {
+                    hideLoadingScreen();
+                }
+            }, 300);
             setTimeout(() => {
                 instructionMessage.style.opacity = '0';
             }, 3000);
@@ -372,6 +395,15 @@ async function startGame() {
             setInstructions();
             init();
             animate();
+            // Hide loading screen and fade out instructions
+            if (typeof updateLoadingProgress === 'function') {
+                updateLoadingProgress(100, 'Ready!');
+            }
+            setTimeout(() => {
+                if (typeof hideLoadingScreen === 'function') {
+                    hideLoadingScreen();
+                }
+            }, 300);
             setTimeout(() => {
                 instructionMessage.style.opacity = '0';
             }, 3000);

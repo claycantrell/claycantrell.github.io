@@ -144,6 +144,7 @@ const scripts = [
     '../systems/entities/bunny.js',
     '../systems/entities/bird.js',
     '../systems/entities/entity-registry.js',
+    '../systems/entities/animal-spawner.js',
 
     // Layer 4: Multiplayer
     '../multiplayer/player-utils.js',
@@ -164,6 +165,30 @@ const scripts = [
     '../engine/core.js',           // Three.js setup
     '../engine/game.js'            // Animation loop
 ];
+
+// Loading screen elements
+const loadingBar = document.getElementById('loading-bar');
+const loadingPercent = document.getElementById('loading-percent');
+const loadingStatus = document.getElementById('loading-status');
+const loadingScreen = document.getElementById('loading-screen');
+
+// Update loading progress
+function updateLoadingProgress(percent, status) {
+    if (loadingBar) loadingBar.style.width = `${percent}%`;
+    if (loadingPercent) loadingPercent.textContent = `${Math.round(percent)}%`;
+    if (loadingStatus) loadingStatus.textContent = status;
+}
+
+// Hide loading screen
+function hideLoadingScreen() {
+    if (loadingScreen) {
+        loadingScreen.classList.add('hidden');
+    }
+}
+
+// Expose functions globally for core.js to call
+window.hideLoadingScreen = hideLoadingScreen;
+window.updateLoadingProgress = updateLoadingProgress;
 
 // Load a single script with timeout
 function loadScriptWithTimeout(src, timeout = SCRIPT_LOAD_TIMEOUT) {
@@ -189,14 +214,69 @@ function loadScriptWithTimeout(src, timeout = SCRIPT_LOAD_TIMEOUT) {
     });
 }
 
+// Get friendly name for script status
+function getScriptName(src) {
+    const filename = src.split('/').pop().replace('.js', '');
+    const names = {
+        'namespace': 'Core systems',
+        'systems': 'Game systems',
+        'config': 'Configuration',
+        'performance': 'Performance settings',
+        'random': 'World generation',
+        'map-loader': 'Map loader',
+        'character': 'Character system',
+        'climate': 'Climate system',
+        'biomes': 'Biome data',
+        'water': 'Water system',
+        'caves': 'Cave generation',
+        'chunks': 'Terrain chunks',
+        'terrain': 'Terrain generation',
+        'trees': 'Tree generation',
+        'shrubs': 'Vegetation',
+        'portals': 'Portal system',
+        'npc': 'NPC system',
+        'deer': 'Wildlife (deer)',
+        'bunny': 'Wildlife (bunnies)',
+        'bird': 'Wildlife (birds)',
+        'entity-registry': 'Entity registry',
+        'animal-spawner': 'Animal spawner',
+        'player-utils': 'Multiplayer utilities',
+        'time-sync': 'Time synchronization',
+        'sync': 'Network sync',
+        'input': 'Input controls',
+        'audio': 'Audio system',
+        'ui': 'User interface',
+        'chat': 'Chat system',
+        'client': 'Network client',
+        'other-players': 'Multiplayer rendering',
+        'building': 'Building system',
+        'map-menu': 'Map selection',
+        'core': 'Initializing world',
+        'game': 'Starting game'
+    };
+    return names[filename] || filename;
+}
+
 async function loadScripts() {
+    const totalScripts = scripts.length;
+
     try {
-        for (const src of scripts) {
+        for (let i = 0; i < scripts.length; i++) {
+            const src = scripts[i];
+            const scriptName = getScriptName(src);
+
+            // Update status before loading
+            updateLoadingProgress((i / totalScripts) * 90, scriptName);
+
             await loadScriptWithTimeout(src);
         }
+
+        updateLoadingProgress(95, 'Finalizing');
         gameLog('All game scripts loaded');
     } catch (error) {
         console.error('Script loading failed:', error);
+        updateLoadingProgress(0, 'Error loading game');
+
         // Show user-friendly error
         const notification = document.getElementById('notification');
         if (notification) {

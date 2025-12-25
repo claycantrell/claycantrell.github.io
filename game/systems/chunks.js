@@ -140,6 +140,9 @@ function createChunkMesh(cx, cz, chunkData) {
     const lakeColor = new THREE.Color(0x1a5f7a);
     const shallowColor = new THREE.Color(0x5dade2);
 
+    // Cave colors
+    const caveFloorColor = new THREE.Color(0x2a2a2a);
+
     // Apply heights and colors
     for (let i = 0; i < vertices.length; i += 3) {
         const vertexIndex = i / 3;
@@ -153,7 +156,10 @@ function createChunkMesh(cx, cz, chunkData) {
         const data = chunkData.biomeData[z][x];
         let color;
 
-        if (data.isWater) {
+        // Cave entrance gets dark floor color
+        if (data.isCaveEntrance) {
+            color = caveFloorColor;
+        } else if (data.isWater) {
             // Water coloring based on type and depth
             if (data.waterType === 'river') {
                 color = riverColor;
@@ -186,8 +192,7 @@ function createChunkMesh(cx, cz, chunkData) {
 
     // Create material
     const material = new THREE.MeshBasicMaterial({
-        vertexColors: true,
-        flatShading: true
+        vertexColors: true
     });
 
     // Create mesh
@@ -199,6 +204,7 @@ function createChunkMesh(cx, cz, chunkData) {
 
     return mesh;
 }
+
 
 // Load a chunk
 function loadChunk(cx, cz) {

@@ -101,9 +101,9 @@ function createBunny(id, x, z) {
     };
 }
 
-// Init called by main game, waiting for server
+// Init called by main game - spawner handles actual spawning
 function initBunnies() {
-    // Bunny system initialized, waiting for server state
+    // Bunny system ready - animal-spawner.js handles spawning
 }
 
 // Called by animal-sync.js
@@ -123,32 +123,118 @@ function updateBunnyState(serverData) {
     });
 }
 
+// Flee behavior config - bunnies are more skittish
+const BUNNY_FLEE = {
+    detectRadius: 12,    // Start fleeing when player this close
+    fleeRadius: 5,       // Panic flee when player this close
+    fleeDuration: 2,     // How long to keep hopping away
+    fleeDistance: 20     // How far to flee
+};
+
+// Get bunny speed from config
+function getBunnySpeed() {
+    return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.bunnies.speed', 6.0) : 6.0;
+}
+
 // Render Loop
 function updateBunnies(delta) {
     const time = Date.now() * 0.001;
-    
+    const playerPos = typeof character !== 'undefined' && character ? character.position : null;
+
     bunnyList.forEach(bunny => {
-        // Interpolate Position
-        bunny.group.position.lerp(bunny.targetPos, delta * 10);
-        
-        // Simple Look Rotation (face movement direction)
-        const moveDir = new THREE.Vector3().subVectors(bunny.targetPos, bunny.group.position);
-        if (moveDir.lengthSq() > 0.001) {
-            const angle = Math.atan2(moveDir.x, moveDir.z);
-            let rotDiff = angle - bunny.group.rotation.y;
-            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-            bunny.group.rotation.y += rotDiff * delta * 10;
+        // Local/spawned bunny wander behavior
+        if (bunny.id.startsWith('local_') || bunny.id.startsWith('spawned_')) {
+            bunny.wanderTimer = (bunny.wanderTimer || 0) - delta;
+            bunny.fleeTimer = (bunny.fleeTimer || 0) - delta;
+
+            // Check distance to player
+            let distToPlayer = Infinity;
+            if (playerPos) {
+                const dx = bunny.group.position.x - playerPos.x;
+                const dz = bunny.group.position.z - playerPos.z;
+                distToPlayer = Math.sqrt(dx * dx + dz * dz);
+            }
+
+            // Flee behavior - player too close!
+            if (distToPlayer < BUNNY_FLEE.detectRadius) {
+                // Hop away from player
+                const fleeAngle = Math.atan2(
+                    bunny.group.position.x - playerPos.x,
+                    bunny.group.position.z - playerPos.z
+                );
+                const fleeDist = BUNNY_FLEE.fleeDistance + (distToPlayer < BUNNY_FLEE.fleeRadius ? 15 : 0);
+                const newX = bunny.group.position.x + Math.cos(fleeAngle) * fleeDist;
+                const newZ = bunny.group.position.z + Math.sin(fleeAngle) * fleeDist;
+                bunny.targetPos.set(newX, 0, newZ);
+                bunny.targetRot = fleeAngle;
+                bunny.state = 'HOP';
+                bunny.hopPhase = bunny.hopPhase || 0;
+                bunny.fleeTimer = BUNNY_FLEE.fleeDuration;
+                bunny.wanderTimer = BUNNY_FLEE.fleeDuration + 1;
+                bunny.isFleeing = true;
+            }
+            // Normal wander behavior (only if not fleeing)
+            else if (bunny.fleeTimer <= 0) {
+                bunny.isFleeing = false;
+                const distToTarget = bunny.group.position.distanceTo(bunny.targetPos);
+
+                // Reached destination or timer expired
+                if (bunny.wanderTimer <= 0 || distToTarget < 0.3) {
+                    if (bunny.state === 'HOP') {
+                        // Just finished hopping, rest a bit
+                        bunny.state = 'IDLE';
+                        bunny.wanderTimer = 1 + Math.random() * 3;
+                    } else {
+                        // Pick new hop destination
+                        const hopDist = 3 + Math.random() * 8;
+                        const angle = bunny.group.rotation.y + (Math.random() - 0.5) * Math.PI;
+                        const newX = bunny.group.position.x + Math.cos(angle) * hopDist;
+                        const newZ = bunny.group.position.z + Math.sin(angle) * hopDist;
+                        bunny.targetPos.set(newX, 0, newZ);
+                        bunny.targetRot = Math.atan2(newX - bunny.group.position.x, newZ - bunny.group.position.z);
+                        bunny.state = 'HOP';
+                        bunny.hopPhase = 0;
+                        bunny.wanderTimer = 2;
+                    }
+                }
+            }
         }
 
-        // Animations
+        // Get terrain height at current position
+        const terrainY = typeof getTerrainHeightAt === 'function'
+            ? getTerrainHeightAt(bunny.group.position.x, bunny.group.position.z) : 0;
+
+        // Movement
         if (bunny.state === 'HOP') {
-             // Squash/Stretch or Hop arc visual (simplified)
-             bunny.group.position.y += Math.sin(time * 20) * 0.2; // Visual hop
+            // Move toward target (uses config speed, faster when fleeing)
+            const baseSpeed = getBunnySpeed();
+            const hopSpeed = bunny.isFleeing ? baseSpeed * 1.5 : baseSpeed;
+            const dir = new THREE.Vector3().subVectors(bunny.targetPos, bunny.group.position);
+            dir.y = 0;
+            const dist = dir.length();
+            if (dist > 0.3) {
+                dir.normalize().multiplyScalar(hopSpeed * delta);
+                bunny.group.position.add(dir);
+            }
+
+            // Hop arc (faster hops when fleeing)
+            const hopFreq = bunny.isFleeing ? 12 : 8;
+            bunny.hopPhase = (bunny.hopPhase || 0) + delta * hopFreq;
+            const hopHeight = Math.sin(bunny.hopPhase) * 0.4;
+            bunny.group.position.y = terrainY + Math.max(0, hopHeight);
+
+            // Face movement direction
+            let rotDiff = (bunny.targetRot || 0) - bunny.group.rotation.y;
+            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+            bunny.group.rotation.y += rotDiff * delta * 8;
         } else {
-            // Idle ear twitch
-            bunny.ears[0].rotation.z = 0.2 + Math.sin(time * 20) * 0.05;
-            bunny.ears[1].rotation.z = -0.2 - Math.sin(time * 20 + 1) * 0.05;
+            // Idle - stay on ground
+            bunny.group.position.y = terrainY;
+
+            // Ear twitch
+            bunny.ears[0].rotation.z = 0.2 + Math.sin(time * 3) * 0.1;
+            bunny.ears[1].rotation.z = -0.2 - Math.sin(time * 3 + 1) * 0.1;
         }
     });
 }
