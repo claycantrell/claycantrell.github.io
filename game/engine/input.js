@@ -1,4 +1,11 @@
-// Input handling (keyboard and touch controls)
+// Input handling (keyboard, mouse, and touch controls)
+// Minecraft-style controls: WASD + mouse look
+
+// Mouse look state
+let isPointerLocked = false;
+let mouseSensitivity = 0.002;
+let cameraYaw = 0;    // Horizontal rotation
+let cameraPitch = 0;  // Vertical rotation (clamped)
 
 // Function to handle key down events for character movement
 function onKeyDown(event) {
@@ -12,7 +19,7 @@ function onKeyDown(event) {
     }
 
     // Prevent default for game keys to avoid browser shortcuts
-    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(event.code)) {
+    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'].includes(event.code)) {
         event.preventDefault();
     }
 
@@ -20,24 +27,28 @@ function onKeyDown(event) {
     activeKeys.add(event.code);
 
     switch (event.code) {
-        case 'ArrowDown':
-        case 'KeyS':
+        case 'KeyW':
+        case 'ArrowUp':
             moveForward = true;
             break;
-        case 'ArrowLeft':
-        case 'KeyA':
-            rotateLeft = true;
-            break;
-        case 'ArrowUp':
-        case 'KeyW':
+        case 'KeyS':
+        case 'ArrowDown':
             moveBackward = true;
             break;
-        case 'ArrowRight':
+        case 'KeyA':
+        case 'ArrowLeft':
+            strafeLeft = true;
+            break;
         case 'KeyD':
-            rotateRight = true;
+        case 'ArrowRight':
+            strafeRight = true;
             break;
         case 'Space':
-            isFlying = true;
+            isJumping = true;
+            break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+            isSprinting = true;
             break;
         case 'KeyV':
             // Toggle first-person view
@@ -51,10 +62,6 @@ function onKeyDown(event) {
 
 // Function to handle key up events to stop character movement
 function onKeyUp(event) {
-    // Check if chat input is focused
-    const chatInput = document.getElementById('chat-input');
-    const isChatFocused = chatInput && document.activeElement === chatInput;
-
     // We intentionally process keyup events even if chat is focused
     // This ensures that if the user was holding a movement key and then focused chat,
     // releasing the key will stop the movement (preventing stuck keys).
@@ -63,24 +70,28 @@ function onKeyUp(event) {
     activeKeys.delete(event.code);
 
     switch (event.code) {
-        case 'ArrowDown':
-        case 'KeyS':
+        case 'KeyW':
+        case 'ArrowUp':
             moveForward = false;
             break;
-        case 'ArrowLeft':
-        case 'KeyA':
-            rotateLeft = false;
-            break;
-        case 'ArrowUp':
-        case 'KeyW':
+        case 'KeyS':
+        case 'ArrowDown':
             moveBackward = false;
             break;
-        case 'ArrowRight':
+        case 'KeyA':
+        case 'ArrowLeft':
+            strafeLeft = false;
+            break;
         case 'KeyD':
-            rotateRight = false;
+        case 'ArrowRight':
+            strafeRight = false;
             break;
         case 'Space':
-            isFlying = false;
+            isJumping = false;
+            break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+            isSprinting = false;
             break;
     }
 }
@@ -198,37 +209,37 @@ function createTouchControls() {
         activeKeys.delete('TouchTop');
     }, { passive: false });
 
-    // Left Control => Rotate Left
+    // Left Control => Strafe Left
     controlZones.left.addEventListener('touchstart', function (event) {
         event.preventDefault();
-        rotateLeft = true;
+        strafeLeft = true;
         activeKeys.add('TouchLeft');
     }, { passive: false });
     controlZones.left.addEventListener('touchend', function (event) {
         event.preventDefault();
-        rotateLeft = false;
+        strafeLeft = false;
         activeKeys.delete('TouchLeft');
     }, { passive: false });
     controlZones.left.addEventListener('touchcancel', function (event) {
         event.preventDefault();
-        rotateLeft = false;
+        strafeLeft = false;
         activeKeys.delete('TouchLeft');
     }, { passive: false });
 
-    // Right Control => Rotate Right
+    // Right Control => Strafe Right
     controlZones.right.addEventListener('touchstart', function (event) {
         event.preventDefault();
-        rotateRight = true;
+        strafeRight = true;
         activeKeys.add('TouchRight');
     }, { passive: false });
     controlZones.right.addEventListener('touchend', function (event) {
         event.preventDefault();
-        rotateRight = false;
+        strafeRight = false;
         activeKeys.delete('TouchRight');
     }, { passive: false });
     controlZones.right.addEventListener('touchcancel', function (event) {
         event.preventDefault();
-        rotateRight = false;
+        strafeRight = false;
         activeKeys.delete('TouchRight');
     }, { passive: false });
 }
@@ -240,11 +251,47 @@ const activeKeys = new Set();
 function resetMovementFlags() {
     moveForward = false;
     moveBackward = false;
-    rotateLeft = false;
-    rotateRight = false;
-    isFlying = false;
+    strafeLeft = false;
+    strafeRight = false;
+    isJumping = false;
+    isSprinting = false;
     // Note: isFirstPerson is NOT reset - it's a view preference, not a movement state
     activeKeys.clear();
+}
+
+// Mouse look handlers
+function onMouseMove(event) {
+    if (!isPointerLocked) return;
+
+    const movementX = event.movementX || 0;
+    const movementY = event.movementY || 0;
+
+    cameraYaw -= movementX * mouseSensitivity;
+    cameraPitch -= movementY * mouseSensitivity;
+
+    // Clamp pitch to prevent camera flipping
+    cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, cameraPitch));
+}
+
+function onPointerLockChange() {
+    isPointerLocked = document.pointerLockElement === document.body ||
+                      document.pointerLockElement === renderer.domElement;
+}
+
+function requestPointerLock() {
+    const element = renderer ? renderer.domElement : document.body;
+    element.requestPointerLock();
+}
+
+function onCanvasClick(event) {
+    // Only lock pointer if not clicking on UI elements
+    const chatInput = document.getElementById('chat-input');
+    if (document.activeElement === chatInput) return;
+
+    // Don't lock pointer if already locked
+    if (document.pointerLockElement) return;
+
+    requestPointerLock();
 }
 
 // Handle window blur (user switches tabs/windows) - reset controls
@@ -263,11 +310,22 @@ function initControls() {
     document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('resize', onWindowResize, false);
-    
+
+    // Mouse look controls (Minecraft-style)
+    document.addEventListener('mousemove', onMouseMove, false);
+    document.addEventListener('pointerlockchange', onPointerLockChange, false);
+
+    // Click to capture mouse
+    if (typeof renderer !== 'undefined' && renderer.domElement) {
+        renderer.domElement.addEventListener('click', onCanvasClick, false);
+    } else {
+        document.body.addEventListener('click', onCanvasClick, false);
+    }
+
     // Reset controls when window loses/gains focus (prevents stuck keys)
     window.addEventListener('blur', onWindowBlur, false);
     window.addEventListener('focus', onWindowFocus, false);
-    
+
     // Also handle visibility change (tab switching)
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
@@ -280,12 +338,12 @@ function initControls() {
     if (isMobile) {
         createTouchControls();
     }
-    
+
     // Safety check: periodically verify controls aren't stuck
     // This catches edge cases where events are missed
     setInterval(() => {
         // If flags are true but no keys are active, reset them
-        if ((moveForward || moveBackward || rotateLeft || rotateRight) && activeKeys.size === 0) {
+        if ((moveForward || moveBackward || strafeLeft || strafeRight) && activeKeys.size === 0) {
             // Only reset if we haven't received a key event in a while
             // This prevents false positives during normal gameplay
             resetMovementFlags();
@@ -297,4 +355,16 @@ function initControls() {
 window.initControls = initControls;
 window.resetMovementFlags = resetMovementFlags;
 window.activeKeys = activeKeys;
+
+// Expose mouse look state for character movement
+window.getCameraYaw = () => cameraYaw;
+window.getCameraPitch = () => cameraPitch;
+window.isPointerLocked = () => isPointerLocked;
+window.setCameraYaw = (yaw) => { cameraYaw = yaw; };
+
+// Movement flags (need to be global for character.js)
+window.strafeLeft = false;
+window.strafeRight = false;
+window.isJumping = false;
+window.isSprinting = false;
 

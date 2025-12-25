@@ -4,6 +4,7 @@
 let notificationEl = null;
 let audioIconEl = null;
 let whiteOverlayEl = null;
+let crosshairEl = null;
 let notificationTimeout = null;
 
 // Cache DOM elements (called once at startup)
@@ -22,10 +23,41 @@ function cacheDOMElements() {
     }
 }
 
+// Create crosshair for Minecraft-style aiming
+function createCrosshair() {
+    crosshairEl = document.createElement('div');
+    crosshairEl.id = 'crosshair';
+    crosshairEl.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 50;
+        display: none;
+    `;
+    // Simple dot crosshair
+    crosshairEl.innerHTML = `
+        <div style="width:4px;height:4px;background:#fff;border-radius:50%;box-shadow:0 0 2px #000;"></div>
+    `;
+    document.body.appendChild(crosshairEl);
+
+    // Show/hide crosshair based on pointer lock
+    document.addEventListener('pointerlockchange', () => {
+        if (crosshairEl) {
+            crosshairEl.style.display = document.pointerLockElement ? 'block' : 'none';
+        }
+    });
+}
+
 // Initialize UI
 function initUI() {
     // Cache DOM elements first
     cacheDOMElements();
+
+    // Create crosshair for Minecraft-style controls
+    createCrosshair();
+
     // Exit Button -> Home (relative path for GitHub Pages compatibility)
     document.getElementById('exit-button').addEventListener('click', () => {
         window.location.href = '../pages/home.html';

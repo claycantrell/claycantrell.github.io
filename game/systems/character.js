@@ -40,8 +40,8 @@ function getCharacterSettings() {
     const defaultBoundary = worldSize / 2;
 
     return {
-        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
-        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 15.0) : 15.0,
+        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 12.0) : 12.0,
+        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 10.0) : 10.0,
         rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
         gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
         boundary: useConfig ? CONFIG.get('terrain.boundary', defaultBoundary) : defaultBoundary,
@@ -115,39 +115,63 @@ function initCharacterSpawn(charGroup) {
     if (typeof gameLog === 'function') gameLog(`Character spawned at (${spawnX}, ${spawnY.toFixed(2)}, ${spawnZ})`);
 }
 
-// Character movement calculations (called from game.js) - Raycasting-based terrain following
+// Jump state
+let verticalVelocity = 0;
+let isOnGround = true;
+const JUMP_FORCE = 12;
+
+// Character movement calculations (called from game.js) - Minecraft-style controls
 function updateCharacterMovement(delta) {
     if (!isTerrainReady) return; // Do not run movement logic until terrain is ready
 
     // Get movement parameters from config
     const charConfig = getCharacterSettings();
-    const rotationSpeed = charConfig.rotationSpeed;
-    const moveSpeed = charConfig.moveSpeed;
+    let moveSpeed = charConfig.moveSpeed;
     const flySpeed = charConfig.flySpeed;
     const gravity = charConfig.gravity;
 
-    // Handle rotation
-    if (rotateLeft) {
-        character.rotation.y += rotationSpeed * delta;
-    }
-    if (rotateRight) {
-        character.rotation.y -= rotationSpeed * delta;
+    // Sprint multiplier
+    if (isSprinting) {
+        moveSpeed *= 1.5;
     }
 
-    // Calculate horizontal movement
+    // Get camera yaw for movement direction (Minecraft-style)
+    const yaw = typeof getCameraYaw === 'function' ? getCameraYaw() : character.rotation.y;
+
+    // Calculate movement direction based on camera yaw
     let moveX = 0;
     let moveZ = 0;
+
+    // Forward/backward movement (in camera direction)
     if (moveForward) {
-        moveZ = -moveSpeed * delta;
+        moveX += Math.sin(yaw) * moveSpeed * delta;
+        moveZ += Math.cos(yaw) * moveSpeed * delta;
     }
     if (moveBackward) {
-        moveZ = moveSpeed * delta;
+        moveX -= Math.sin(yaw) * moveSpeed * delta;
+        moveZ -= Math.cos(yaw) * moveSpeed * delta;
     }
 
-    // Apply character rotation to movement
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(character.quaternion);
-    moveX = forward.x * moveZ;
-    moveZ = forward.z * moveZ;
+    // Strafe movement (perpendicular to camera direction)
+    if (strafeLeft) {
+        moveX += Math.sin(yaw + Math.PI / 2) * moveSpeed * delta;
+        moveZ += Math.cos(yaw + Math.PI / 2) * moveSpeed * delta;
+    }
+    if (strafeRight) {
+        moveX += Math.sin(yaw - Math.PI / 2) * moveSpeed * delta;
+        moveZ += Math.cos(yaw - Math.PI / 2) * moveSpeed * delta;
+    }
+
+    // Update character rotation to face movement direction (smooth turn)
+    if (moveX !== 0 || moveZ !== 0) {
+        const targetRotation = Math.atan2(moveX, moveZ);
+        // Smooth rotation interpolation
+        let rotDiff = targetRotation - character.rotation.y;
+        // Normalize to -PI to PI
+        while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+        while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+        character.rotation.y += rotDiff * Math.min(1, delta * 10);
+    }
 
     // Block collision constants
     const BLOCK_SIZE = 2; // Must match GRID_SIZE in building.js
@@ -245,24 +269,37 @@ function updateCharacterMovement(delta) {
     // Target Y position (1 unit above ground/tree)
     const targetY = groundY + 1.0;
 
-    // Handle vertical movement
-    if (isFlying) {
-        character.position.y += flySpeed * delta;
-    } else {
-        // Smoothly approach target height
-        const heightDiff = targetY - character.position.y;
+    // Check if on ground
+    isOnGround = character.position.y <= targetY + 0.1;
 
+    // Handle jumping (Minecraft-style)
+    if (isJumping && isOnGround) {
+        verticalVelocity = JUMP_FORCE;
+        isOnGround = false;
+    }
+
+    // Apply gravity and vertical velocity
+    if (!isOnGround || verticalVelocity > 0) {
+        verticalVelocity -= gravity * delta;
+        character.position.y += verticalVelocity * delta;
+
+        // Land on ground
+        if (character.position.y <= targetY) {
+            character.position.y = targetY;
+            verticalVelocity = 0;
+            isOnGround = true;
+        }
+    } else {
+        // On ground - follow terrain
+        const heightDiff = targetY - character.position.y;
         if (Math.abs(heightDiff) > 0.01) {
             if (heightDiff > 0) {
                 // Going up (climbing slope)
                 character.position.y += Math.min(heightDiff, moveSpeed * delta * 1.5);
             } else {
-                // Going down (falling or descending)
-                character.position.y += Math.max(heightDiff, -gravity * delta);
+                // Going down
+                character.position.y = targetY;
             }
-        } else {
-            // Close enough - snap to target
-            character.position.y = targetY;
         }
     }
 
@@ -271,34 +308,47 @@ function updateCharacterMovement(delta) {
     character.position.x = Math.max(-boundary, Math.min(boundary, character.position.x));
     character.position.z = Math.max(-boundary, Math.min(boundary, character.position.z));
 
+    // Get camera angles from mouse look
+    const cameraYaw = typeof getCameraYaw === 'function' ? getCameraYaw() : 0;
+    const cameraPitch = typeof getCameraPitch === 'function' ? getCameraPitch() : 0;
+
     // Camera mode handling
     if (isFirstPerson) {
-        // First-person: camera at character's eye level, looking forward
-        character.visible = false; // Hide character model in first person
+        // First-person: camera at character's eye level, mouse controls view
+        character.visible = false;
 
-        // Position camera at head height
-        const eyeHeight = 1.8;
+        const eyeHeight = 2.5; // Higher eye level for better view
         camera.position.set(
             character.position.x,
             character.position.y + eyeHeight,
             character.position.z
         );
 
-        // Look in the direction the character is facing
-        const lookDirection = new THREE.Vector3(0, 0, 1).applyQuaternion(character.quaternion);
+        // Calculate look direction from yaw and pitch
+        const lookDir = new THREE.Vector3(
+            Math.sin(cameraYaw) * Math.cos(cameraPitch),
+            Math.sin(cameraPitch),
+            Math.cos(cameraYaw) * Math.cos(cameraPitch)
+        );
+
         camera.lookAt(
-            character.position.x + lookDirection.x * 10,
-            character.position.y + eyeHeight,
-            character.position.z + lookDirection.z * 10
+            camera.position.x + lookDir.x,
+            camera.position.y + lookDir.y,
+            camera.position.z + lookDir.z
         );
     } else {
-        // Third-person: camera follows behind character
-        character.visible = true; // Show character model
+        // Third-person: camera orbits around character based on mouse
+        character.visible = true;
 
-        const cameraOffset = new THREE.Vector3(0, 7, -15);
-        cameraOffset.applyQuaternion(character.quaternion);
-        camera.position.copy(character.position).add(cameraOffset);
-        camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
+        const cameraDistance = 15;
+        const cameraHeight = 7;
+
+        const camX = character.position.x - Math.sin(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
+        const camY = character.position.y + cameraHeight - Math.sin(cameraPitch) * cameraDistance;
+        const camZ = character.position.z - Math.cos(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
+
+        camera.position.set(camX, camY, camZ);
+        camera.lookAt(character.position.x, character.position.y + 2, character.position.z);
     }
 }
 

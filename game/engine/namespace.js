@@ -48,13 +48,14 @@ const GAME = {
         isPlaying: false
     },
 
-    // Input state
+    // Input state (Minecraft-style controls)
     input: {
         moveForward: false,
         moveBackward: false,
-        rotateLeft: false,
-        rotateRight: false,
-        isFlying: false,
+        strafeLeft: false,
+        strafeRight: false,
+        isJumping: false,
+        isSprinting: false,
         activeKeys: new Set()
     },
 

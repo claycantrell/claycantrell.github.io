@@ -9,10 +9,30 @@ const BuildingSystem = {
     },
 
     update(delta) {
-        // Building mode updates ghost position via mouse events
-        // No per-frame update needed
+        // Update ghost position every frame when in build mode
+        // (needed for pointer lock where camera moves, not mouse)
+        if (isBuildMode) {
+            updateGhostPosition();
+            updateCrosshairPosition();
+        }
     }
 };
+
+// Update crosshair visibility - hide in third person
+function updateCrosshairPosition() {
+    const crosshair = document.getElementById('build-crosshair');
+    if (!crosshair) return;
+
+    if (!isFirstPerson) {
+        // Hide crosshair in third person
+        crosshair.style.display = 'none';
+    } else {
+        // Show crosshair in first person
+        crosshair.style.display = 'block';
+        crosshair.style.left = '50%';
+        crosshair.style.top = '50%';
+    }
+}
 
 // Register with Systems registry
 if (typeof Systems !== 'undefined') {
@@ -80,6 +100,26 @@ function initBuildSystem() {
         transparent: true,
         depthWrite: false
     });
+
+    // Create crosshair for build mode
+    const crosshair = document.createElement('div');
+    crosshair.id = 'build-crosshair';
+    crosshair.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
+        display: none;
+        z-index: 100;
+    `;
+    crosshair.innerHTML = `
+        <div style="position:absolute;top:50%;left:0;right:0;height:2px;background:#fff;transform:translateY(-50%);"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;background:#fff;transform:translateX(-50%);"></div>
+    `;
+    document.body.appendChild(crosshair);
 
     // Create UI overlay
     const buildUI = document.createElement('div');
@@ -166,13 +206,16 @@ function gridKey(x, y, z) {
 function toggleBuildMode() {
     isBuildMode = !isBuildMode;
     const ui = document.getElementById('build-ui');
+    const crosshair = document.getElementById('build-crosshair');
 
     if (isBuildMode) {
         ui.style.display = 'block';
+        if (crosshair) crosshair.style.display = 'block';
         if (buildGhost) buildGhost.visible = true;
         showNotification("Build Mode ON - Left click to place, Right click to remove");
     } else {
         ui.style.display = 'none';
+        if (crosshair) crosshair.style.display = 'none';
         if (buildGhost) buildGhost.visible = false;
         showNotification("Build Mode OFF");
     }
@@ -244,8 +287,12 @@ function onBuildScroll(event) {
 function onBuildMouseMove(event) {
     if (!isBuildMode) return;
 
-    buildMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    buildMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Only update mouse position if NOT in pointer lock
+    // (When pointer locked, we always use center of screen)
+    if (!document.pointerLockElement) {
+        buildMouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        buildMouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
 
     updateGhostPosition();
 }
@@ -253,7 +300,31 @@ function onBuildMouseMove(event) {
 function updateGhostPosition() {
     if (!buildGhost || !camera) return;
 
-    buildRaycaster.setFromCamera(buildMouse, camera);
+    // In third-person, cast ray from above character's head in look direction
+    if (!isFirstPerson && typeof character !== 'undefined' && character) {
+        const cameraYaw = typeof getCameraYaw === 'function' ? getCameraYaw() : 0;
+        const cameraPitch = typeof getCameraPitch === 'function' ? getCameraPitch() : 0;
+
+        // Start ray from above character's head
+        const rayStart = new THREE.Vector3(
+            character.position.x,
+            character.position.y + 4,
+            character.position.z
+        );
+
+        // Direction based on camera look
+        const rayDir = new THREE.Vector3(
+            Math.sin(cameraYaw) * Math.cos(cameraPitch),
+            Math.sin(cameraPitch),
+            Math.cos(cameraYaw) * Math.cos(cameraPitch)
+        ).normalize();
+
+        buildRaycaster.set(rayStart, rayDir);
+    } else {
+        // First-person: cast from camera center as normal
+        const rayOrigin = document.pointerLockElement ? new THREE.Vector2(0, 0) : buildMouse;
+        buildRaycaster.setFromCamera(rayOrigin, camera);
+    }
 
     // Collect intersectable objects
     const intersectObjects = [];
@@ -441,7 +512,28 @@ function placeBlock(networkData = null) {
 function removeBlock() {
     if (!camera) return;
 
-    buildRaycaster.setFromCamera(buildMouse, camera);
+    // In third-person, cast ray from above character's head
+    if (!isFirstPerson && typeof character !== 'undefined' && character) {
+        const cameraYaw = typeof getCameraYaw === 'function' ? getCameraYaw() : 0;
+        const cameraPitch = typeof getCameraPitch === 'function' ? getCameraPitch() : 0;
+
+        const rayStart = new THREE.Vector3(
+            character.position.x,
+            character.position.y + 4,
+            character.position.z
+        );
+
+        const rayDir = new THREE.Vector3(
+            Math.sin(cameraYaw) * Math.cos(cameraPitch),
+            Math.sin(cameraPitch),
+            Math.cos(cameraYaw) * Math.cos(cameraPitch)
+        ).normalize();
+
+        buildRaycaster.set(rayStart, rayDir);
+    } else {
+        const rayOrigin = document.pointerLockElement ? new THREE.Vector2(0, 0) : buildMouse;
+        buildRaycaster.setFromCamera(rayOrigin, camera);
+    }
 
     // Collect all blocks (meshes and sprites)
     const blockObjects = Array.from(placedBlocks.values());
