@@ -187,9 +187,9 @@ function create3DTree(x, z, detail, variantName = 'pine') {
     const tree = new THREE.Group();
     const variant = TREE_VARIANTS[variantName] || TREE_VARIANTS.pine;
 
-    // Create materials for this variant
-    const trunkMaterial = new THREE.MeshBasicMaterial({ color: variant.trunkColor });
-    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshBasicMaterial({ color: c }));
+    // Create materials for this variant - use Lambert for shadows
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor });
+    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c }));
 
     // Calculate random height within variant range
     const heightRange = variant.trunkHeight;
@@ -209,6 +209,8 @@ function create3DTree(x, z, detail, variantName = 'pine') {
             const angle = (i / frondCount) * Math.PI * 2;
             const frondGeom = new THREE.ConeGeometry(2, 10, 4);
             const frond = new THREE.Mesh(frondGeom, foliageMaterials[i % foliageMaterials.length]);
+            frond.castShadow = true;
+            frond.receiveShadow = true;
 
             // Position at top of trunk, offset outward
             frond.position.y = trunkHeight;
@@ -227,6 +229,8 @@ function create3DTree(x, z, detail, variantName = 'pine') {
         // Deciduous tree - trunk with blob foliage
         const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
         trunk.position.y = trunkHeight / 2;
         tree.add(trunk);
 
@@ -246,6 +250,8 @@ function create3DTree(x, z, detail, variantName = 'pine') {
                 const radius = baseRadius - j * 2;
                 const foliageGeometry = new THREE.IcosahedronGeometry(radius, 0);
                 const foliage = new THREE.Mesh(foliageGeometry, foliageMaterials[j % foliageMaterials.length]);
+                foliage.castShadow = true;
+                foliage.receiveShadow = true;
                 foliage.position.y = trunkHeight + 2 + j * 3;
                 foliage.position.x = (Math.random() - 0.5) * 3;
                 foliage.position.z = (Math.random() - 0.5) * 3;
@@ -259,6 +265,8 @@ function create3DTree(x, z, detail, variantName = 'pine') {
         // Conifer tree - trunk with cone layers
         const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
         trunk.position.y = trunkHeight / 2;
         tree.add(trunk);
 
@@ -282,6 +290,14 @@ function create3DTree(x, z, detail, variantName = 'pine') {
     tree.position.set(x, 0, z);
     tree.userData.isTree = true;
     tree.userData.variant = variantName;
+
+    // Enable shadows on all meshes in the tree
+    tree.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
     return tree;
 }

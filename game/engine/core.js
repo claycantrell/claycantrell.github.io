@@ -172,10 +172,41 @@ function init() {
             }
 
             // Directional light follows whichever is higher (sun or moon)
+            // Store sun direction for shadow camera updates
+            let lightDirX, lightDirY, lightDirZ;
             if (sunDirY > moonDirY) {
-                GAME.lighting.directional.position.set(sunDirX * 100, Math.max(sunDirY * 100, 50), sunDirZ * 100);
+                lightDirX = sunDirX;
+                lightDirY = sunDirY;
+                lightDirZ = sunDirZ;
+                // Position directional light far away in sun's direction
+                const lightDistance = 1000; // Far enough to simulate parallel rays
+                GAME.lighting.directional.position.set(
+                    lightDirX * lightDistance,
+                    Math.max(lightDirY * lightDistance, 50), // Keep minimum height
+                    lightDirZ * lightDistance
+                );
             } else {
-                GAME.lighting.directional.position.set(moonDirX * 100, Math.max(moonDirY * 100, 50), moonDirZ * 100);
+                lightDirX = moonDirX;
+                lightDirY = moonDirY;
+                lightDirZ = moonDirZ;
+                // Position directional light far away in moon's direction
+                const lightDistance = 1000;
+                GAME.lighting.directional.position.set(
+                    lightDirX * lightDistance,
+                    Math.max(lightDirY * lightDistance, 50),
+                    lightDirZ * lightDistance
+                );
+            }
+            
+            // Store sun direction for shadow camera updates
+            GAME.lighting.directional.userData.sunDirection = new THREE.Vector3(lightDirX, lightDirY, lightDirZ);
+            
+            // Update directional light target to point at ground (for proper shadow casting)
+            if (GAME.camera && GAME.lighting.directional.target) {
+                const camPos = GAME.camera.position;
+                // Point light at ground near camera/player
+                GAME.lighting.directional.target.position.set(camPos.x, 0, camPos.z);
+                GAME.lighting.directional.target.updateMatrixWorld();
             }
         }
     }, 33);
@@ -203,7 +234,24 @@ function init() {
     const directionalPos = renderConfig.directionalLight?.position || { x: 50, y: 100, z: 50 };
     GAME.lighting.directional = new THREE.DirectionalLight(directionalColor, directionalIntensity);
     GAME.lighting.directional.position.set(directionalPos.x, directionalPos.y, directionalPos.z);
+    
+    // Enable shadow casting
+    GAME.lighting.directional.castShadow = true;
+    GAME.lighting.directional.shadow.mapSize.width = 2048;
+    GAME.lighting.directional.shadow.mapSize.height = 2048;
+    GAME.lighting.directional.shadow.camera.near = 0.5;
+    GAME.lighting.directional.shadow.camera.far = 1000;
+    // Larger bounds to cover more terrain
+    GAME.lighting.directional.shadow.camera.left = -200;
+    GAME.lighting.directional.shadow.camera.right = 200;
+    GAME.lighting.directional.shadow.camera.top = 200;
+    GAME.lighting.directional.shadow.camera.bottom = -200;
+    GAME.lighting.directional.shadow.bias = -0.0001;
+    GAME.lighting.directional.shadow.normalBias = 0.02; // Helps with shadow acne on terrain
+    
+    // Add directional light and its target to scene (target needed for proper light direction)
     GAME.scene.add(GAME.lighting.directional);
+    GAME.scene.add(GAME.lighting.directional.target);
 
     // Create visual sun (yellow glowing sphere at distance 900)
     const sunGeometry = new THREE.SphereGeometry(40, 16, 16);
@@ -229,8 +277,9 @@ function init() {
     // 90s games ran at lower resolution - cap pixel ratio for retro feel
     GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
 
-    // Disable expensive features
-    GAME.renderer.shadowMap.enabled = false; // No shadows
+    // Enable shadow mapping
+    GAME.renderer.shadowMap.enabled = true;
+    GAME.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows for better quality
     GAME.renderer.sortObjects = false; // Disable sorting for performance
 
     document.body.appendChild(GAME.renderer.domElement);
@@ -369,7 +418,11 @@ async function startGame() {
             setInstructions();
             init();
             // Start the animation loop
-            animate();
+            if (typeof animate === 'function') {
+                animate();
+            } else {
+                console.warn('animate function not yet loaded, will start after game.js loads');
+            }
             // Hide loading screen and fade out instructions
             if (typeof updateLoadingProgress === 'function') {
                 updateLoadingProgress(100, 'Ready!');
@@ -394,7 +447,11 @@ async function startGame() {
             // Continue without font - portals won't have labels
             setInstructions();
             init();
-            animate();
+            if (typeof animate === 'function') {
+                animate();
+            } else {
+                console.warn('animate function not yet loaded, will start after game.js loads');
+            }
             // Hide loading screen and fade out instructions
             if (typeof updateLoadingProgress === 'function') {
                 updateLoadingProgress(100, 'Ready!');

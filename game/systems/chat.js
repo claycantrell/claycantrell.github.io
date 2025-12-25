@@ -360,6 +360,77 @@ function toggleChat() {
     }
 }
 
+// Shadow state tracking
+let shadowsEnabled = true;
+const originalMaterials = new WeakMap(); // Store original materials
+
+// Toggle shadow mapping
+function toggleShadows() {
+    if (!GAME || !GAME.renderer || !GAME.lighting || !GAME.lighting.directional) {
+        addSystemMessage('Shadow system not initialized.');
+        return;
+    }
+    
+    shadowsEnabled = !shadowsEnabled;
+    
+    // Toggle renderer shadow mapping
+    GAME.renderer.shadowMap.enabled = shadowsEnabled;
+    
+    // Toggle directional light shadow casting
+    GAME.lighting.directional.castShadow = shadowsEnabled;
+    
+    // Toggle shadows and materials on all objects in scene
+    GAME.scene.traverse((object) => {
+        if (object.isMesh && object.material) {
+            const isTerrain = object.userData?.isTerrain || 
+                            object.userData?.isChunk ||
+                            (object.material && object.material.vertexColors);
+            
+            if (shadowsEnabled) {
+                // Enable shadows - restore Lambert materials
+                if (originalMaterials.has(object)) {
+                    const originalMat = originalMaterials.get(object);
+                    object.material = originalMat;
+                    originalMaterials.delete(object);
+                }
+                
+                if (isTerrain) {
+                    object.receiveShadow = true;
+                } else {
+                    object.castShadow = true;
+                    object.receiveShadow = true;
+                }
+            } else {
+                // Disable shadows - switch to Basic materials (no lighting response)
+                if (!originalMaterials.has(object)) {
+                    originalMaterials.set(object, object.material);
+                }
+                
+                const currentMat = object.material;
+                let basicMat;
+                
+                if (currentMat.vertexColors) {
+                    // Terrain/chunks - preserve vertex colors
+                    basicMat = new THREE.MeshBasicMaterial({
+                        vertexColors: true
+                    });
+                } else {
+                    // Other objects - preserve color
+                    basicMat = new THREE.MeshBasicMaterial({
+                        color: currentMat.color || 0xffffff
+                    });
+                }
+                
+                object.material = basicMat;
+                object.castShadow = false;
+                object.receiveShadow = false;
+            }
+        }
+    });
+    
+    addSystemMessage(`Shadows ${shadowsEnabled ? 'enabled' : 'disabled'}.`);
+}
+
 // Handle chat commands (slash commands)
 function handleChatCommand(command) {
     const cmd = command.toLowerCase().trim();
@@ -371,6 +442,7 @@ function handleChatCommand(command) {
             addSystemMessage('=== COMMANDS ===');
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
+            addSystemMessage('/shadows - Toggle shadow mapping');
             return true;
 
         case '/pos':
@@ -382,6 +454,10 @@ function handleChatCommand(command) {
             } else {
                 addSystemMessage('Character not loaded.');
             }
+            return true;
+
+        case '/shadows':
+            toggleShadows();
             return true;
 
         default:

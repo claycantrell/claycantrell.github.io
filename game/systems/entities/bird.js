@@ -34,17 +34,17 @@ function getBirdCount() {
 function createBird(id, x, z) {
     const group = new THREE.Group();
     
-    // Materials
+    // Materials - use Lambert for shadows
     const r = Math.random();
     let color;
     if (r < 0.80) color = 0x111111; // Black
     else if (r < 0.95) color = 0x0000FF; // Blue
     else color = 0xFF0000; // Red
     
-    const birdMaterial = new THREE.MeshBasicMaterial({ color: color });
-    const wingMaterial = new THREE.MeshBasicMaterial({ color: color });
-    const beakMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500 }); 
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const birdMaterial = new THREE.MeshLambertMaterial({ color: color });
+    const wingMaterial = new THREE.MeshLambertMaterial({ color: color });
+    const beakMaterial = new THREE.MeshLambertMaterial({ color: 0xFFA500 }); 
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
 
     // --- Body ---
     const bodyGeo = new THREE.ConeGeometry(0.15, 0.4, 6);
@@ -92,6 +92,14 @@ function createBird(id, x, z) {
     // Initial placement (server will update)
     const y = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
     group.position.set(x, y + 10, z);
+
+    // Enable shadows on all meshes
+    group.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
     scene.add(group);
     

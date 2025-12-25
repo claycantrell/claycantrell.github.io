@@ -34,14 +34,15 @@ function getDeerCount() {
 function createDeer(id, x, z) {
     const group = new THREE.Group();
     
-    // Materials
+    // Materials - use Lambert for shadows
     const coatColor = 0x8B4513; // SaddleBrown
     const bellyColor = 0xD2B48C; // Tan
     
-    const deerMaterial = new THREE.MeshBasicMaterial({ color: coatColor });
-    const bellyMaterial = new THREE.MeshBasicMaterial({ color: bellyColor });
-    const noseMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
-    const antlerMaterial = new THREE.MeshBasicMaterial({ color: 0xEEE8AA }); 
+    const deerMaterial = new THREE.MeshLambertMaterial({ color: coatColor });
+    const bellyMaterial = new THREE.MeshLambertMaterial({ color: bellyColor });
+    const noseMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    const antlerMaterial = new THREE.MeshLambertMaterial({ color: 0xEEE8AA });
+    const tailMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); 
 
     // --- Body ---
     const bodyGeo = new THREE.CylinderGeometry(0.7, 0.8, 2.5, 7);
@@ -116,7 +117,7 @@ function createDeer(id, x, z) {
     legs.push(createLeg(-0.4, -0.9));
 
     const tailGeo = new THREE.ConeGeometry(0.15, 0.4, 4);
-    const tail = new THREE.Mesh(tailGeo, new THREE.MeshBasicMaterial({color: 0xFFFFFF}));
+    const tail = new THREE.Mesh(tailGeo, tailMaterial);
     tail.position.set(0, 2.8, -1.3);
     tail.rotation.x = 0.8;
     group.add(tail);
@@ -124,6 +125,14 @@ function createDeer(id, x, z) {
     // Initial placement (will be overridden by server)
     const y = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
     group.position.set(x, y, z);
+
+    // Enable shadows on all meshes
+    group.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
     scene.add(group);
     

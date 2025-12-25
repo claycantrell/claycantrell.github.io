@@ -666,13 +666,14 @@ function createSingleMeshTerrain() {
     groundGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     groundGeometry.computeVertexNormals();
 
-    // Create material with vertex colors
-    const groundMaterial = new THREE.MeshBasicMaterial({
+    // Create material with vertex colors - use Lambert for shadows
+    const groundMaterial = new THREE.MeshLambertMaterial({
         vertexColors: true
     });
 
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true; // Terrain receives shadows
     scene.add(ground);
 
     // Expose ground mesh globally for raycasting/building

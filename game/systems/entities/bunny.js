@@ -34,12 +34,12 @@ function getBunnyCount() {
 function createBunny(id, x, z) {
     const group = new THREE.Group();
     
-    // Materials
+    // Materials - use Lambert for shadows
     const colors = [0xFFFFFF, 0xDCDCDC, 0xD2B48C, 0xA9A9A9]; 
     const color = colors[Math.floor(Math.random() * colors.length)];
-    const bunnyMaterial = new THREE.MeshBasicMaterial({ color: color });
-    const earInnerMaterial = new THREE.MeshBasicMaterial({ color: 0xFFC0CB }); 
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const bunnyMaterial = new THREE.MeshLambertMaterial({ color: color });
+    const earInnerMaterial = new THREE.MeshLambertMaterial({ color: 0xFFC0CB }); 
+    const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
 
     // --- Body ---
     const bodyGeo = new THREE.SphereGeometry(0.4, 6, 6);
@@ -89,6 +89,14 @@ function createBunny(id, x, z) {
     group.position.set(x, y, z);
     const scale = 0.8 + Math.random() * 0.4;
     group.scale.set(scale, scale, scale);
+
+    // Enable shadows on all meshes
+    group.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
     scene.add(group);
     

@@ -48,6 +48,19 @@ if (typeof Systems !== 'undefined') {
 }
 
 function createPortals() {
+    // Clear existing portals to prevent duplicates
+    if (GAME.world.portals && GAME.world.portals.length > 0) {
+        GAME.world.portals.forEach(portalObj => {
+            if (portalObj.group && portalObj.group.parent) {
+                portalObj.group.parent.remove(portalObj.group);
+            }
+            if (portalObj.group && GAME.scene) {
+                GAME.scene.remove(portalObj.group);
+            }
+        });
+        GAME.world.portals = [];
+    }
+
     // Get portal config from map
     const portalConfig = typeof getPortalConfig === 'function' ? getPortalConfig() : {};
     const configPortals = portalConfig.portals || [];
@@ -91,19 +104,15 @@ function createPortals() {
         portalGroup.add(innerPortal);
 
         portalGroup.position.set(x, y + 1.0, z);
-        portalGroup.rotation.y = -angle;
-
-        // Face outward
-        portalGroup.lookAt(0, 0, 0);
-        portalGroup.rotateY(Math.PI);
 
         // Get portal name from config
         const portalName = portal.name || 'PORTAL';
 
-        // Add label with Retro Font
-        if (font) {
+        // Add label with Retro Font using TextGeometry
+        const loadedFont = GAME.resources.font;
+        if (loadedFont) {
             const textGeometry = new THREE.TextGeometry(portalName, {
-                font: font,
+                font: loadedFont,
                 size: 1.04,
                 depth: 0.1,
                 bevelEnabled: false,
@@ -111,36 +120,109 @@ function createPortals() {
                 bevelSize: 0,
                 curveSegments: 4,
             });
+            
+            textGeometry.computeBoundingBox();
+            const bb = textGeometry.boundingBox;
+            const textWidth = bb.max.x - bb.min.x;
+            const textHeight = bb.max.y - bb.min.y;
+            
+            // Debug: Log geometry info
+            console.log(`Text "${portalName}": width=${textWidth.toFixed(2)}, height=${textHeight.toFixed(2)}, ratio=${(textWidth/textHeight).toFixed(2)}`);
+            console.log(`Bounding box: min=(${bb.min.x.toFixed(2)}, ${bb.min.y.toFixed(2)}, ${bb.min.z.toFixed(2)}), max=(${bb.max.x.toFixed(2)}, ${bb.max.y.toFixed(2)}, ${bb.max.z.toFixed(2)})`);
+            
+            // Check for corrupted geometry - inspect vertices
+            const positions = textGeometry.attributes.position;
+            if (positions) {
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+                let minZ = Infinity, maxZ = -Infinity;
+                
+                for (let i = 0; i < positions.count; i++) {
+                    const x = positions.getX(i);
+                    const y = positions.getY(i);
+                    const z = positions.getZ(i);
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                    minZ = Math.min(minZ, z);
+                    maxZ = Math.max(maxZ, z);
+                }
+                
+                console.log(`Vertex bounds: X[${minX.toFixed(2)}, ${maxX.toFixed(2)}], Y[${minY.toFixed(2)}, ${maxY.toFixed(2)}], Z[${minZ.toFixed(2)}, ${maxZ.toFixed(2)}]`);
+                
+                // Fix corrupted geometry
+                const expectedMaxWidth = portalName.length * 1.5;
+                const expectedDepth = 0.1; // Should match depth parameter
+                let needsFix = false;
+                
+                // Fix Z depth if it's way too large
+                if (maxZ - minZ > expectedDepth * 10) {
+                    console.warn(`Fixing Z depth: ${(maxZ - minZ).toFixed(2)} -> ${expectedDepth}`);
+                    const zScaleFactor = expectedDepth / (maxZ - minZ);
+                    
+                    // Scale all Z coordinates
+                    for (let i = 0; i < positions.count; i++) {
+                        const z = positions.getZ(i);
+                        positions.setZ(i, z * zScaleFactor);
+                    }
+                    needsFix = true;
+                }
+                
+                // Fix X width if it's way too large
+                if (maxX - minX > expectedMaxWidth * 10) {
+                    console.warn(`Fixing X width: ${(maxX - minX).toFixed(2)} -> ${expectedMaxWidth}`);
+                    const xScaleFactor = expectedMaxWidth / (maxX - minX);
+                    
+                    // Scale all X coordinates
+                    for (let i = 0; i < positions.count; i++) {
+                        const x = positions.getX(i);
+                        positions.setX(i, x * xScaleFactor);
+                    }
+                    needsFix = true;
+                }
+                
+                if (needsFix) {
+                    positions.needsUpdate = true;
+                    textGeometry.computeBoundingBox();
+                }
+            }
+            
             const textMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFFFFF,
                 side: THREE.DoubleSide
             });
             const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-
-            // Center the text
+            
+            // Recompute bounding box after potential fixes
             textGeometry.computeBoundingBox();
-            const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
-            textMesh.position.set(-textWidth / 2, 11.7, 0);
-            textMesh.rotation.y = 0;
-
+            const finalBb = textGeometry.boundingBox;
+            const textCenterX = (finalBb.min.x + finalBb.max.x) / 2;
+            const textCenterY = (finalBb.min.y + finalBb.max.y) / 2;
+            
+            textMesh.position.set(-textCenterX, 11.7 - textCenterY, 0);
             portalGroup.add(textMesh);
 
-            portals.push({
+            GAME.world.portals.push({
                 group: portalGroup,
                 name: portalName,
                 innerPortal: innerPortal,
                 labelMesh: textMesh,
-                labelStartY: textMesh.position.y,
+                labelStartY: 11.7,
             });
         } else {
-            portals.push({
+            GAME.world.portals.push({
                 group: portalGroup,
                 name: portalName,
                 innerPortal: innerPortal,
             });
         }
 
-        scene.add(portalGroup);
+        // Face outward from center
+        portalGroup.lookAt(0, portalGroup.position.y, 0);
+        portalGroup.rotateY(Math.PI);
+
+        GAME.scene.add(portalGroup);
         GAME.world.objects.push(portalGroup);
     }
 }

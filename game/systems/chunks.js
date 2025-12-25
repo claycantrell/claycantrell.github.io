@@ -190,14 +190,15 @@ function createChunkMesh(cx, cz, chunkData) {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
 
-    // Create material
-    const material = new THREE.MeshBasicMaterial({
+    // Create material - use Lambert for shadows
+    const material = new THREE.MeshLambertMaterial({
         vertexColors: true
     });
 
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);
     mesh.rotation.x = -Math.PI / 2;
+    mesh.receiveShadow = true; // Chunks receive shadows
 
     // Position chunk in world
     mesh.position.set(bounds.centerX, 0, bounds.centerZ);

@@ -50,10 +50,10 @@ function getNPCConfig() {
 function createNPC(spawnX = 0, spawnZ = 0) {
     const group = new THREE.Group();
 
-    // Body with Flat Shading - Same as player but purple
+    // Body with Flat Shading - Same as player but purple - use Lambert for shadows
     const bodySegments = PERFORMANCE.characterDetail.bodySegments;
     const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, bodySegments);
-    const bodyMaterial = new THREE.MeshBasicMaterial({
+    const bodyMaterial = new THREE.MeshLambertMaterial({
         color: 0x8000FF // Purple color
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
@@ -62,7 +62,7 @@ function createNPC(spawnX = 0, spawnZ = 0) {
     // Head with Flat Shading - Yellow (like player)
     const headSegments = PERFORMANCE.characterDetail.headSegments;
     const headGeometry = new THREE.SphereGeometry(0.5, headSegments, headSegments);
-    const headMaterial = new THREE.MeshBasicMaterial({
+    const headMaterial = new THREE.MeshLambertMaterial({
         color: 0xFFFF00 // Yellow (like player)
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
@@ -72,7 +72,7 @@ function createNPC(spawnX = 0, spawnZ = 0) {
     // Cone Hat with Flat Shading - Purple
     const hatSegments = PERFORMANCE.characterDetail.hatSegments;
     const hatGeometry = new THREE.ConeGeometry(0.6, 1, hatSegments);
-    const hatMaterial = new THREE.MeshBasicMaterial({
+    const hatMaterial = new THREE.MeshLambertMaterial({
         color: 0x8000FF // Purple
     });
     const hat = new THREE.Mesh(hatGeometry, hatMaterial);
@@ -88,6 +88,14 @@ function createNPC(spawnX = 0, spawnZ = 0) {
         1,
         spawnZ + (Math.random() - 0.5) * 20
     );
+
+    // Enable shadows on all meshes
+    group.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
 
     scene.add(group);
     GAME.world.objects.push(group);
