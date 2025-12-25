@@ -1,6 +1,6 @@
 // Deer system for 3D Demo (Client-Side Rendering Only)
 // Receives state from server, updates visual models.
-// Uses Systems registry pattern for organized update loop
+// Uses Systems registry pattern and shared utilities
 
 // DeerSystem - manages deer rendering and animation
 const DeerSystem = {
@@ -18,31 +18,24 @@ if (typeof Systems !== 'undefined') {
     Systems.register('deer', DeerSystem);
 }
 
-// Use GAME namespace for centralized entity storage with fallback
+// Use GAME namespace for centralized entity storage
 const deerList = (typeof GAME !== 'undefined' && GAME.world?.entities)
     ? GAME.world.entities.deer
     : [];
 
-// Get deer count from config
-function getDeerCount() {
-    return typeof CONFIG !== 'undefined'
-        ? CONFIG.get('entities.deer.count', 18)
-        : 18;
-}
-
 // Create a single deer visual entity
 function createDeer(id, x, z) {
     const group = new THREE.Group();
-    
-    // Materials - use Lambert for shadows
-    const coatColor = 0x8B4513; // SaddleBrown
-    const bellyColor = 0xD2B48C; // Tan
-    
+
+    // Materials
+    const coatColor = 0x8B4513;
+    const bellyColor = 0xD2B48C;
+
     const deerMaterial = new THREE.MeshLambertMaterial({ color: coatColor });
     const bellyMaterial = new THREE.MeshLambertMaterial({ color: bellyColor });
     const noseMaterial = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
     const antlerMaterial = new THREE.MeshLambertMaterial({ color: 0xEEE8AA });
-    const tailMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); 
+    const tailMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
 
     // --- Body ---
     const bodyGeo = new THREE.CylinderGeometry(0.7, 0.8, 2.5, 7);
@@ -74,7 +67,7 @@ function createDeer(id, x, z) {
     nose.position.set(0, 0, 0.9);
     headGroup.add(nose);
 
-    // Antlers (Visual only, random for now, ideally server sends gender)
+    // Antlers or ears
     if (Math.random() < 0.5) {
         const antlerGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2);
         const leftAntler = new THREE.Mesh(antlerGeo, antlerMaterial);
@@ -102,6 +95,7 @@ function createDeer(id, x, z) {
     // --- Legs ---
     const legGeo = new THREE.CylinderGeometry(0.15, 0.1, 1.8, 5);
     const legs = [];
+
     function createLeg(lx, lz) {
         const legGroup = new THREE.Group();
         legGroup.position.set(lx, 2.5, lz);
@@ -111,31 +105,29 @@ function createDeer(id, x, z) {
         group.add(legGroup);
         return legGroup;
     }
+
     legs.push(createLeg(0.4, 0.9));
     legs.push(createLeg(-0.4, 0.9));
     legs.push(createLeg(0.4, -0.9));
     legs.push(createLeg(-0.4, -0.9));
 
+    // --- Tail ---
     const tailGeo = new THREE.ConeGeometry(0.15, 0.4, 4);
     const tail = new THREE.Mesh(tailGeo, tailMaterial);
     tail.position.set(0, 2.8, -1.3);
     tail.rotation.x = 0.8;
     group.add(tail);
 
-    // Initial placement (will be overridden by server)
-    const y = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
+    // Initial placement
+    const y = getTerrainHeight(x, z);
     group.position.set(x, y, z);
 
-    // Enable shadows on all meshes
-    group.traverse((child) => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        }
-    });
+    // Enable shadows
+    enableShadows(group);
 
-    scene.add(group);
-    
+    // Add to scene
+    addToScene(group);
+
     return {
         id: id,
         group: group,
@@ -146,7 +138,7 @@ function createDeer(id, x, z) {
     };
 }
 
-// Init called by main game - spawner handles actual spawning
+// Init called by main game
 function initDeer() {
     // Deer system ready - animal-spawner.js handles spawning
 }
@@ -155,67 +147,33 @@ function initDeer() {
 function updateDeerState(serverData) {
     serverData.forEach(data => {
         let deer = deerList.find(d => d.id === data.id);
-        
+
         if (!deer) {
-            // New deer, create it
             deer = createDeer(data.id, data.x, data.z);
             deerList.push(deer);
         }
-        
-        // Update Target for interpolation
-        if (typeof getTerrainHeightAt === 'function') {
-            const y = getTerrainHeightAt(data.x, data.z);
-            deer.targetPos.set(data.x, y, data.z);
-        }
+
+        const y = getTerrainHeight(data.x, data.z);
+        deer.targetPos.set(data.x, y, data.z);
         deer.targetRot = data.ry;
-        deer.state = data.state; // Store state for animation
+        deer.state = data.state;
     });
 }
 
-// Flee behavior config
-const DEER_FLEE = {
-    detectRadius: 15,    // Start fleeing when player this close
-    fleeRadius: 6,       // Panic flee when player this close
-    fleeDuration: 3,     // How long to keep running
-    fleeDistance: 30     // How far to run
-};
-
-// Get deer speed from config
-function getDeerSpeed() {
-    return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.deer.speed', 8.0) : 8.0;
-}
-
-// Check if a position collides with blocks (shared helper)
-function checkBlockCollision(testX, testZ, testY, animalRadius = 0.8) {
-    if (!GAME || !GAME.world?.objects) return null;
-    
-    const BLOCK_SIZE = 2; // Match building.js GRID_SIZE
-    const BLOCK_HALF = BLOCK_SIZE / 2;
-    
-    for (const obj of GAME.world.objects) {
-        if (!obj || !obj.userData?.isBlock || obj.userData.noCollision) continue;
-        
-        const blockTop = obj.position.y + BLOCK_HALF;
-        const blockBottom = obj.position.y - BLOCK_HALF;
-        
-        // Skip if animal is on top of block or well below it
-        if (testY >= blockTop - 0.3 || testY + 1.5 < blockBottom) continue;
-        
-        // Check horizontal overlap (AABB collision)
-        const dx = Math.abs(testX - obj.position.x);
-        const dz = Math.abs(testZ - obj.position.z);
-        
-        if (dx < BLOCK_HALF + animalRadius && dz < BLOCK_HALF + animalRadius) {
-            return obj; // Return the colliding block
-        }
-    }
-    return null;
-}
-
-// Render Loop - Interpolate to target
+// Render Loop
 function updateDeer(delta) {
     const time = Date.now() * 0.005;
-    const playerPos = typeof character !== 'undefined' && character ? character.position : null;
+
+    // Defensive: ensure config exists
+    if (typeof ENTITY_CONFIG === 'undefined' || !ENTITY_CONFIG.deer) {
+        console.warn('ENTITY_CONFIG.deer not available');
+        return;
+    }
+
+    const config = ENTITY_CONFIG.deer;
+    const fleeConfig = config.flee;
+    const wanderConfig = config.wander;
+    const animConfig = config.animation;
 
     deerList.forEach(deer => {
         // Local/spawned deer wander behavior
@@ -223,118 +181,115 @@ function updateDeer(delta) {
             deer.wanderTimer = (deer.wanderTimer || 0) - delta;
             deer.fleeTimer = (deer.fleeTimer || 0) - delta;
 
-            // Check distance to player
-            let distToPlayer = Infinity;
-            if (playerPos) {
-                const dx = deer.group.position.x - playerPos.x;
-                const dz = deer.group.position.z - playerPos.z;
-                distToPlayer = Math.sqrt(dx * dx + dz * dz);
-            }
+            const distToPlayer = getDistanceToPlayer(deer.group.position);
 
-            // Flee behavior - player too close!
-            if (distToPlayer < DEER_FLEE.detectRadius) {
-                // Run away from player
-                const fleeAngle = Math.atan2(
-                    deer.group.position.x - playerPos.x,
-                    deer.group.position.z - playerPos.z
-                );
-                const fleeDist = DEER_FLEE.fleeDistance + (distToPlayer < DEER_FLEE.fleeRadius ? 20 : 0);
-                const newX = deer.group.position.x + Math.sin(fleeAngle) * fleeDist;
-                const newZ = deer.group.position.z + Math.cos(fleeAngle) * fleeDist;
-                const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
-                deer.targetPos.set(newX, newY, newZ);
-                deer.targetRot = fleeAngle;
-                deer.state = 'RUN';
-                deer.fleeTimer = DEER_FLEE.fleeDuration;
-                deer.wanderTimer = DEER_FLEE.fleeDuration + 1;
+            // Flee behavior
+            if (distToPlayer < fleeConfig.detectRadius) {
+                const panicBonus = distToPlayer < fleeConfig.panicRadius ? fleeConfig.panicBonus : 0;
+                const fleeTarget = calculateFleeTarget(deer.group.position, fleeConfig.distance, panicBonus);
+
+                if (fleeTarget) {
+                    const newY = getTerrainHeight(fleeTarget.x, fleeTarget.z);
+                    deer.targetPos.set(fleeTarget.x, newY, fleeTarget.z);
+                    deer.targetRot = fleeTarget.angle;
+                    deer.state = 'RUN';
+                    deer.fleeTimer = fleeConfig.duration;
+                    deer.wanderTimer = fleeConfig.duration + 1;
+                }
             }
-            // Normal wander behavior (only if not fleeing)
+            // Normal wander behavior
             else if (deer.fleeTimer <= 0) {
-                const distToTarget = deer.group.position.distanceTo(deer.targetPos);
+                const distToTarget = getDistance2D(deer.group.position, deer.targetPos);
 
                 if (deer.wanderTimer <= 0 || distToTarget < 2) {
-                    // Pick new random destination
-                    const wanderDist = 15 + Math.random() * 25;
-                    const angle = deer.group.rotation.y + (Math.random() - 0.5) * Math.PI;
-                    const newX = deer.group.position.x + Math.sin(angle) * wanderDist;
-                    const newZ = deer.group.position.z + Math.cos(angle) * wanderDist;
-                    const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
-                    deer.targetPos.set(newX, newY, newZ);
-                    deer.targetRot = Math.atan2(newX - deer.group.position.x, newZ - deer.group.position.z);
-                    deer.state = Math.random() < 0.2 ? 'RUN' : (Math.random() < 0.5 ? 'WALK' : 'IDLE');
-                    deer.wanderTimer = deer.state === 'IDLE' ? (2 + Math.random() * 4) : (4 + Math.random() * 6);
+                    const wanderTarget = calculateWanderTarget(
+                        deer.group.position,
+                        deer.group.rotation.y,
+                        wanderConfig.minDistance,
+                        wanderConfig.maxDistance
+                    );
+
+                    const newY = getTerrainHeight(wanderTarget.x, wanderTarget.z);
+                    deer.targetPos.set(wanderTarget.x, newY, wanderTarget.z);
+                    deer.targetRot = wanderTarget.angle;
+
+                    const rand = Math.random();
+                    if (rand < 0.2) {
+                        deer.state = 'RUN';
+                    } else if (rand < 0.6) {
+                        deer.state = 'WALK';
+                    } else {
+                        deer.state = 'IDLE';
+                    }
+
+                    deer.wanderTimer = deer.state === 'IDLE'
+                        ? wanderConfig.idleDuration.min + Math.random() * (wanderConfig.idleDuration.max - wanderConfig.idleDuration.min)
+                        : wanderConfig.moveDuration.min + Math.random() * (wanderConfig.moveDuration.max - wanderConfig.moveDuration.min);
                 }
             }
         }
 
-        // Movement speed based on state (uses config speed)
-        const baseSpeed = getDeerSpeed();
+        // Movement speed based on state
+        const baseSpeed = getEntitySpeed('deer');
         const moveSpeed = deer.state === 'RUN' ? baseSpeed : (deer.state === 'WALK' ? baseSpeed * 0.4 : 0);
 
         if (moveSpeed > 0) {
-            // Move toward target at fixed speed
             const dir = new THREE.Vector3().subVectors(deer.targetPos, deer.group.position);
-            dir.y = 0; // Only horizontal movement
+            dir.y = 0;
             const dist = dir.length();
+
             if (dist > 0.5) {
                 dir.normalize().multiplyScalar(moveSpeed * delta);
-                
-                // Check for block collisions before moving
+
+                // Check for block collisions
                 const newX = deer.group.position.x + dir.x;
                 const newZ = deer.group.position.z + dir.z;
-                const animalY = deer.group.position.y;
-                
-                const collidingBlock = checkBlockCollision(newX, newZ, animalY, 0.8);
-                
+
+                const collidingBlock = checkBlockCollision(newX, newZ, deer.group.position.y, config.collisionRadius);
+
                 if (collidingBlock) {
-                    // Blocked! Try to find alternative path - move perpendicular to block
-                    const blockDir = new THREE.Vector3(newX - collidingBlock.position.x, 0, newZ - collidingBlock.position.z).normalize();
-                    const perpDir = new THREE.Vector3(-blockDir.z, 0, blockDir.x);
-                    const altX = deer.group.position.x + perpDir.x * moveSpeed * delta;
-                    const altZ = deer.group.position.z + perpDir.z * moveSpeed * delta;
-                    
-                    // Check if alternative path is clear
-                    if (!checkBlockCollision(altX, altZ, animalY, 0.8)) {
-                        deer.group.position.x = altX;
-                        deer.group.position.z = altZ;
+                    const altPath = findAlternativePath(deer.group.position, collidingBlock, moveSpeed, delta, config.collisionRadius);
+                    if (altPath) {
+                        deer.group.position.x = altPath.x;
+                        deer.group.position.z = altPath.z;
                     }
-                    // If alternative is also blocked, don't move (animal stops)
                 } else {
-                    // Path is clear, move normally
                     deer.group.position.add(dir);
                 }
             }
+
             // Update Y to follow terrain
-            const terrainY = typeof getTerrainHeightAt === 'function'
-                ? getTerrainHeightAt(deer.group.position.x, deer.group.position.z) : 0;
-            deer.group.position.y = terrainY;
+            deer.group.position.y = getTerrainHeight(deer.group.position.x, deer.group.position.z);
         }
 
-        // Smooth Rotate toward movement direction
+        // Smooth rotation
         if (deer.state === 'WALK' || deer.state === 'RUN') {
-            let rotDiff = deer.targetRot - deer.group.rotation.y;
-            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-            deer.group.rotation.y += rotDiff * delta * 3;
+            deer.group.rotation.y = smoothRotateToward(
+                deer.group.rotation.y,
+                deer.targetRot,
+                delta,
+                animConfig.rotationSpeed
+            );
         }
 
-        // Animations based on State
+        // Animations based on state
         if (deer.state === 'WALK' || deer.state === 'RUN') {
-            const legSpeed = deer.state === 'RUN' ? 20 : 8;
+            const legSpeed = deer.state === 'RUN' ? animConfig.runLegSpeed : animConfig.walkLegSpeed;
             const cycle = time * legSpeed;
-            deer.legs[0].rotation.x = Math.sin(cycle) * 0.5;
-            deer.legs[3].rotation.x = Math.sin(cycle) * 0.5;
-            deer.legs[1].rotation.x = Math.sin(cycle + Math.PI) * 0.5;
-            deer.legs[2].rotation.x = Math.sin(cycle + Math.PI) * 0.5;
+            deer.legs[0].rotation.x = Math.sin(cycle) * animConfig.legSwing;
+            deer.legs[3].rotation.x = Math.sin(cycle) * animConfig.legSwing;
+            deer.legs[1].rotation.x = Math.sin(cycle + Math.PI) * animConfig.legSwing;
+            deer.legs[2].rotation.x = Math.sin(cycle + Math.PI) * animConfig.legSwing;
         } else {
             deer.legs.forEach(leg => leg.rotation.x = THREE.MathUtils.lerp(leg.rotation.x, 0, delta * 3));
         }
     });
 }
 
-
 // Make available globally
 window.initDeer = initDeer;
 window.updateDeer = updateDeer;
 window.updateDeerState = updateDeerState;
 window.DeerSystem = DeerSystem;
+window.deerList = deerList;
+window.createDeer = createDeer;

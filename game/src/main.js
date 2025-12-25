@@ -125,6 +125,10 @@ const scripts = [
     '../engine/config.js',         // Centralized configuration
     '../engine/performance.js',    // Performance config
     '../engine/utils/random.js',   // Seeded random
+    '../engine/utils/entity-config.js', // Entity configuration
+    '../engine/utils/collision.js',     // Shared collision detection
+    '../engine/utils/terrain.js',       // Cached terrain lookups
+    '../engine/utils/behaviors.js',     // Shared entity behaviors
     '../maps/map-loader.js',       // Map configuration
 
     // Layer 2: World Systems
@@ -224,6 +228,10 @@ function getScriptName(src) {
         'config': 'Configuration',
         'performance': 'Performance settings',
         'random': 'World generation',
+        'entity-config': 'Entity configuration',
+        'collision': 'Collision utilities',
+        'terrain': 'Terrain utilities',
+        'behaviors': 'Entity behaviors',
         'map-loader': 'Map loader',
         'character': 'Character system',
         'climate': 'Climate system',

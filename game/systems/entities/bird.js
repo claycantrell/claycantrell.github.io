@@ -1,6 +1,6 @@
 // Bird system for 3D Demo (Client-Side Rendering Only)
 // Receives state from server, updates visual models.
-// Uses Systems registry pattern for organized update loop
+// Uses Systems registry pattern and shared utilities
 
 // BirdSystem - manages bird rendering and animation
 const BirdSystem = {
@@ -18,32 +18,25 @@ if (typeof Systems !== 'undefined') {
     Systems.register('birds', BirdSystem);
 }
 
-// Use GAME namespace for centralized entity storage with fallback
+// Use GAME namespace for centralized entity storage
 const birdList = (typeof GAME !== 'undefined' && GAME.world?.entities)
     ? GAME.world.entities.birds
     : [];
 
-// Get bird count from config
-function getBirdCount() {
-    return typeof CONFIG !== 'undefined'
-        ? CONFIG.get('entities.birds.count', 30)
-        : 30;
-} 
-
 // Create a single bird visual entity
 function createBird(id, x, z) {
     const group = new THREE.Group();
-    
-    // Materials - use Lambert for shadows
+
+    // Materials
     const r = Math.random();
     let color;
-    if (r < 0.80) color = 0x111111; // Black
-    else if (r < 0.95) color = 0x0000FF; // Blue
-    else color = 0xFF0000; // Red
-    
+    if (r < 0.80) color = 0x111111;
+    else if (r < 0.95) color = 0x0000FF;
+    else color = 0xFF0000;
+
     const birdMaterial = new THREE.MeshLambertMaterial({ color: color });
     const wingMaterial = new THREE.MeshLambertMaterial({ color: color });
-    const beakMaterial = new THREE.MeshLambertMaterial({ color: 0xFFA500 }); 
+    const beakMaterial = new THREE.MeshLambertMaterial({ color: 0xFFA500 });
     const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
 
     // --- Body ---
@@ -55,7 +48,7 @@ function createBird(id, x, z) {
     // --- Head ---
     const headGeo = new THREE.SphereGeometry(0.12, 6, 6);
     const head = new THREE.Mesh(headGeo, birdMaterial);
-    head.position.set(0, 0.1, 0.2); 
+    head.position.set(0, 0.1, 0.2);
     group.add(head);
 
     const beakGeo = new THREE.ConeGeometry(0.04, 0.15, 4);
@@ -74,13 +67,13 @@ function createBird(id, x, z) {
 
     // --- Wings ---
     const wingGeo = new THREE.BoxGeometry(0.4, 0.02, 0.2);
-    wingGeo.translate(0.2, 0, 0); 
+    wingGeo.translate(0.2, 0, 0);
     const leftWing = new THREE.Mesh(wingGeo, wingMaterial);
     leftWing.position.set(0.05, 0.05, 0);
     group.add(leftWing);
     const rightWing = new THREE.Mesh(wingGeo, wingMaterial);
     rightWing.position.set(-0.05, 0.05, 0);
-    rightWing.rotation.z = Math.PI; 
+    rightWing.rotation.z = Math.PI;
     group.add(rightWing);
 
     // --- Tail ---
@@ -89,20 +82,16 @@ function createBird(id, x, z) {
     tail.position.set(0, 0, -0.3);
     group.add(tail);
 
-    // Initial placement (server will update)
-    const y = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
+    // Initial placement
+    const y = getTerrainHeight(x, z);
     group.position.set(x, y + 10, z);
 
-    // Enable shadows on all meshes
-    group.traverse((child) => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        }
-    });
+    // Enable shadows
+    enableShadows(group);
 
-    scene.add(group);
-    
+    // Add to scene
+    addToScene(group);
+
     return {
         id: id,
         group: group,
@@ -113,11 +102,12 @@ function createBird(id, x, z) {
     };
 }
 
-// Init called by main game - spawner handles actual spawning
+// Init called by main game
 function initBirds() {
     // Bird system ready - animal-spawner.js handles spawning
 }
 
+// Called by animal-sync.js
 function updateBirdState(serverData) {
     serverData.forEach(data => {
         let bird = birdList.find(b => b.id === data.id);
@@ -125,27 +115,26 @@ function updateBirdState(serverData) {
             bird = createBird(data.id, data.x, data.z);
             birdList.push(bird);
         }
-        
-        bird.targetPos.set(data.x, data.y, data.z); // Birds send Y from server
+
+        bird.targetPos.set(data.x, data.y, data.z);
         bird.state = data.state;
     });
 }
 
-// Flee behavior for birds
-const BIRD_FLEE = {
-    detectRadius: 20,    // Fly away when player this close
-    fleeDistance: 40,    // How far to move circle center
-    fleeHeight: 15       // Extra height when fleeing
-};
-
-// Get bird speed from config
-function getBirdSpeed() {
-    return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.birds.speed', 12.0) : 12.0;
-}
-
+// Render Loop
 function updateBirds(delta) {
     const time = Date.now() * 0.001;
-    const playerPos = typeof character !== 'undefined' && character ? character.position : null;
+
+    // Defensive: ensure config exists
+    if (typeof ENTITY_CONFIG === 'undefined' || !ENTITY_CONFIG.bird) {
+        console.warn('ENTITY_CONFIG.bird not available');
+        return;
+    }
+
+    const config = ENTITY_CONFIG.bird;
+    const fleeConfig = config.flee;
+    const flightConfig = config.flight;
+    const animConfig = config.animation;
 
     birdList.forEach(bird => {
         // Local/spawned bird flying behavior
@@ -154,18 +143,20 @@ function updateBirds(delta) {
             if (!bird.circleCenter) {
                 bird.circleCenter = bird.group.position.clone();
                 bird.circleCenter.y = 0;
-                bird.circleRadius = 20 + Math.random() * 40;
-                // Speed based on config
-                const baseSpeed = getBirdSpeed();
-                bird.circleSpeed = (baseSpeed / 30) + Math.random() * 0.2;
-                bird.flyHeight = 12 + Math.random() * 25;
+                bird.circleRadius = flightConfig.circleRadius.min +
+                    Math.random() * (flightConfig.circleRadius.max - flightConfig.circleRadius.min);
+                bird.circleSpeed = flightConfig.circleSpeed.min +
+                    Math.random() * (flightConfig.circleSpeed.max - flightConfig.circleSpeed.min);
+                bird.flyHeight = flightConfig.minHeight +
+                    Math.random() * (flightConfig.maxHeight - flightConfig.minHeight);
                 bird.flyPhase = Math.random() * Math.PI * 2;
                 bird.fleeTimer = 0;
             }
 
             bird.fleeTimer = (bird.fleeTimer || 0) - delta;
 
-            // Check distance to player (horizontal only)
+            // Check distance to player (horizontal only, from circle center)
+            const playerPos = typeof character !== 'undefined' && character ? character.position : null;
             let distToPlayer = Infinity;
             if (playerPos) {
                 const dx = bird.circleCenter.x - playerPos.x;
@@ -173,22 +164,21 @@ function updateBirds(delta) {
                 distToPlayer = Math.sqrt(dx * dx + dz * dz);
             }
 
-            // Flee behavior - player too close to circle center
-            if (distToPlayer < BIRD_FLEE.detectRadius && bird.fleeTimer <= 0) {
-                // Move circle center away from player
+            // Flee behavior
+            if (distToPlayer < fleeConfig.detectRadius && bird.fleeTimer <= 0 && playerPos) {
                 const fleeAngle = Math.atan2(
                     bird.circleCenter.x - playerPos.x,
                     bird.circleCenter.z - playerPos.z
                 );
-                bird.circleCenter.x += Math.cos(fleeAngle) * BIRD_FLEE.fleeDistance;
-                bird.circleCenter.z += Math.sin(fleeAngle) * BIRD_FLEE.fleeDistance;
-                bird.flyHeight += BIRD_FLEE.fleeHeight; // Fly higher
-                bird.circleSpeed = 0.6; // Speed up
-                bird.fleeTimer = 3; // Don't flee again for 3 seconds
+                bird.circleCenter.x += Math.cos(fleeAngle) * fleeConfig.distance;
+                bird.circleCenter.z += Math.sin(fleeAngle) * fleeConfig.distance;
+                bird.flyHeight += fleeConfig.fleeHeight;
+                bird.circleSpeed = flightConfig.circleSpeed.max;
+                bird.fleeTimer = fleeConfig.duration;
             }
 
             // Gradually return to normal height
-            if (bird.flyHeight > 35 && bird.fleeTimer <= 0) {
+            if (bird.flyHeight > flightConfig.maxHeight + 10 && bird.fleeTimer <= 0) {
                 bird.flyHeight -= delta * 2;
             }
 
@@ -197,13 +187,13 @@ function updateBirds(delta) {
             // Circular flight path
             const newX = bird.circleCenter.x + Math.cos(bird.flyPhase) * bird.circleRadius;
             const newZ = bird.circleCenter.z + Math.sin(bird.flyPhase) * bird.circleRadius;
-            const groundY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
+            const groundY = getTerrainHeight(newX, newZ);
 
             // Gentle altitude variation
             const altVariation = Math.sin(bird.flyPhase * 2) * 3;
             bird.targetPos.set(newX, groundY + bird.flyHeight + altVariation, newZ);
 
-            // Occasionally drift to new area (when not fleeing)
+            // Occasionally drift to new area
             if (Math.random() < 0.002 && bird.fleeTimer <= 0) {
                 bird.circleCenter.x += (Math.random() - 0.5) * 60;
                 bird.circleCenter.z += (Math.random() - 0.5) * 60;
@@ -217,23 +207,23 @@ function updateBirds(delta) {
         const moveDir = new THREE.Vector3().subVectors(bird.targetPos, bird.group.position);
         if (moveDir.lengthSq() > 0.01) {
             const targetAngle = Math.atan2(moveDir.x, moveDir.z);
+            bird.group.rotation.y = smoothRotateToward(bird.group.rotation.y, targetAngle, delta, 3);
             let rotDiff = targetAngle - bird.group.rotation.y;
             while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
             while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-            bird.group.rotation.y += rotDiff * delta * 3;
             bird.group.rotation.z = -rotDiff * 0.3; // Bank into turns
         }
 
         // Wing flapping animation
-        const flapSpeed = 12;
-        bird.leftWing.rotation.z = Math.sin(time * flapSpeed) * 0.6;
-        bird.rightWing.rotation.z = Math.PI - Math.sin(time * flapSpeed) * 0.6;
+        bird.leftWing.rotation.z = Math.sin(time * animConfig.wingSpeed) * animConfig.wingAmplitude;
+        bird.rightWing.rotation.z = Math.PI - Math.sin(time * animConfig.wingSpeed) * animConfig.wingAmplitude;
     });
 }
-
 
 // Make available globally
 window.initBirds = initBirds;
 window.updateBirds = updateBirds;
 window.updateBirdState = updateBirdState;
 window.BirdSystem = BirdSystem;
+window.birdList = birdList;
+window.createBird = createBird;

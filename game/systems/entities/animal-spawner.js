@@ -39,8 +39,13 @@ let despawnTimer = 0;
 
 // Get player position
 function getPlayerPos() {
+    // Try window.character first (getter from core.js)
     if (typeof character !== 'undefined' && character) {
         return character.position;
+    }
+    // Fallback to GAME.character
+    if (typeof GAME !== 'undefined' && GAME.character) {
+        return GAME.character.position;
     }
     return null;
 }
