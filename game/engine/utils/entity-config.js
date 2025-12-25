@@ -2,18 +2,19 @@
 // All entity behavior values in one place for easy tuning
 
 const ENTITY_CONFIG = {
-    // Bunny configuration
+    // Bunny configuration (player speed is 20)
     bunny: {
         count: 20,
-        speed: 6.0,
+        speed: 8.0,             // Normal hop speed
+        fleeSpeed: 17.0,        // Almost as fast as player when scared
         collisionRadius: 0.4,
-        heightOffset: 0.4, // Above terrain
+        heightOffset: 0.4,
         flee: {
-            detectRadius: 12,    // Start fleeing when player this close
-            panicRadius: 5,      // Panic flee when player this close
-            duration: 2,         // How long to keep fleeing
-            distance: 20,        // How far to flee
-            panicBonus: 15       // Extra distance when panicking
+            detectRadius: 12,
+            panicRadius: 5,
+            duration: 2,
+            distance: 20,
+            panicBonus: 15
         },
         wander: {
             minDistance: 3,
@@ -25,14 +26,17 @@ const ENTITY_CONFIG = {
             hopFrequency: 2.5,
             hopFrequencyFlee: 3.5,
             hopHeight: 0.9,
-            rotationSpeed: 8
+            rotationSpeed: 8,
+            earTwitchSpeed: 3,
+            earTwitchAmplitude: 0.1
         }
     },
 
-    // Deer configuration
+    // Deer configuration (player speed is 20)
     deer: {
         count: 18,
-        speed: 8.0,
+        speed: 18.0,            // Running speed - almost as fast as player
+        walkSpeed: 6.0,         // Casual walking
         collisionRadius: 0.8,
         heightOffset: 0,
         flee: {
@@ -56,14 +60,14 @@ const ENTITY_CONFIG = {
         }
     },
 
-    // Cow configuration
+    // Cow configuration (slow, docile)
     cow: {
         count: 12,
-        speed: 3.0,
+        speed: 5.0,             // Slow and steady
         collisionRadius: 1.0,
         heightOffset: 0,
         flee: {
-            detectRadius: 4,     // Only flee when player VERY close
+            detectRadius: 4,
             panicRadius: 2,
             duration: 2,
             distance: 10,
@@ -76,13 +80,14 @@ const ENTITY_CONFIG = {
             moveDuration: { min: 4, max: 10 }
         },
         graze: {
-            chance: 0.4,         // 40% chance to graze instead of walk
+            chance: 0.4,
             duration: 5
         },
         animation: {
             legSpeed: 13,
             legSwing: 0.3,
-            rotationSpeed: 2
+            rotationSpeed: 2,
+            tailSwish: { walk: { speed: 2, amplitude: 0.3 }, graze: { speed: 1.5, amplitude: 0.2 }, idle: { speed: 0.5, amplitude: 0.15 } }
         }
     },
 
@@ -97,7 +102,7 @@ const ENTITY_CONFIG = {
             panicRadius: 8,
             duration: 4,
             distance: 40,
-            fleeHeight: 15       // How high to fly when fleeing
+            fleeHeight: 15
         },
         flight: {
             minHeight: 8,

@@ -128,7 +128,7 @@ function updateDeer(delta) {
     const config = getConfigSafe('deer');
     if (!config) return;
 
-    const time = getAnimTime(5); // Deer uses 0.005 time scale
+    const time = getAnimTime(5);
 
     deerList.forEach(deer => {
         // Local/spawned deer behavior
@@ -167,10 +167,10 @@ function updateDeer(delta) {
             }
         }
 
-        // Movement
-        const speed = getMovementSpeed('deer', deer.state);
-        if (speed > 0) {
-            moveEntityTowardTarget(deer, speed, delta, config.collisionRadius);
+        // Movement - uses ENTITY_CONFIG values via getMovementSpeed
+        const moveSpeed = getMovementSpeed('deer', deer.state);
+        if (moveSpeed > 0) {
+            moveEntityTowardTarget(deer, moveSpeed, delta, config.collisionRadius);
         }
 
         // Rotation
@@ -178,7 +178,7 @@ function updateDeer(delta) {
             rotateEntityTowardTarget(deer, delta, config.animation.rotationSpeed);
         }
 
-        // Leg animation
+        // Leg animation - from config
         if (deer.state === 'WALK' || deer.state === 'RUN') {
             const legSpeed = deer.state === 'RUN' ? config.animation.runLegSpeed : config.animation.walkLegSpeed;
             animateQuadrupedLegs(deer.legs, time, legSpeed, config.animation.legSwing);

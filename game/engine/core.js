@@ -53,7 +53,7 @@ function init() {
     // Exponential fog to fade into darkness seamlessly
     // Initial fog density - extended range for brighter times
     const minFogDensity = baseFogDensity;
-    const maxFogDensity = baseFogDensity * 11; // Scale max fog based on config
+    const maxFogDensity = baseFogDensity * 4; // Reduced from 11x - less fog at night
     const fogCycleDuration = 4 * 60 * 1000; // 4 minutes in milliseconds (twice as long)
 
     GAME.scene.fog = new THREE.FogExp2(fogColor, minFogDensity);
@@ -83,12 +83,33 @@ function init() {
         }
 
         // === SKY COLOR ===
-        // Day (phase 0): Bright Sky Blue (0, 191, 255)
-        // Night (phase 1): Midnight Blue (25, 25, 112)
-        const skyR = (0 + (25 - 0) * phase) / 255;
-        const skyG = (191 + (25 - 191) * phase) / 255;
-        const skyB = (255 + (112 - 255) * phase) / 255;
-        GAME.scene.background.setRGB(skyR, skyG, skyB);
+        // Now handled by sky.js SkySystem with gradient dome and clouds
+        // Only update fog color to match horizon
+        if (GAME.scene.fog) {
+            // Fog color matches horizon for seamless blend
+            let fogR, fogG, fogB;
+            if (phase < 0.4) {
+                // Day - light blue fog
+                fogR = 150; fogG = 200; fogB = 255;
+            } else if (phase < 0.5) {
+                // Sunset - warm fog (day blue to warm orange)
+                const t = (phase - 0.4) / 0.1;
+                fogR = 150 + t * 105; // 150 -> 255
+                fogG = 200 - t * 100; // 200 -> 100
+                fogB = 255 - t * 175; // 255 -> 80
+            } else if (phase < 0.6) {
+                // Dusk - quick transition to dark (avoid purple)
+                const t = (phase - 0.5) / 0.1;
+                // Go through dark quickly - drop red fast
+                fogR = 255 - t * 235; // 255 -> 20
+                fogG = 100 - t * 75;  // 100 -> 25
+                fogB = 80 - t * 30;   // 80 -> 50
+            } else {
+                // Night - dark blue fog (matches sky horizon)
+                fogR = 20; fogG = 25; fogB = 50;
+            }
+            GAME.scene.fog.color.setRGB(fogR / 255, fogG / 255, fogB / 255);
+        }
 
         // === AMBIENT LIGHT ===
         // Day: brighter (0.7), Night: dimmer (0.15)
@@ -156,6 +177,30 @@ function init() {
                     camPos.z + sunDirZ * orbitDistance
                 );
                 GAME.lighting.sun.visible = sunDirY > -0.1;
+
+                // Sun color changes during sunset/sunrise
+                if (phase > 0.4 && phase < 0.6) {
+                    // Sunset - deep orange/red sun
+                    GAME.lighting.sun.material.color.setRGB(1.0, 0.4, 0.1);
+                    if (GAME.lighting.sun.children[0]) {
+                        GAME.lighting.sun.children[0].material.color.setRGB(1.0, 0.3, 0.0);
+                        GAME.lighting.sun.children[0].material.opacity = 0.5;
+                    }
+                } else if (phase > 0.9 || phase < 0.1) {
+                    // Sunrise - warm orange
+                    GAME.lighting.sun.material.color.setRGB(1.0, 0.6, 0.3);
+                    if (GAME.lighting.sun.children[0]) {
+                        GAME.lighting.sun.children[0].material.color.setRGB(1.0, 0.5, 0.2);
+                        GAME.lighting.sun.children[0].material.opacity = 0.4;
+                    }
+                } else {
+                    // Normal daytime - bright yellow-white
+                    GAME.lighting.sun.material.color.setRGB(1.0, 0.95, 0.6);
+                    if (GAME.lighting.sun.children[0]) {
+                        GAME.lighting.sun.children[0].material.color.setRGB(1.0, 0.9, 0.5);
+                        GAME.lighting.sun.children[0].material.opacity = 0.3;
+                    }
+                }
             }
 
             // Moon: opposite side of sun
@@ -255,18 +300,38 @@ function init() {
     GAME.scene.add(GAME.lighting.directional);
     GAME.scene.add(GAME.lighting.directional.target);
 
-    // Create visual sun (yellow glowing sphere at distance 900)
-    const sunGeometry = new THREE.SphereGeometry(40, 16, 16);
-    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+    // Create visual sun (bright glowing sphere at distance 900)
+    const sunGeometry = new THREE.SphereGeometry(50, 16, 16);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFEE88,
+        transparent: true,
+        opacity: 1.0
+    });
     GAME.lighting.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     GAME.scene.add(GAME.lighting.sun);
 
-    // Create visual moon (pale blue sphere, starts hidden)
-    const moonGeometry = new THREE.SphereGeometry(25, 16, 16);
-    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xCCDDFF });
+    // Add sun glow (larger transparent sphere)
+    const sunGlowGeometry = new THREE.SphereGeometry(80, 16, 16);
+    const sunGlowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFDD66,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.BackSide
+    });
+    const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+    GAME.lighting.sun.add(sunGlow);
+
+    // Create visual moon (pale sphere, starts hidden)
+    const moonGeometry = new THREE.SphereGeometry(30, 16, 16);
+    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xEEEEFF });
     GAME.lighting.moon = new THREE.Mesh(moonGeometry, moonMaterial);
     GAME.lighting.moon.visible = false;
     GAME.scene.add(GAME.lighting.moon);
+
+    // Initialize sky system (clouds, gradient dome, stars)
+    if (typeof initSky === 'function') {
+        initSky();
+    }
 
     // Renderer setup - Optimized for low-end hardware
     GAME.renderer = new THREE.WebGLRenderer({

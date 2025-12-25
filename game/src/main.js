@@ -137,6 +137,7 @@ const scripts = [
     // Layer 2: World Systems
     '../systems/character.js',
     '../systems/climate.js',
+    '../systems/sky.js',          // Beautiful sky with clouds
     '../systems/biomes.js',
     '../systems/water.js',
     '../systems/chunks.js',

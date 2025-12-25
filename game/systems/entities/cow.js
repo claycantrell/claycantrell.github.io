@@ -247,18 +247,19 @@ function updateCows(delta) {
             rotateEntityTowardTarget(cow, delta, config.animation.rotationSpeed);
         }
 
-        // Animations
+        // Animations - from config
+        const tailAnim = config.animation.tailSwish;
         if (cow.state === 'WALK') {
             animateQuadrupedLegs(cow.legs, time, config.animation.legSpeed, config.animation.legSwing);
-            animateTailSwish(cow.tail, time, 2, 0.3);
+            animateTailSwish(cow.tail, time, tailAnim.walk.speed, tailAnim.walk.amplitude);
         } else if (cow.state === 'GRAZE') {
             animateGrazing(cow.headGroup, time);
             resetLegsToNeutral(cow.legs, delta);
-            animateTailSwish(cow.tail, time, 1.5, 0.2);
+            animateTailSwish(cow.tail, time, tailAnim.graze.speed, tailAnim.graze.amplitude);
         } else {
             resetHeadToNeutral(cow.headGroup, delta);
             resetLegsToNeutral(cow.legs, delta);
-            animateTailSwish(cow.tail, time, 0.5, 0.15);
+            animateTailSwish(cow.tail, time, tailAnim.idle.speed, tailAnim.idle.amplitude);
         }
     });
 }

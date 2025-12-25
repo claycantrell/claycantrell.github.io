@@ -214,27 +214,33 @@ function rotateEntityTowardTarget(entity, delta, rotationSpeed) {
  * @returns {number} Movement speed
  */
 function getMovementSpeed(entityType, state, isFleeing = false) {
-    const baseSpeed = getEntitySpeed(entityType);
+    // Get speeds from ENTITY_CONFIG - single source of truth
+    const config = typeof ENTITY_CONFIG !== 'undefined' ? ENTITY_CONFIG[entityType] : null;
+
+    if (!config) {
+        // Fallback if config not loaded
+        return state === 'IDLE' ? 0 : 10.0;
+    }
 
     switch (entityType) {
         case 'bunny':
             if (state !== 'HOP') return 0;
-            return isFleeing ? baseSpeed * 1.5 : baseSpeed;
+            return isFleeing ? (config.fleeSpeed || 17.0) : (config.speed || 8.0);
 
         case 'deer':
-            if (state === 'RUN') return baseSpeed;
-            if (state === 'WALK') return baseSpeed * 0.4;
+            if (state === 'RUN') return config.speed || 18.0;
+            if (state === 'WALK') return config.walkSpeed || 6.0;
             return 0;
 
         case 'cow':
-            if (state === 'WALK') return baseSpeed;
+            if (state === 'WALK') return config.speed || 5.0;
             return 0;
 
         case 'bird':
-            return baseSpeed; // Birds always fly at base speed
+            return config.speed || 12.0;
 
         default:
-            return state === 'IDLE' ? 0 : baseSpeed;
+            return state === 'IDLE' ? 0 : (config.speed || 10.0);
     }
 }
 

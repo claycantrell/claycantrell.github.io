@@ -128,7 +128,7 @@ function updateBunnies(delta) {
         } else {
             // Idle - stay on ground, twitch ears
             bunny.group.position.y = Math.max(baseHeight, currentTerrainY + 0.2);
-            animateEarTwitch(bunny.ears, time, 3, 0.1);
+            animateEarTwitch(bunny.ears, time, config.animation.earTwitchSpeed, config.animation.earTwitchAmplitude);
         }
     });
 }

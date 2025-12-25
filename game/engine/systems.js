@@ -6,6 +6,7 @@ const Systems = {
 
     // Update order (systems are called in this order each frame)
     _updateOrder: [
+        'sky',
         'character',
         'multiplayer',
         'chunks',
