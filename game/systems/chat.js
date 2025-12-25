@@ -517,6 +517,7 @@ function handleChatCommand(command) {
             addSystemMessage('=== COMMANDS ===');
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
+            addSystemMessage('/textures - Toggle ground textures');
             addSystemMessage('/shadows - Toggle shadow mapping');
             addSystemMessage('/shadowtype - Cycle shadow quality (Basic/PCF/Soft)');
             addSystemMessage('/shadowres - Cycle shadow resolution (1024/2048/4096)');
@@ -533,6 +534,15 @@ function handleChatCommand(command) {
                 addSystemMessage(`Position: X=${x}, Y=${y}, Z=${z}`);
             } else {
                 addSystemMessage('Character not loaded.');
+            }
+            return true;
+
+        case '/textures':
+            if (typeof toggleGroundTextures === 'function') {
+                const enabled = toggleGroundTextures();
+                addSystemMessage(`Ground textures ${enabled ? 'enabled' : 'disabled'}.`);
+            } else {
+                addSystemMessage('Texture system not available.');
             }
             return true;
 

@@ -190,10 +190,50 @@ function createChunkMesh(cx, cz, chunkData) {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
 
-    // Create material - use Lambert for shadows
-    const material = new THREE.MeshLambertMaterial({
-        vertexColors: true
-    });
+    // Add UV coordinates for texture tiling (world-space)
+    const uvs = new Float32Array(vertexCount * 2);
+    const textureScale = 0.05; // How often texture repeats
+    for (let i = 0; i < vertexCount; i++) {
+        const x = i % (segments + 1);
+        const z = Math.floor(i / (segments + 1));
+        const worldX = bounds.minX + (x / segments) * size;
+        const worldZ = bounds.minZ + (z / segments) * size;
+        uvs[i * 2] = worldX * textureScale;
+        uvs[i * 2 + 1] = worldZ * textureScale;
+    }
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+
+    // Calculate slope per vertex and store as attribute for shader
+    const normals = geometry.attributes.normal.array;
+    const slopes = new Float32Array(vertexCount);
+    const biomeTexIndices = new Float32Array(vertexCount);
+    for (let i = 0; i < vertexCount; i++) {
+        // Slope is based on how much the normal points up (y component after rotation)
+        // Normal Y in plane geometry = Z after rotation
+        const ny = Math.abs(normals[i * 3 + 2]); // Z component = up after -90deg X rotation
+        slopes[i] = 1.0 - ny; // 0 = flat, 1 = vertical
+
+        // Get biome texture index from biome data
+        const x = i % (segments + 1);
+        const z = Math.floor(i / (segments + 1));
+        const data = chunkData.biomeData[z][x];
+        const textureType = data.biome?.textureType || 'grass';
+        biomeTexIndices[i] = typeof getTextureIndex === 'function' ? getTextureIndex(textureType) : 0;
+    }
+    geometry.setAttribute('slope', new THREE.BufferAttribute(slopes, 1));
+    geometry.setAttribute('biomeTexIndex', new THREE.BufferAttribute(biomeTexIndices, 1));
+
+    // Create material - use textured if available, otherwise fallback to Lambert
+    let material;
+    if (typeof areGroundTexturesReady === 'function' && areGroundTexturesReady()) {
+        const atlas = getGroundTextureAtlas();
+        material = createTerrainShaderMaterial(atlas);
+    } else {
+        // Fallback to simple Lambert
+        material = new THREE.MeshLambertMaterial({
+            vertexColors: true
+        });
+    }
 
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);

@@ -23,6 +23,7 @@ const BIOMES = {
         name: 'Snowy Peaks',
         params: { temp: -0.7, humid: 0, cont: 0.4, erosion: -0.9, weird: 0 },
         color: 0xE8E8E8,
+        textureType: 'snow',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.3 }
     },
@@ -31,6 +32,7 @@ const BIOMES = {
         name: 'Snowy Slopes',
         params: { temp: -0.7, humid: 0, cont: 0.3, erosion: -0.5, weird: 0 },
         color: 0xDCDCDC,
+        textureType: 'snow',
         vegetation: { density: 0.05, types: { pine: 1.0 } },
         entities: { deer: 0.2, bunny: 0.1, bird: 0.3 }
     },
@@ -39,6 +41,7 @@ const BIOMES = {
         name: 'Tundra',
         params: { temp: -0.7, humid: -0.5, cont: 0.1, erosion: 0.3, weird: 0 },
         color: 0x708090,
+        textureType: 'snow',
         vegetation: { density: 0.02, types: { pine: 1.0 } },
         entities: { deer: 0.3, bunny: 0.1, bird: 0.1 }
     },
@@ -47,6 +50,7 @@ const BIOMES = {
         name: 'Taiga',
         params: { temp: -0.7, humid: 0.5, cont: 0.15, erosion: 0.2, weird: 0 },
         color: 0x2F4F4F,
+        textureType: 'snow',
         vegetation: { density: 0.65, types: { pine: 1.0 } },
         entities: { deer: 0.8, bunny: 0.3, bird: 0.4 }
     },
@@ -57,6 +61,7 @@ const BIOMES = {
         name: 'Cold Forest',
         params: { temp: -0.3, humid: 0.4, cont: 0.15, erosion: 0.1, weird: 0 },
         color: 0x355E3B,
+        textureType: 'grass',
         vegetation: { density: 0.7, types: { pine: 0.8, oak: 0.2 } },
         entities: { deer: 1.0, bunny: 0.5, bird: 0.6 }
     },
@@ -65,6 +70,7 @@ const BIOMES = {
         name: 'Cold Plains',
         params: { temp: -0.3, humid: -0.2, cont: 0.1, erosion: 0.5, weird: 0 },
         color: 0x5D7052,
+        textureType: 'grass',
         vegetation: { density: 0.15, types: { pine: 0.7, oak: 0.3 } },
         entities: { deer: 0.8, bunny: 0.6, bird: 0.5 }
     },
@@ -75,6 +81,7 @@ const BIOMES = {
         name: 'Mountains',
         params: { temp: 0, humid: 0, cont: 0.5, erosion: -0.85, weird: 0 },
         color: 0x696969,
+        textureType: 'rock',
         vegetation: { density: 0.08, types: { pine: 1.0 } },
         entities: { deer: 0.2, bunny: 0.1, bird: 0.8 }
     },
@@ -83,6 +90,7 @@ const BIOMES = {
         name: 'Highlands',
         params: { temp: 0, humid: 0, cont: 0.4, erosion: -0.5, weird: 0 },
         color: 0x5A6E4A,
+        textureType: 'grass',
         vegetation: { density: 0.2, types: { pine: 0.6, oak: 0.4 } },
         entities: { deer: 0.6, bunny: 0.4, bird: 0.7 }
     },
@@ -91,6 +99,7 @@ const BIOMES = {
         name: 'Forest',
         params: { temp: 0, humid: 0.6, cont: 0.15, erosion: 0.15, weird: 0 },
         color: 0x1A5C1A,
+        textureType: 'grass',
         vegetation: { density: 0.85, types: { oak: 0.6, pine: 0.4 } },
         entities: { deer: 1.5, bunny: 0.8, bird: 1.2 }
     },
@@ -99,6 +108,7 @@ const BIOMES = {
         name: 'Plains',
         params: { temp: 0, humid: 0, cont: 0.1, erosion: 0.5, weird: 0 },
         color: 0x7CBA3D,
+        textureType: 'grass',
         vegetation: { density: 0.12, types: { oak: 0.5, pine: 0.5 } },
         entities: { deer: 1.0, cow: 1.2, bunny: 1.0, bird: 0.8 }
     },
@@ -107,6 +117,7 @@ const BIOMES = {
         name: 'Meadow',
         params: { temp: 0, humid: 0.2, cont: 0.2, erosion: 0.3, weird: 0 },
         color: 0x7DB37D,
+        textureType: 'grass',
         vegetation: { density: 0.08, types: { oak: 0.8, pine: 0.2 } },
         entities: { deer: 0.8, cow: 1.5, bunny: 1.2, bird: 1.0 }
     },
@@ -117,6 +128,7 @@ const BIOMES = {
         name: 'Grassland',
         params: { temp: 0.4, humid: -0.2, cont: 0.1, erosion: 0.6, weird: 0 },
         color: 0x9ACD32,
+        textureType: 'grass',
         vegetation: { density: 0.1, types: { oak: 0.7, pine: 0.3 } },
         entities: { deer: 1.0, cow: 1.5, bunny: 1.0, bird: 0.8 }
     },
@@ -125,6 +137,7 @@ const BIOMES = {
         name: 'Savanna',
         params: { temp: 0.4, humid: -0.5, cont: 0.15, erosion: 0.4, weird: 0 },
         color: 0xBDB76B,
+        textureType: 'dirt',
         vegetation: { density: 0.15, types: { oak: 1.0 } },
         entities: { deer: 0.6, bunny: 0.4, bird: 0.6 }
     },
@@ -133,6 +146,7 @@ const BIOMES = {
         name: 'Warm Forest',
         params: { temp: 0.4, humid: 0.5, cont: 0.15, erosion: 0.2, weird: 0 },
         color: 0x2E7D32,
+        textureType: 'grass',
         vegetation: { density: 0.75, types: { oak: 0.9, pine: 0.1 } },
         entities: { deer: 1.2, bunny: 0.6, bird: 1.0 }
     },
@@ -143,6 +157,7 @@ const BIOMES = {
         name: 'Desert',
         params: { temp: 0.8, humid: -0.7, cont: 0.2, erosion: 0.5, weird: 0 },
         color: 0xC2B280,
+        textureType: 'sand',
         vegetation: { density: 0.03, types: { oak: 1.0 } },
         entities: { deer: 0, bunny: 0.2, bird: 0.3 }
     },
@@ -151,6 +166,7 @@ const BIOMES = {
         name: 'Badlands',
         params: { temp: 0.8, humid: -0.6, cont: 0.3, erosion: 0.1, weird: 0 },
         color: 0xCD853F,
+        textureType: 'dirt',
         vegetation: { density: 0.01, types: {} },
         entities: { deer: 0, bunny: 0.1, bird: 0.2 }
     },
@@ -159,6 +175,7 @@ const BIOMES = {
         name: 'Jungle',
         params: { temp: 0.8, humid: 0.7, cont: 0.15, erosion: 0.3, weird: 0 },
         color: 0x006400,
+        textureType: 'mud',
         vegetation: { density: 0.95, types: { oak: 1.0 } },
         entities: { deer: 0.3, bunny: 0.2, bird: 2.0 }
     },
@@ -169,6 +186,7 @@ const BIOMES = {
         name: 'Beach',
         params: { temp: 0.3, humid: 0, cont: -0.15, erosion: 0.6, weird: 0 },
         color: 0xF4D03F,
+        textureType: 'sand',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.5 }
     },
@@ -177,6 +195,7 @@ const BIOMES = {
         name: 'Stony Shore',
         params: { temp: 0, humid: 0, cont: -0.15, erosion: -0.3, weird: 0 },
         color: 0x808080,
+        textureType: 'rock',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.4 }
     }

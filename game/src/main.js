@@ -139,6 +139,7 @@ const scripts = [
     '../systems/climate.js',
     '../systems/sky.js',          // Beautiful sky with clouds
     '../systems/biomes.js',
+    '../engine/utils/ground-textures.js', // Procedural terrain textures
     '../systems/water.js',
     '../systems/chunks.js',
     '../systems/terrain.js',
@@ -240,6 +241,7 @@ function getScriptName(src) {
         'character': 'Character system',
         'climate': 'Climate system',
         'biomes': 'Biome data',
+        'ground-textures': 'Ground textures',
         'water': 'Water system',
         'caves': 'Cave generation',
         'chunks': 'Terrain chunks',

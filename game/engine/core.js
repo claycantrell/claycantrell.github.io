@@ -256,6 +256,11 @@ function init() {
                 GAME.lighting.directional.target.updateMatrixWorld();
             }
         }
+
+        // Update terrain shader lighting uniforms
+        if (typeof updateTerrainLighting === 'function') {
+            updateTerrainLighting();
+        }
     }, 33);
 
     // Disable automatic matrix updates for static objects (performance)
@@ -365,6 +370,11 @@ function init() {
 
     // Initialize shared materials
     initSharedMaterials();
+
+    // Initialize procedural ground textures
+    if (typeof initGroundTextures === 'function') {
+        initGroundTextures();
+    }
 
     // Ground with Flat Shading - now generated with hills
     createHillyGround();
