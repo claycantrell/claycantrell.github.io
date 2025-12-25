@@ -158,7 +158,7 @@ function updateCharacterMovement(delta) {
     function collidesWithBlock(testX, testZ, charY) {
         for (let i = 0; i < objects.length; i++) {
             const obj = objects[i];
-            if (!obj || !obj.userData.isBlock) continue;
+            if (!obj || !obj.userData.isBlock || obj.userData.noCollision) continue;
 
             const blockTop = obj.position.y + BLOCK_HALF;
             const blockBottom = obj.position.y - BLOCK_HALF;
@@ -206,7 +206,7 @@ function updateCharacterMovement(delta) {
 
     for (let i = 0; i < objects.length; i++) {
         const obj = objects[i];
-        if (obj && obj.userData.isBlock) {
+        if (obj && obj.userData.isBlock && !obj.userData.noCollision) {
             const blockTop = obj.position.y + BLOCK_HALF;
             const dx = Math.abs(character.position.x - obj.position.x);
             const dz = Math.abs(character.position.z - obj.position.z);

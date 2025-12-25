@@ -141,6 +141,7 @@ const scripts = [
     // Layer 3: Entity Systems
     '../systems/entities/npc.js',
     '../systems/entities/deer.js',
+    '../systems/entities/cow.js',
     '../systems/entities/bunny.js',
     '../systems/entities/bird.js',
     '../systems/entities/entity-registry.js',

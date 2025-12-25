@@ -2,6 +2,11 @@
 // Uses Systems registry for organized update loop
 // All state accessed via GAME namespace
 
+// Frame rate control state
+let reducedFrameRateEnabled = true; // Default to reduced frame rate (retro feel)
+const REDUCED_FPS_INTERVAL = 50; // 20 FPS (50ms per frame)
+const FULL_FPS_INTERVAL = 0; // Unlimited (use requestAnimationFrame's native rate)
+
 // Main animation loop
 function animate() {
     requestAnimationFrame(animate);
@@ -9,8 +14,9 @@ function animate() {
     const currentTime = performance.now();
     const delta = (currentTime - GAME.time.prevTime) / 1000;
 
-    // Implement frame rate control (20 FPS => 50ms per frame)
-    if (currentTime - GAME.time.prevTime < 50) {
+    // Implement frame rate control (20 FPS => 50ms per frame) if enabled
+    const frameInterval = reducedFrameRateEnabled ? REDUCED_FPS_INTERVAL : FULL_FPS_INTERVAL;
+    if (frameInterval > 0 && currentTime - GAME.time.prevTime < frameInterval) {
         return;
     }
 
@@ -78,8 +84,17 @@ function animate() {
     }
 }
 
+// Toggle reduced frame rate
+function toggleReducedFrameRate() {
+    reducedFrameRateEnabled = !reducedFrameRateEnabled;
+    GAME.rendering = GAME.rendering || {};
+    GAME.rendering.reducedFrameRateEnabled = reducedFrameRateEnabled;
+    return reducedFrameRateEnabled;
+}
+
 // Make available globally
 window.animate = animate;
+window.toggleReducedFrameRate = toggleReducedFrameRate;
 
 // Auto-start animation loop if game is already initialized
 if (typeof GAME !== 'undefined' && GAME.scene && GAME.camera && GAME.renderer) {

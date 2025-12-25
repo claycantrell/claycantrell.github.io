@@ -7,6 +7,8 @@ const instructionsParagraph = document.getElementById('instructions');
 
 // Pixelation Effect Variables
 const pixelRatio = /Mobi|Android/i.test(navigator.userAgent) ? 0.12 : 0.32;
+let pixelationEnabled = true; // Track pixelation state
+let originalPixelRatio = 1; // Store original pixel ratio
 
 // Function to set instructions based on device
 function setInstructions() {
@@ -273,9 +275,17 @@ function init() {
         precision: "lowp" // Lower precision shaders (if supported)
     });
     GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Store original pixel ratio
+    originalPixelRatio = Math.min(1, window.devicePixelRatio);
+    // Set initial pixelation state
     GAME.renderer.domElement.style.imageRendering = 'pixelated';
     // 90s games ran at lower resolution - cap pixel ratio for retro feel
     GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
+    
+    // Store pixelation state in GAME namespace for easy access
+    GAME.rendering = GAME.rendering || {};
+    GAME.rendering.pixelationEnabled = pixelationEnabled;
+    GAME.rendering.reducedFrameRateEnabled = true; // Default to reduced frame rate
 
     // Enable shadow mapping
     GAME.renderer.shadowMap.enabled = true;
@@ -508,7 +518,31 @@ Object.defineProperties(window, {
     'moonMesh': { get: () => GAME.lighting.moon, set: (v) => GAME.lighting.moon = v }
 });
 
+// Toggle pixelation effect
+function togglePixelation() {
+    if (!GAME || !GAME.renderer) {
+        return false;
+    }
+    
+    pixelationEnabled = !pixelationEnabled;
+    GAME.rendering = GAME.rendering || {};
+    GAME.rendering.pixelationEnabled = pixelationEnabled;
+    
+    if (pixelationEnabled) {
+        // Enable pixelation - use reduced pixel ratio
+        GAME.renderer.domElement.style.imageRendering = 'pixelated';
+        GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
+    } else {
+        // Disable pixelation - use full pixel ratio and smooth rendering
+        GAME.renderer.domElement.style.imageRendering = 'auto';
+        GAME.renderer.setPixelRatio(originalPixelRatio);
+    }
+    
+    return pixelationEnabled;
+}
+
 window.init = init;
 window.startGame = startGame;
 window.getMapIdFromUrl = getMapIdFromUrl;
+window.togglePixelation = togglePixelation;
 

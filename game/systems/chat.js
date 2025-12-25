@@ -415,9 +415,10 @@ function toggleShadows() {
                         vertexColors: true
                     });
                 } else {
-                    // Other objects - preserve color
+                    // Other objects - preserve color and side property (for shrubs)
                     basicMat = new THREE.MeshBasicMaterial({
-                        color: currentMat.color || 0xffffff
+                        color: currentMat.color || 0xffffff,
+                        side: currentMat.side !== undefined ? currentMat.side : THREE.FrontSide
                     });
                 }
                 
@@ -443,6 +444,8 @@ function handleChatCommand(command) {
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
             addSystemMessage('/shadows - Toggle shadow mapping');
+            addSystemMessage('/pixelation - Toggle pixelation effect');
+            addSystemMessage('/fps - Toggle reduced frame rate (20 FPS)');
             return true;
 
         case '/pos':
@@ -458,6 +461,24 @@ function handleChatCommand(command) {
 
         case '/shadows':
             toggleShadows();
+            return true;
+
+        case '/pixelation':
+            if (typeof togglePixelation === 'function') {
+                const enabled = togglePixelation();
+                addSystemMessage(`Pixelation ${enabled ? 'enabled' : 'disabled'}.`);
+            } else {
+                addSystemMessage('Pixelation system not available.');
+            }
+            return true;
+
+        case '/fps':
+            if (typeof toggleReducedFrameRate === 'function') {
+                const enabled = toggleReducedFrameRate();
+                addSystemMessage(`Reduced frame rate ${enabled ? 'enabled (20 FPS)' : 'disabled (full FPS)'}.`);
+            } else {
+                addSystemMessage('Frame rate system not available.');
+            }
             return true;
 
         default:

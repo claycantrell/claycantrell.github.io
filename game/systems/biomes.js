@@ -100,7 +100,7 @@ const BIOMES = {
         params: { temp: 0, humid: 0, cont: 0.1, erosion: 0.5, weird: 0 },
         color: 0x7CBA3D,
         vegetation: { density: 0.12, types: { oak: 0.5, pine: 0.5 } },
-        entities: { deer: 1.0, bunny: 1.0, bird: 0.8 }
+        entities: { deer: 1.0, cow: 1.2, bunny: 1.0, bird: 0.8 }
     },
     meadow: {
         id: 'meadow',
@@ -108,7 +108,7 @@ const BIOMES = {
         params: { temp: 0, humid: 0.2, cont: 0.2, erosion: 0.3, weird: 0 },
         color: 0x7DB37D,
         vegetation: { density: 0.08, types: { oak: 0.8, pine: 0.2 } },
-        entities: { deer: 0.8, bunny: 1.2, bird: 1.0 }
+        entities: { deer: 0.8, cow: 1.5, bunny: 1.2, bird: 1.0 }
     },
 
     // === WARM BIOMES (temp level 3: 0.2 to 0.55) ===
@@ -118,7 +118,7 @@ const BIOMES = {
         params: { temp: 0.4, humid: -0.2, cont: 0.1, erosion: 0.6, weird: 0 },
         color: 0x9ACD32,
         vegetation: { density: 0.1, types: { oak: 0.7, pine: 0.3 } },
-        entities: { deer: 1.0, bunny: 1.0, bird: 0.8 }
+        entities: { deer: 1.0, cow: 1.5, bunny: 1.0, bird: 0.8 }
     },
     savanna: {
         id: 'savanna',

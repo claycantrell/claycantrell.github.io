@@ -212,7 +212,66 @@ function updateNPC(delta) {
                 } else {
                     // Move toward target
                     const direction = new THREE.Vector3().subVectors(npcWanderTarget, npc.position).normalize();
-                    npc.position.addScaledVector(direction, config.speed * delta);
+                    const moveAmount = config.speed * delta;
+                    
+                    // Check for block collisions before moving
+                    const newX = npc.position.x + direction.x * moveAmount;
+                    const newZ = npc.position.z + direction.z * moveAmount;
+                    const npcY = npc.position.y;
+                    
+                    // Check if new position collides with blocks
+                    const BLOCK_SIZE = 2;
+                    const BLOCK_HALF = BLOCK_SIZE / 2;
+                    const NPC_RADIUS = 0.6;
+                    let blocked = false;
+                    
+                    if (typeof GAME !== 'undefined' && GAME.world?.objects) {
+                        for (const obj of GAME.world.objects) {
+                            if (!obj || !obj.userData?.isBlock || obj.userData.noCollision) continue;
+                            
+                            const blockTop = obj.position.y + BLOCK_HALF;
+                            const blockBottom = obj.position.y - BLOCK_HALF;
+                            
+                            // Skip if NPC is on top of block or well below it
+                            if (npcY >= blockTop - 0.3 || npcY + 2 < blockBottom) continue;
+                            
+                            // Check horizontal overlap
+                            const dx = Math.abs(newX - obj.position.x);
+                            const dz = Math.abs(newZ - obj.position.z);
+                            
+                            if (dx < BLOCK_HALF + NPC_RADIUS && dz < BLOCK_HALF + NPC_RADIUS) {
+                                blocked = true;
+                                // Try to find alternative path - move perpendicular to block
+                                const blockDir = new THREE.Vector3(newX - obj.position.x, 0, newZ - obj.position.z).normalize();
+                                const perpDir = new THREE.Vector3(-blockDir.z, 0, blockDir.x);
+                                const altX = npc.position.x + perpDir.x * moveAmount;
+                                const altZ = npc.position.z + perpDir.z * moveAmount;
+                                
+                                // Check if alternative path is clear
+                                let altBlocked = false;
+                                for (const obj2 of GAME.world.objects) {
+                                    if (!obj2 || !obj2.userData?.isBlock || obj2 === obj) continue;
+                                    const dx2 = Math.abs(altX - obj2.position.x);
+                                    const dz2 = Math.abs(altZ - obj2.position.z);
+                                    if (dx2 < BLOCK_HALF + NPC_RADIUS && dz2 < BLOCK_HALF + NPC_RADIUS) {
+                                        altBlocked = true;
+                                        break;
+                                    }
+                                }
+                                
+                                if (!altBlocked) {
+                                    npc.position.x = altX;
+                                    npc.position.z = altZ;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Only move if not blocked
+                    if (!blocked) {
+                        npc.position.addScaledVector(direction, moveAmount);
+                    }
 
                     // Update NPC height to follow terrain
                     const terrainHeight = getTerrainHeightAt(npc.position.x, npc.position.z);

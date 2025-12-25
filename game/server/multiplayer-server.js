@@ -372,6 +372,7 @@ const MAX_PLAYERS = 20; // Maximum players (safety limit, easily supports 10)
 // --- Server-Authoritative Entity State ---
 const ENTITIES = {
     deer: [],
+    cows: [],
     bunnies: [],
     birds: [],
     npc: {
@@ -451,6 +452,20 @@ function initServerEntities() {
         });
     }
 
+    // Cows - spawn on land, prefer open areas (grassland)
+    for (let i = 0; i < 12; i++) {
+        const pos = getValidLandPosition(50, 350);
+        ENTITIES.cows.push({
+            id: `cow_${i}`,
+            x: pos.x,
+            z: pos.z,
+            state: 'IDLE',
+            timer: seededRandom() * 5,
+            targetDir: { x: 0, z: 1 },
+            speed: 0
+        });
+    }
+
     // Bunnies - spawn on land only
     for (let i = 0; i < 20; i++) {
         const pos = getValidLandPosition(40, 340);
@@ -482,7 +497,7 @@ function initServerEntities() {
         });
     }
 
-    console.log(`Initialized ${ENTITIES.deer.length} deer, ${ENTITIES.bunnies.length} bunnies, ${ENTITIES.birds.length} birds.`);
+    console.log(`Initialized ${ENTITIES.deer.length} deer, ${ENTITIES.cows.length} cows, ${ENTITIES.bunnies.length} bunnies, ${ENTITIES.birds.length} birds.`);
 }
 
 initServerEntities();
@@ -582,6 +597,74 @@ setInterval(() => {
             if (deer.timer <= 0) {
                 deer.state = 'IDLE';
                 deer.timer = 1 + Math.random();
+            }
+        }
+    });
+
+    // Update Cows (docile, slow, mostly graze)
+    ENTITIES.cows.forEach(cow => {
+        cow.timer -= delta;
+
+        // Threat check - cows only flee when player is VERY close
+        let isThreat = false;
+        let fleeSource = null;
+        players.forEach(player => {
+            const dx = cow.x - player.position.x;
+            const dz = cow.z - player.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < 5) { // Only 5 units - very close
+                isThreat = true;
+                fleeSource = player.position;
+            }
+        });
+
+        if (isThreat && cow.state !== 'WALK') {
+            // Trot away slowly (cows don't run)
+            cow.state = 'WALK';
+            cow.timer = 2.0;
+            if (fleeSource) {
+                const dx = cow.x - fleeSource.x;
+                const dz = cow.z - fleeSource.z;
+                const len = Math.sqrt(dx * dx + dz * dz);
+                if (len > 0) {
+                    cow.targetDir.x = dx / len;
+                    cow.targetDir.z = dz / len;
+                }
+            }
+        } else if (cow.state === 'IDLE') {
+            if (cow.timer <= 0) {
+                const action = Math.random();
+                if (action < 0.4) {
+                    cow.state = 'GRAZE';
+                    cow.timer = 4 + Math.random() * 5;
+                } else if (action < 0.7) {
+                    cow.state = 'WALK';
+                    cow.timer = 3 + Math.random() * 4;
+                    const angle = Math.random() * Math.PI * 2;
+                    cow.targetDir = { x: Math.cos(angle), z: Math.sin(angle) };
+                } else {
+                    cow.timer = 2 + Math.random() * 3;
+                }
+            }
+        } else if (cow.state === 'WALK') {
+            // Slow movement (speed 3)
+            const newX = cow.x + cow.targetDir.x * 3.0 * delta;
+            const newZ = cow.z + cow.targetDir.z * 3.0 * delta;
+            if (!isWaterPosition(newX, newZ)) {
+                cow.x = newX;
+                cow.z = newZ;
+            } else {
+                cow.targetDir.x = -cow.targetDir.x;
+                cow.targetDir.z = -cow.targetDir.z;
+            }
+            if (cow.timer <= 0) {
+                cow.state = 'IDLE';
+                cow.timer = 1 + Math.random() * 2;
+            }
+        } else if (cow.state === 'GRAZE') {
+            if (cow.timer <= 0) {
+                cow.state = 'IDLE';
+                cow.timer = 1 + Math.random();
             }
         }
     });
@@ -744,6 +827,7 @@ setInterval(() => {
     const snapshot = {
         type: 'worldState',
         deer: ENTITIES.deer.map(d => ({ id: d.id, x: d.x, z: d.z, state: d.state, ry: Math.atan2(d.targetDir.x, d.targetDir.z) })),
+        cows: ENTITIES.cows.map(c => ({ id: c.id, x: c.x, z: c.z, state: c.state, ry: Math.atan2(c.targetDir.x, c.targetDir.z) })),
         bunnies: ENTITIES.bunnies.map(b => ({ id: b.id, x: b.x, z: b.z, state: b.state })),
         birds: ENTITIES.birds.map(b => ({ id: b.id, x: b.x, z: b.z, y: b.y, state: b.state })),
         npc: { 

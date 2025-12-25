@@ -25,7 +25,7 @@ if (typeof Systems !== 'undefined') {
 const SHRUB_TYPES = {
     // === HOT BIOMES ===
     desert: {
-        density: 0.08,
+        density: 1.0,
         types: [
             { name: 'cactus', color: 0x2d5a27, height: 3, width: 1.5, weight: 0.4 },
             { name: 'desertBush', color: 0x8b7355, height: 1.5, width: 2, weight: 0.4 },
@@ -33,7 +33,7 @@ const SHRUB_TYPES = {
         ]
     },
     badlands: {
-        density: 0.05,
+        density: 1.0,
         types: [
             { name: 'deadBush', color: 0x8b6914, height: 1, width: 1.5, weight: 0.5 },
             { name: 'rock', color: 0xcd853f, height: 1.5, width: 2, weight: 0.3 },
@@ -41,7 +41,7 @@ const SHRUB_TYPES = {
         ]
     },
     jungle: {
-        density: 0.7,
+        density: 1.0,
         types: [
             { name: 'fern', color: 0x228b22, height: 2, width: 2.5, weight: 0.4 },
             { name: 'tropicalPlant', color: 0x32cd32, height: 2.5, width: 2, weight: 0.3 },
@@ -51,7 +51,7 @@ const SHRUB_TYPES = {
 
     // === WARM BIOMES ===
     grassland: {
-        density: 0.25,
+        density: 1.0,
         types: [
             { name: 'grassClump', color: 0x9acd32, height: 1, width: 1.5, weight: 0.5 },
             { name: 'smallBush', color: 0x6b8e23, height: 1.5, width: 2, weight: 0.3 },
@@ -59,7 +59,7 @@ const SHRUB_TYPES = {
         ]
     },
     savanna: {
-        density: 0.12,
+        density: 1.0,
         types: [
             { name: 'tallGrass', color: 0xbdb76b, height: 1.5, width: 1, weight: 0.5 },
             { name: 'dryBush', color: 0x8b7355, height: 1.2, width: 1.8, weight: 0.3 },
@@ -67,7 +67,7 @@ const SHRUB_TYPES = {
         ]
     },
     warmForest: {
-        density: 0.55,
+        density: 1.0,
         types: [
             { name: 'fern', color: 0x32cd32, height: 1.5, width: 2, weight: 0.4 },
             { name: 'bush', color: 0x228b22, height: 2, width: 2.5, weight: 0.35 },
@@ -77,7 +77,7 @@ const SHRUB_TYPES = {
 
     // === TEMPERATE BIOMES ===
     plains: {
-        density: 0.3,
+        density: 1.0,
         types: [
             { name: 'grassClump', color: 0x7cba3d, height: 1.2, width: 1.5, weight: 0.5 },
             { name: 'bush', color: 0x556b2f, height: 1.8, width: 2.2, weight: 0.3 },
@@ -85,7 +85,7 @@ const SHRUB_TYPES = {
         ]
     },
     meadow: {
-        density: 0.35,
+        density: 1.0,
         types: [
             { name: 'wildflower', color: 0x7DB37D, height: 0.8, width: 1, weight: 0.4 },
             { name: 'grassClump', color: 0x7cba3d, height: 1, width: 1.5, weight: 0.35 },
@@ -93,7 +93,7 @@ const SHRUB_TYPES = {
         ]
     },
     forest: {
-        density: 0.5,
+        density: 1.0,
         types: [
             { name: 'fern', color: 0x228b22, height: 1.5, width: 2, weight: 0.4 },
             { name: 'berryBush', color: 0x2e8b57, height: 2, width: 2.5, weight: 0.3 },
@@ -101,7 +101,7 @@ const SHRUB_TYPES = {
         ]
     },
     highlands: {
-        density: 0.2,
+        density: 1.0,
         types: [
             { name: 'rock', color: 0x696969, height: 1.5, width: 2, weight: 0.3 },
             { name: 'alpineShrub', color: 0x556b2f, height: 1.2, width: 1.8, weight: 0.35 },
@@ -109,7 +109,7 @@ const SHRUB_TYPES = {
         ]
     },
     mountains: {
-        density: 0.35,
+        density: 1.0,
         types: [
             { name: 'boulder', color: 0x606060, height: 4, width: 5, weight: 0.25 },
             { name: 'rock', color: 0x707070, height: 2, width: 3, weight: 0.3 },
@@ -121,7 +121,7 @@ const SHRUB_TYPES = {
 
     // === COLD BIOMES ===
     coldPlains: {
-        density: 0.2,
+        density: 1.0,
         types: [
             { name: 'grassClump', color: 0x5d7052, height: 1, width: 1.5, weight: 0.5 },
             { name: 'coldBush', color: 0x4a5d23, height: 1.2, width: 1.8, weight: 0.3 },
@@ -129,7 +129,7 @@ const SHRUB_TYPES = {
         ]
     },
     coldForest: {
-        density: 0.4,
+        density: 1.0,
         types: [
             { name: 'fern', color: 0x355e3b, height: 1.2, width: 1.8, weight: 0.35 },
             { name: 'moss', color: 0x4a5d23, height: 0.5, width: 2, weight: 0.35 },
@@ -137,7 +137,7 @@ const SHRUB_TYPES = {
         ]
     },
     taiga: {
-        density: 0.35,
+        density: 1.0,
         types: [
             { name: 'lowPine', color: 0x2f4f4f, height: 1.5, width: 2, weight: 0.4 },
             { name: 'moss', color: 0x4a5d23, height: 0.5, width: 2, weight: 0.3 },
@@ -147,7 +147,7 @@ const SHRUB_TYPES = {
 
     // === FROZEN BIOMES ===
     tundra: {
-        density: 0.1,
+        density: 1.0,
         types: [
             { name: 'lichen', color: 0x708090, height: 0.3, width: 1.5, weight: 0.5 },
             { name: 'arcticMoss', color: 0x6b7b6b, height: 0.4, width: 2, weight: 0.3 },
@@ -155,7 +155,7 @@ const SHRUB_TYPES = {
         ]
     },
     snowySlopes: {
-        density: 0.15,
+        density: 1.0,
         types: [
             { name: 'rock', color: 0x909098, height: 1.5, width: 2, weight: 0.4 },
             { name: 'smallRock', color: 0xa0a0a8, height: 0.8, width: 1.2, weight: 0.35 },
@@ -163,7 +163,7 @@ const SHRUB_TYPES = {
         ]
     },
     snowyPeaks: {
-        density: 0.25,
+        density: 1.0,
         types: [
             { name: 'boulder', color: 0x808890, height: 5, width: 6, weight: 0.3 },
             { name: 'rock', color: 0x909098, height: 2.5, width: 3.5, weight: 0.35 },
@@ -174,7 +174,7 @@ const SHRUB_TYPES = {
 
     // === COASTAL BIOMES ===
     beach: {
-        density: 0.15,
+        density: 1.0,
         types: [
             { name: 'beachGrass', color: 0xbdb76b, height: 1, width: 1.2, weight: 0.6 },
             { name: 'driftwood', color: 0x8b7355, height: 0.5, width: 2, weight: 0.2 },
@@ -182,7 +182,7 @@ const SHRUB_TYPES = {
         ]
     },
     stonyShore: {
-        density: 0.3,
+        density: 1.0,
         types: [
             { name: 'rock', color: 0x696969, height: 1.5, width: 2, weight: 0.4 },
             { name: 'smallRock', color: 0x808080, height: 0.8, width: 1.2, weight: 0.4 },
@@ -197,11 +197,11 @@ let shrubGroup = null;
 
 // Configuration - large radius to match tree coverage
 const SHRUB_CONFIG = {
-    maxShrubs: 3000,
-    maxAttempts: 6000,
-    minDistanceFromCenter: 25,
+    maxShrubs: 8000,
+    maxAttempts: 16000,
+    minDistanceFromCenter: 20,
     radius: 3000,  // Match tree radius for full coverage
-    minSpacing: 6,
+    minSpacing: 4,
     updateDistance: 150
 };
 
@@ -219,7 +219,7 @@ function createShrubSprite(x, z, shrubType, terrainHeight) {
     color.g = Math.max(0, Math.min(1, color.g + (Math.random() - 0.5) * variation));
     color.b = Math.max(0, Math.min(1, color.b + (Math.random() - 0.5) * variation));
 
-    const material = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshLambertMaterial({
         color: color,
         side: THREE.DoubleSide
     });
@@ -305,6 +305,9 @@ function createShrubSprite(x, z, shrubType, terrainHeight) {
 
     const geometry = new THREE.ShapeGeometry(shape);
     const mesh = new THREE.Mesh(geometry, material);
+    // Enable shadows
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     // Shape starts at y=0, no offset needed
     spriteGroup.add(mesh);
 
@@ -382,9 +385,12 @@ function createShrubs() {
     while (placedCount < maxShrubs && attempts < maxAttempts) {
         attempts++;
 
-        // Random position
+        // Random position - use square root distribution for uniform area coverage
+        // This ensures equal density at all distances from center, not just equal probability per distance
         const angle = Math.random() * Math.PI * 2;
-        const distance = minDistFromCenter + Math.random() * (radius - minDistFromCenter);
+        // Square root distribution: sqrt(random) ensures uniform area distribution
+        const randomFactor = Math.sqrt(Math.random()); // 0 to 1, but weighted toward 1
+        const distance = minDistFromCenter + randomFactor * (radius - minDistFromCenter);
         const x = Math.cos(angle) * distance;
         const z = Math.sin(angle) * distance;
 

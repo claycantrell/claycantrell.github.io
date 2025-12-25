@@ -35,8 +35,12 @@ const BLOCK_TYPES = [
     { name: 'Brick', color: 0xB22222, emissive: false },
     { name: 'Glass', color: 0x87CEEB, emissive: false, transparent: true },
     { name: 'Gold', color: 0xFFD700, emissive: true },
-    { name: 'Grass', color: 0x228B22, emissive: false }
+    { name: 'Grass', color: 0x228B22, emissive: false },
+    { name: 'Torch', color: 0xFF6600, emissive: true, isTorch: true, lightColor: 0xFFAA44, lightIntensity: 30, lightDistance: 60 }
 ];
+
+// Torch sprite texture (generated once)
+let torchSpriteMaterial = null;
 
 // Shared block geometry (reuse for performance)
 let sharedBlockGeometry = null;
@@ -44,6 +48,38 @@ let sharedBlockGeometry = null;
 function initBuildSystem() {
     // Create shared geometry
     sharedBlockGeometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
+
+    // Create torch sprite texture
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    // Draw stick
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(28, 50, 8, 78);
+
+    // Draw flame glow
+    const gradient = ctx.createRadialGradient(32, 35, 0, 32, 35, 30);
+    gradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
+    gradient.addColorStop(0.3, 'rgba(255, 150, 50, 0.9)');
+    gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.5)');
+    gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 70);
+
+    // Draw flame core
+    ctx.fillStyle = '#FFFF88';
+    ctx.beginPath();
+    ctx.ellipse(32, 40, 8, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const torchTexture = new THREE.CanvasTexture(canvas);
+    torchSpriteMaterial = new THREE.SpriteMaterial({
+        map: torchTexture,
+        transparent: true,
+        depthWrite: false
+    });
 
     // Create UI overlay
     const buildUI = document.createElement('div');
@@ -155,7 +191,16 @@ function updateGhostGeometry() {
         wireframe: true
     });
 
-    buildGhost = new THREE.Mesh(sharedBlockGeometry || new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95), material);
+    // Use sprite for torch, mesh for blocks
+    if (blockDef.isTorch && torchSpriteMaterial) {
+        const ghostMat = torchSpriteMaterial.clone();
+        ghostMat.opacity = 0.5;
+        buildGhost = new THREE.Sprite(ghostMat);
+        buildGhost.scale.set(1.5, 3, 1);
+    } else {
+        buildGhost = new THREE.Mesh(sharedBlockGeometry || new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95), material);
+    }
+
     buildGhost.visible = isBuildMode;
     scene.add(buildGhost);
 
@@ -223,15 +268,17 @@ function updateGhostPosition() {
         }
     }
 
-    // Placed blocks
-    placedBlocks.forEach((mesh) => {
-        if (mesh !== buildGhost) intersectObjects.push(mesh);
+    // Placed blocks (meshes and sprites)
+    placedBlocks.forEach((block) => {
+        if (block !== buildGhost) {
+            intersectObjects.push(block);
+        }
     });
 
     // Also check global objects array
     if (typeof GAME !== 'undefined' && GAME.world?.objects) {
         GAME.world.objects.forEach(obj => {
-            if (obj.isMesh && obj.visible && obj !== buildGhost && obj.userData.isBlock) {
+            if (obj.visible && obj !== buildGhost && obj.userData?.isBlock) {
                 intersectObjects.push(obj);
             }
         });
@@ -249,11 +296,12 @@ function updateGhostPosition() {
         let gridPos;
 
         // Check if we hit a block or terrain
-        const hitBlock = hit.object.userData && hit.object.userData.isBlock;
+        const hitObject = hit.object;
+        const hitBlock = hitObject.userData && hitObject.userData.isBlock;
 
         if (hitBlock) {
             // Hit a block - place adjacent to it based on face normal
-            const blockPos = hit.object.position;
+            const blockPos = hitObject.position;
             gridPos = {
                 x: blockPos.x + normal.x * GRID_SIZE,
                 y: blockPos.y + normal.y * GRID_SIZE,
@@ -314,27 +362,48 @@ function placeBlock(networkData = null) {
         return;
     }
 
-    // Create material based on block type
-    let material;
-    if (blockDef.transparent) {
-        material = new THREE.MeshLambertMaterial({
-            color: colorHex,
-            transparent: true,
-            opacity: 0.6
-        });
-    } else if (blockDef.emissive) {
-        material = new THREE.MeshLambertMaterial({
-            color: colorHex,
-            emissive: colorHex,
-            emissiveIntensity: 0.3
-        });
+    let mesh;
+
+    // Handle torch placement specially - use sprite for performance
+    if (blockDef.isTorch) {
+        mesh = new THREE.Sprite(torchSpriteMaterial.clone());
+        mesh.scale.set(1.5, 3, 1);
+        mesh.userData.noCollision = true; // Don't block movement
+
+        // Add PointLight for illumination - use linear decay for wider coverage
+        const torchLight = new THREE.PointLight(
+            blockDef.lightColor || 0xFFAA44,
+            blockDef.lightIntensity || 30,
+            blockDef.lightDistance || 60,
+            1  // Linear decay (default 2 is quadratic, falls off too fast)
+        );
+        mesh.userData.torchLight = torchLight;
+        // Light is separate from sprite, add to scene at same position
+        mesh.userData.lightNeedsAdd = true;
     } else {
-        material = new THREE.MeshLambertMaterial({
-            color: colorHex
-        });
+        // Create material based on block type
+        let material;
+        if (blockDef.transparent) {
+            material = new THREE.MeshLambertMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.6
+            });
+        } else if (blockDef.emissive) {
+            material = new THREE.MeshLambertMaterial({
+                color: colorHex,
+                emissive: colorHex,
+                emissiveIntensity: 0.3
+            });
+        } else {
+            material = new THREE.MeshLambertMaterial({
+                color: colorHex
+            });
+        }
+
+        mesh = new THREE.Mesh(sharedBlockGeometry, material);
     }
 
-    const mesh = new THREE.Mesh(sharedBlockGeometry, material);
     mesh.position.copy(position);
     mesh.userData.isBlock = true;
     mesh.userData.blockType = type;
@@ -342,6 +411,14 @@ function placeBlock(networkData = null) {
 
     scene.add(mesh);
     placedBlocks.set(key, mesh);
+
+    // Add torch light to scene at same position
+    if (mesh.userData.lightNeedsAdd && mesh.userData.torchLight) {
+        mesh.userData.torchLight.position.copy(position);
+        mesh.userData.torchLight.position.y += 0.5;
+        scene.add(mesh.userData.torchLight);
+        delete mesh.userData.lightNeedsAdd;
+    }
 
     // Add to objects array
     if (typeof GAME !== 'undefined' && GAME.world?.objects) {
@@ -366,10 +443,10 @@ function removeBlock() {
 
     buildRaycaster.setFromCamera(buildMouse, camera);
 
-    // Only check placed blocks
-    const blockMeshes = Array.from(placedBlocks.values());
+    // Collect all blocks (meshes and sprites)
+    const blockObjects = Array.from(placedBlocks.values());
 
-    const intersects = buildRaycaster.intersectObjects(blockMeshes);
+    const intersects = buildRaycaster.intersectObjects(blockObjects);
 
     if (intersects.length > 0) {
         const hit = intersects[0];
@@ -380,14 +457,22 @@ function removeBlock() {
             scene.remove(mesh);
             placedBlocks.delete(key);
 
+            // Remove torch light if present
+            if (mesh.userData.torchLight) {
+                scene.remove(mesh.userData.torchLight);
+                mesh.userData.torchLight.dispose && mesh.userData.torchLight.dispose();
+            }
+
             // Remove from objects array
             if (typeof GAME !== 'undefined' && GAME.world?.objects) {
                 const idx = GAME.world.objects.indexOf(mesh);
                 if (idx > -1) GAME.world.objects.splice(idx, 1);
             }
 
-            // Dispose material (geometry is shared)
-            mesh.material.dispose();
+            // Dispose material
+            if (mesh.material) {
+                mesh.material.dispose();
+            }
 
             // Send to server
             if (typeof sendBuildToServer === 'function') {
@@ -415,6 +500,27 @@ function placeObject(networkData) {
     if (!sharedBlockGeometry) {
         sharedBlockGeometry = new THREE.BoxGeometry(GRID_SIZE * 0.95, GRID_SIZE * 0.95, GRID_SIZE * 0.95);
     }
+    if (!torchSpriteMaterial) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(28, 50, 8, 78);
+        const gradient = ctx.createRadialGradient(32, 35, 0, 32, 35, 30);
+        gradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
+        gradient.addColorStop(0.3, 'rgba(255, 150, 50, 0.9)');
+        gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 64, 70);
+        ctx.fillStyle = '#FFFF88';
+        ctx.beginPath();
+        ctx.ellipse(32, 40, 8, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const torchTexture = new THREE.CanvasTexture(canvas);
+        torchSpriteMaterial = new THREE.SpriteMaterial({ map: torchTexture, transparent: true, depthWrite: false });
+    }
 
     if (networkData.action === 'remove') {
         // Remove block at position
@@ -423,11 +529,19 @@ function placeObject(networkData) {
             const mesh = placedBlocks.get(key);
             scene.remove(mesh);
             placedBlocks.delete(key);
+
+            // Remove torch light if present
+            if (mesh.userData.torchLight) {
+                scene.remove(mesh.userData.torchLight);
+            }
+
             if (typeof GAME !== 'undefined' && GAME.world?.objects) {
                 const idx = GAME.world.objects.indexOf(mesh);
                 if (idx > -1) GAME.world.objects.splice(idx, 1);
             }
-            mesh.material.dispose();
+            if (mesh.material) {
+                mesh.material.dispose();
+            }
         }
     } else {
         // Place block - snap to grid for compatibility with old data

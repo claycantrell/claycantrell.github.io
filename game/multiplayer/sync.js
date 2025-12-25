@@ -21,17 +21,22 @@ if (typeof Systems !== 'undefined') {
 function handleAnimalUpdate(data) {
     if (data.type === 'worldState') {
         // Update Deer
-        if (typeof updateDeerState === 'function') {
+        if (typeof updateDeerState === 'function' && data.deer) {
             updateDeerState(data.deer);
         }
-        
+
+        // Update Cows
+        if (typeof updateCowState === 'function' && data.cows) {
+            updateCowState(data.cows);
+        }
+
         // Update Bunnies
-        if (typeof updateBunnyState === 'function') {
+        if (typeof updateBunnyState === 'function' && data.bunnies) {
             updateBunnyState(data.bunnies);
         }
-        
+
         // Update Birds
-        if (typeof updateBirdState === 'function') {
+        if (typeof updateBirdState === 'function' && data.birds) {
             updateBirdState(data.birds);
         }
 

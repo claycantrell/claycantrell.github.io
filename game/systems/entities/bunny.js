@@ -85,7 +85,9 @@ function createBunny(id, x, z) {
     group.add(tail);
 
     // Initial placement (server will update)
-    const y = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
+    // Bunnies need to be positioned above terrain (body radius is ~0.4)
+    const terrainY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
+    const y = terrainY + 0.4; // Offset above terrain for bunny body
     group.position.set(x, y, z);
     const scale = 0.8 + Math.random() * 0.4;
     group.scale.set(scale, scale, scale);
@@ -98,14 +100,30 @@ function createBunny(id, x, z) {
         }
     });
 
-    scene.add(group);
+    // Add to scene (check both GAME.scene and global scene)
+    if (typeof GAME !== 'undefined' && GAME.scene) {
+        GAME.scene.add(group);
+    } else if (typeof scene !== 'undefined') {
+        scene.add(group);
+    } else {
+        console.warn('Bunny: scene not available, trying to use GAME.scene');
+        // Try one more time after a brief delay in case scene isn't ready yet
+        setTimeout(() => {
+            if (typeof GAME !== 'undefined' && GAME.scene) {
+                GAME.scene.add(group);
+            }
+        }, 100);
+    }
     
     return {
         id: id,
         group: group,
         ears: [leftEar, rightEar],
         targetPos: new THREE.Vector3(x, y, z),
-        state: 'IDLE'
+        state: 'IDLE',
+        hopPhase: 0, // Initialize hop phase
+        wanderTimer: 0, // Start wandering immediately
+        fleeTimer: 0
     };
 }
 
@@ -124,8 +142,8 @@ function updateBunnyState(serverData) {
         }
         
         if (typeof getTerrainHeightAt === 'function') {
-            const y = getTerrainHeightAt(data.x, data.z);
-            bunny.targetPos.set(data.x, y, data.z);
+            const terrainY = getTerrainHeightAt(data.x, data.z);
+            bunny.targetPos.set(data.x, terrainY + 0.4, data.z); // Offset above terrain
         }
         bunny.state = data.state;
     });
@@ -142,6 +160,33 @@ const BUNNY_FLEE = {
 // Get bunny speed from config
 function getBunnySpeed() {
     return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.bunnies.speed', 6.0) : 6.0;
+}
+
+// Check if a position collides with blocks (shared helper)
+function checkBlockCollision(testX, testZ, testY, animalRadius = 0.4) {
+    if (!GAME || !GAME.world?.objects) return null;
+    
+    const BLOCK_SIZE = 2; // Match building.js GRID_SIZE
+    const BLOCK_HALF = BLOCK_SIZE / 2;
+    
+    for (const obj of GAME.world.objects) {
+        if (!obj || !obj.userData?.isBlock || obj.userData.noCollision) continue;
+        
+        const blockTop = obj.position.y + BLOCK_HALF;
+        const blockBottom = obj.position.y - BLOCK_HALF;
+        
+        // Skip if animal is on top of block or well below it
+        if (testY >= blockTop - 0.2 || testY + 0.8 < blockBottom) continue;
+        
+        // Check horizontal overlap (AABB collision)
+        const dx = Math.abs(testX - obj.position.x);
+        const dz = Math.abs(testZ - obj.position.z);
+        
+        if (dx < BLOCK_HALF + animalRadius && dz < BLOCK_HALF + animalRadius) {
+            return obj; // Return the colliding block
+        }
+    }
+    return null;
 }
 
 // Render Loop
@@ -163,54 +208,69 @@ function updateBunnies(delta) {
                 distToPlayer = Math.sqrt(dx * dx + dz * dz);
             }
 
+            // Calculate 2D distance to target (consistent with movement check)
+            const dx2 = bunny.targetPos.x - bunny.group.position.x;
+            const dz2 = bunny.targetPos.z - bunny.group.position.z;
+            const distToTarget2D = Math.sqrt(dx2 * dx2 + dz2 * dz2);
+
             // Flee behavior - player too close!
             if (distToPlayer < BUNNY_FLEE.detectRadius) {
-                // Hop away from player
-                const fleeAngle = Math.atan2(
-                    bunny.group.position.x - playerPos.x,
-                    bunny.group.position.z - playerPos.z
-                );
-                const fleeDist = BUNNY_FLEE.fleeDistance + (distToPlayer < BUNNY_FLEE.fleeRadius ? 15 : 0);
-                const newX = bunny.group.position.x + Math.cos(fleeAngle) * fleeDist;
-                const newZ = bunny.group.position.z + Math.sin(fleeAngle) * fleeDist;
-                bunny.targetPos.set(newX, 0, newZ);
-                bunny.targetRot = fleeAngle;
-                bunny.state = 'HOP';
-                bunny.hopPhase = bunny.hopPhase || 0;
-                bunny.fleeTimer = BUNNY_FLEE.fleeDuration;
-                bunny.wanderTimer = BUNNY_FLEE.fleeDuration + 1;
-                bunny.isFleeing = true;
+                // Only pick new flee target if not already fleeing OR reached current target
+                if (bunny.fleeTimer <= 0 || distToTarget2D < 0.5) {
+                    // Hop away from player
+                    const fleeAngle = Math.atan2(
+                        bunny.group.position.x - playerPos.x,
+                        bunny.group.position.z - playerPos.z
+                    );
+                    const fleeDist = BUNNY_FLEE.fleeDistance + (distToPlayer < BUNNY_FLEE.fleeRadius ? 15 : 0);
+                    const newX = bunny.group.position.x + Math.sin(fleeAngle) * fleeDist;
+                    const newZ = bunny.group.position.z + Math.cos(fleeAngle) * fleeDist;
+                    const terrainY = typeof getTerrainHeightAt === 'function'
+                        ? getTerrainHeightAt(newX, newZ) : 0;
+                    bunny.targetPos.set(newX, terrainY + 0.4, newZ);
+                    bunny.targetRot = fleeAngle;
+                    bunny.state = 'HOP';
+                    bunny.fleeTimer = BUNNY_FLEE.fleeDuration;
+                    bunny.wanderTimer = BUNNY_FLEE.fleeDuration + 1;
+                    bunny.isFleeing = true;
+                }
             }
             // Normal wander behavior (only if not fleeing)
             else if (bunny.fleeTimer <= 0) {
                 bunny.isFleeing = false;
-                const distToTarget = bunny.group.position.distanceTo(bunny.targetPos);
 
                 // Reached destination or timer expired
-                if (bunny.wanderTimer <= 0 || distToTarget < 0.3) {
+                if (bunny.wanderTimer <= 0 || distToTarget2D < 0.5) {
                     if (bunny.state === 'HOP') {
                         // Just finished hopping, rest a bit
                         bunny.state = 'IDLE';
-                        bunny.wanderTimer = 1 + Math.random() * 3;
+                        bunny.wanderTimer = 0.5 + Math.random() * 1.5;
                     } else {
                         // Pick new hop destination
                         const hopDist = 3 + Math.random() * 8;
                         const angle = bunny.group.rotation.y + (Math.random() - 0.5) * Math.PI;
-                        const newX = bunny.group.position.x + Math.cos(angle) * hopDist;
-                        const newZ = bunny.group.position.z + Math.sin(angle) * hopDist;
-                        bunny.targetPos.set(newX, 0, newZ);
+                        const newX = bunny.group.position.x + Math.sin(angle) * hopDist;
+                        const newZ = bunny.group.position.z + Math.cos(angle) * hopDist;
+                        const terrainY = typeof getTerrainHeightAt === 'function'
+                            ? getTerrainHeightAt(newX, newZ) : 0;
+                        bunny.targetPos.set(newX, terrainY + 0.4, newZ);
                         bunny.targetRot = Math.atan2(newX - bunny.group.position.x, newZ - bunny.group.position.z);
                         bunny.state = 'HOP';
-                        bunny.hopPhase = 0;
-                        bunny.wanderTimer = 2;
+                        bunny.hopPhase = Math.random() * Math.PI * 2;
+                        bunny.wanderTimer = 2 + Math.random() * 2;
                     }
                 }
             }
+            // Currently fleeing but not close to player - just keep hopping to target
+            else {
+                bunny.isFleeing = true;
+            }
         }
 
-        // Get terrain height at current position
-        const terrainY = typeof getTerrainHeightAt === 'function'
+        // Get terrain height at current position (update every frame for accuracy)
+        const currentTerrainY = typeof getTerrainHeightAt === 'function'
             ? getTerrainHeightAt(bunny.group.position.x, bunny.group.position.z) : 0;
+        const baseHeight = currentTerrainY + 0.4; // Base height above terrain
 
         // Movement
         if (bunny.state === 'HOP') {
@@ -220,16 +280,73 @@ function updateBunnies(delta) {
             const dir = new THREE.Vector3().subVectors(bunny.targetPos, bunny.group.position);
             dir.y = 0;
             const dist = dir.length();
-            if (dist > 0.3) {
+            
+            // Only hop if actually moving toward target
+            if (dist > 0.5) {
+                // Move forward
                 dir.normalize().multiplyScalar(hopSpeed * delta);
-                bunny.group.position.add(dir);
+                
+                // Check for block collisions before moving
+                const newX = bunny.group.position.x + dir.x;
+                const newZ = bunny.group.position.z + dir.z;
+                const animalY = bunny.group.position.y;
+                
+                const collidingBlock = checkBlockCollision(newX, newZ, animalY, 0.4);
+                
+                if (collidingBlock) {
+                    // Blocked! Try to find alternative path - move perpendicular to block
+                    const blockDir = new THREE.Vector3(newX - collidingBlock.position.x, 0, newZ - collidingBlock.position.z).normalize();
+                    const perpDir = new THREE.Vector3(-blockDir.z, 0, blockDir.x);
+                    const altX = bunny.group.position.x + perpDir.x * hopSpeed * delta;
+                    const altZ = bunny.group.position.z + perpDir.z * hopSpeed * delta;
+                    
+                    // Check if alternative path is clear
+                    if (!checkBlockCollision(altX, altZ, animalY, 0.4)) {
+                        bunny.group.position.x = altX;
+                        bunny.group.position.z = altZ;
+                    }
+                    // If alternative is also blocked, don't move (bunny stops)
+                } else {
+                    // Path is clear, move normally
+                    bunny.group.position.add(dir);
+                }
+                
+                // Recalculate terrain height after movement
+                const newTerrainY = typeof getTerrainHeightAt === 'function'
+                    ? getTerrainHeightAt(bunny.group.position.x, bunny.group.position.z) : 0;
+                const newBaseHeight = newTerrainY + 0.4;
+                
+                // Hop arc - BIG hops with proper timing
+                if (bunny.hopPhase === undefined) {
+                    bunny.hopPhase = 0;
+                }
+                
+                // Slower hop frequency for distinct hops (not continuous bobbing)
+                const hopFreq = bunny.isFleeing ? 3.5 : 2.5;
+                bunny.hopPhase += delta * hopFreq;
+                
+                // Keep hopPhase in reasonable range to prevent overflow
+                if (bunny.hopPhase > Math.PI * 10) {
+                    bunny.hopPhase = bunny.hopPhase % (Math.PI * 2);
+                }
+                
+                // Create distinct hop arcs - BIG hops when phase is in the "air" part (0 to PI)
+                const normalizedPhase = bunny.hopPhase % (Math.PI * 2);
+                let hopHeight = 0;
+                
+                if (normalizedPhase < Math.PI) {
+                    // In the air - create a BIG parabolic arc
+                    // Use sin for smooth arc, peak at PI/2
+                    hopHeight = Math.sin(normalizedPhase) * 0.9; // BIG hops (was 0.3)
+                }
+                // When normalizedPhase >= PI, bunny is on ground (hopHeight = 0)
+                
+                // Ensure bunny never goes below terrain
+                bunny.group.position.y = Math.max(newBaseHeight + hopHeight, newTerrainY + 0.2);
+            } else {
+                // Reached destination - stay on ground, no hopping
+                bunny.group.position.y = Math.max(baseHeight, currentTerrainY + 0.2);
             }
-
-            // Hop arc (faster hops when fleeing)
-            const hopFreq = bunny.isFleeing ? 12 : 8;
-            bunny.hopPhase = (bunny.hopPhase || 0) + delta * hopFreq;
-            const hopHeight = Math.sin(bunny.hopPhase) * 0.4;
-            bunny.group.position.y = terrainY + Math.max(0, hopHeight);
 
             // Face movement direction
             let rotDiff = (bunny.targetRot || 0) - bunny.group.rotation.y;
@@ -237,8 +354,8 @@ function updateBunnies(delta) {
             while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
             bunny.group.rotation.y += rotDiff * delta * 8;
         } else {
-            // Idle - stay on ground
-            bunny.group.position.y = terrainY;
+            // Idle - stay on ground (ensure above terrain)
+            bunny.group.position.y = Math.max(baseHeight, currentTerrainY + 0.2);
 
             // Ear twitch
             bunny.ears[0].rotation.z = 0.2 + Math.sin(time * 3) * 0.1;

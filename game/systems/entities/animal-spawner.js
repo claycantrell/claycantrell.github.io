@@ -12,6 +12,7 @@ const SPAWN_CONFIG = {
     // Mob caps (max alive at once)
     caps: {
         deer: 12,
+        cows: 10,
         bunnies: 15,
         birds: 20
     },
@@ -19,6 +20,7 @@ const SPAWN_CONFIG = {
     // Spawn chances per check (0-1)
     spawnChance: {
         deer: 0.15,
+        cows: 0.12,
         bunnies: 0.25,
         birds: 0.20
     },
@@ -26,6 +28,7 @@ const SPAWN_CONFIG = {
     // Group spawn sizes
     groupSize: {
         deer: { min: 2, max: 4 },
+        cows: { min: 2, max: 5 },
         bunnies: { min: 1, max: 3 },
         birds: { min: 3, max: 6 }
     }
@@ -97,6 +100,11 @@ function trySpawnAnimals(type) {
             createFn = typeof createDeer === 'function' ? createDeer : null;
             currentCount = list.length;
             break;
+        case 'cows':
+            list = typeof cowList !== 'undefined' ? cowList : [];
+            createFn = typeof createCow === 'function' ? createCow : null;
+            currentCount = list.length;
+            break;
         case 'bunnies':
             list = typeof bunnyList !== 'undefined' ? bunnyList : [];
             createFn = typeof createBunny === 'function' ? createBunny : null;
@@ -144,6 +152,9 @@ function despawnFarAnimals(type) {
     switch (type) {
         case 'deer':
             list = typeof deerList !== 'undefined' ? deerList : [];
+            break;
+        case 'cows':
+            list = typeof cowList !== 'undefined' ? cowList : [];
             break;
         case 'bunnies':
             list = typeof bunnyList !== 'undefined' ? bunnyList : [];
@@ -199,6 +210,7 @@ function updateAnimalSpawner(delta) {
     if (spawnTimer >= SPAWN_CONFIG.spawnCheckInterval) {
         spawnTimer = 0;
         trySpawnAnimals('deer');
+        trySpawnAnimals('cows');
         trySpawnAnimals('bunnies');
         trySpawnAnimals('birds');
     }
@@ -208,6 +220,7 @@ function updateAnimalSpawner(delta) {
     if (despawnTimer >= SPAWN_CONFIG.despawnCheckInterval) {
         despawnTimer = 0;
         despawnFarAnimals('deer');
+        despawnFarAnimals('cows');
         despawnFarAnimals('bunnies');
         despawnFarAnimals('birds');
     }
@@ -218,6 +231,7 @@ function initAnimalSpawner() {
     // Clear existing local/spawned animals
     const lists = [
         typeof deerList !== 'undefined' ? deerList : [],
+        typeof cowList !== 'undefined' ? cowList : [],
         typeof bunnyList !== 'undefined' ? bunnyList : [],
         typeof birdList !== 'undefined' ? birdList : []
     ];

@@ -185,6 +185,33 @@ function getDeerSpeed() {
     return typeof CONFIG !== 'undefined' ? CONFIG.get('entities.deer.speed', 8.0) : 8.0;
 }
 
+// Check if a position collides with blocks (shared helper)
+function checkBlockCollision(testX, testZ, testY, animalRadius = 0.8) {
+    if (!GAME || !GAME.world?.objects) return null;
+    
+    const BLOCK_SIZE = 2; // Match building.js GRID_SIZE
+    const BLOCK_HALF = BLOCK_SIZE / 2;
+    
+    for (const obj of GAME.world.objects) {
+        if (!obj || !obj.userData?.isBlock || obj.userData.noCollision) continue;
+        
+        const blockTop = obj.position.y + BLOCK_HALF;
+        const blockBottom = obj.position.y - BLOCK_HALF;
+        
+        // Skip if animal is on top of block or well below it
+        if (testY >= blockTop - 0.3 || testY + 1.5 < blockBottom) continue;
+        
+        // Check horizontal overlap (AABB collision)
+        const dx = Math.abs(testX - obj.position.x);
+        const dz = Math.abs(testZ - obj.position.z);
+        
+        if (dx < BLOCK_HALF + animalRadius && dz < BLOCK_HALF + animalRadius) {
+            return obj; // Return the colliding block
+        }
+    }
+    return null;
+}
+
 // Render Loop - Interpolate to target
 function updateDeer(delta) {
     const time = Date.now() * 0.005;
@@ -212,8 +239,8 @@ function updateDeer(delta) {
                     deer.group.position.z - playerPos.z
                 );
                 const fleeDist = DEER_FLEE.fleeDistance + (distToPlayer < DEER_FLEE.fleeRadius ? 20 : 0);
-                const newX = deer.group.position.x + Math.cos(fleeAngle) * fleeDist;
-                const newZ = deer.group.position.z + Math.sin(fleeAngle) * fleeDist;
+                const newX = deer.group.position.x + Math.sin(fleeAngle) * fleeDist;
+                const newZ = deer.group.position.z + Math.cos(fleeAngle) * fleeDist;
                 const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
                 deer.targetPos.set(newX, newY, newZ);
                 deer.targetRot = fleeAngle;
@@ -229,8 +256,8 @@ function updateDeer(delta) {
                     // Pick new random destination
                     const wanderDist = 15 + Math.random() * 25;
                     const angle = deer.group.rotation.y + (Math.random() - 0.5) * Math.PI;
-                    const newX = deer.group.position.x + Math.cos(angle) * wanderDist;
-                    const newZ = deer.group.position.z + Math.sin(angle) * wanderDist;
+                    const newX = deer.group.position.x + Math.sin(angle) * wanderDist;
+                    const newZ = deer.group.position.z + Math.cos(angle) * wanderDist;
                     const newY = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(newX, newZ) : 0;
                     deer.targetPos.set(newX, newY, newZ);
                     deer.targetRot = Math.atan2(newX - deer.group.position.x, newZ - deer.group.position.z);
@@ -251,7 +278,31 @@ function updateDeer(delta) {
             const dist = dir.length();
             if (dist > 0.5) {
                 dir.normalize().multiplyScalar(moveSpeed * delta);
-                deer.group.position.add(dir);
+                
+                // Check for block collisions before moving
+                const newX = deer.group.position.x + dir.x;
+                const newZ = deer.group.position.z + dir.z;
+                const animalY = deer.group.position.y;
+                
+                const collidingBlock = checkBlockCollision(newX, newZ, animalY, 0.8);
+                
+                if (collidingBlock) {
+                    // Blocked! Try to find alternative path - move perpendicular to block
+                    const blockDir = new THREE.Vector3(newX - collidingBlock.position.x, 0, newZ - collidingBlock.position.z).normalize();
+                    const perpDir = new THREE.Vector3(-blockDir.z, 0, blockDir.x);
+                    const altX = deer.group.position.x + perpDir.x * moveSpeed * delta;
+                    const altZ = deer.group.position.z + perpDir.z * moveSpeed * delta;
+                    
+                    // Check if alternative path is clear
+                    if (!checkBlockCollision(altX, altZ, animalY, 0.8)) {
+                        deer.group.position.x = altX;
+                        deer.group.position.z = altZ;
+                    }
+                    // If alternative is also blocked, don't move (animal stops)
+                } else {
+                    // Path is clear, move normally
+                    deer.group.position.add(dir);
+                }
             }
             // Update Y to follow terrain
             const terrainY = typeof getTerrainHeightAt === 'function'

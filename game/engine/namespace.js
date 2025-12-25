@@ -27,6 +27,7 @@ const GAME = {
         // Entity lists (populated by entity systems)
         entities: {
             deer: [],
+            cows: [],
             bunnies: [],
             birds: [],
             npc: null

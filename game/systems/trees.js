@@ -113,7 +113,7 @@ const TREE_VARIANTS = {
         foliageColors: [0x228B22, 0x2E8B57, 0x3CB371],
         trunkHeight: [20, 30],
         trunkRadius: [0.8, 1.0],
-        fronds: 6                   // Number of palm fronds
+        fronds: 12                  // Number of palm fronds (increased to match sprite fullness)
     }
 };
 
@@ -203,24 +203,43 @@ function create3DTree(x, z, detail, variantName = 'pine') {
         trunk.position.y = trunkHeight / 2;
         tree.add(trunk);
 
-        // Add palm fronds - drooping outward from center
+        // Add palm fronds - triangular leaves extending outward from top center
+        // Fronds are flat triangles that start from a central point and extend outward, drooping down
         const frondCount = variant.fronds || 6;
         for (let i = 0; i < frondCount; i++) {
             const angle = (i / frondCount) * Math.PI * 2;
-            const frondGeom = new THREE.ConeGeometry(2, 10, 4);
-            const frond = new THREE.Mesh(frondGeom, foliageMaterials[i % foliageMaterials.length]);
+            
+            // Create a flat triangular frond (triangle shape)
+            const frondLength = 8 + Math.random() * 4; // Varying lengths 8-12
+            const frondWidth = 1.5 + Math.random() * 0.5; // Varying widths 1.5-2
+            const frondShape = new THREE.Shape();
+            frondShape.moveTo(0, 0); // Start at center point
+            frondShape.lineTo(-frondWidth / 2, frondLength); // Left edge
+            frondShape.lineTo(frondWidth / 2, frondLength); // Right edge
+            frondShape.lineTo(0, 0); // Back to center
+            
+            const frondGeom = new THREE.ShapeGeometry(frondShape);
+            const frondMaterial = foliageMaterials[i % foliageMaterials.length].clone();
+            frondMaterial.side = THREE.DoubleSide; // Make visible from both sides
+            const frond = new THREE.Mesh(frondGeom, frondMaterial);
             frond.castShadow = true;
             frond.receiveShadow = true;
 
-            // Position at top of trunk, offset outward
+            // Position at top center of trunk (all fronds start from same point)
             frond.position.y = trunkHeight;
-            frond.position.x = Math.cos(angle) * 2;
-            frond.position.z = Math.sin(angle) * 2;
+            frond.position.x = 0;
+            frond.position.z = 0;
 
-            // Rotate to droop outward - first rotate around Z to tilt, then Y to face outward
+            // Rotate to extend outward and droop downward
+            // Frond shape is in XY plane (Y is length, X is width)
+            // We want it to extend outward horizontally and droop down
             frond.rotation.order = 'YXZ';
-            frond.rotation.y = angle;
-            frond.rotation.z = Math.PI / 4;  // Tilt outward
+            frond.rotation.y = angle; // Rotate around Y to face outward direction (each frond different)
+            
+            // Varying droop angles - some droop more than others
+            const droopVariation = (Math.random() - 0.5) * Math.PI / 3; // ±30° variation
+            frond.rotation.x = -Math.PI / 2 - Math.PI / 6 + droopVariation; // Horizontal then droop down with variation
+            
             tree.add(frond);
         }
         tree.userData.treeHeight = trunkHeight + 6;
