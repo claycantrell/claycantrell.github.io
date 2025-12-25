@@ -198,6 +198,7 @@ function createChunkMesh(cx, cz, chunkData) {
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);
     mesh.rotation.x = -Math.PI / 2;
+    mesh.castShadow = true;    // Chunks cast shadows (mountains)
     mesh.receiveShadow = true; // Chunks receive shadows
 
     // Position chunk in world

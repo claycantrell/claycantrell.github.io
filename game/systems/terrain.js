@@ -673,6 +673,7 @@ function createSingleMeshTerrain() {
 
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
+    ground.castShadow = true;    // Terrain casts shadows (mountains)
     ground.receiveShadow = true; // Terrain receives shadows
     scene.add(ground);
 

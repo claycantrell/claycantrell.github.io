@@ -432,6 +432,80 @@ function toggleShadows() {
     addSystemMessage(`Shadows ${shadowsEnabled ? 'enabled' : 'disabled'}.`);
 }
 
+// Shadow quality settings
+const SHADOW_TYPES = [
+    { type: THREE.BasicShadowMap, name: 'Basic (sharpest)' },
+    { type: THREE.PCFShadowMap, name: 'PCF (sharp)' },
+    { type: THREE.PCFSoftShadowMap, name: 'PCF Soft (smooth)' }
+];
+let currentShadowTypeIndex = 0; // Default to Basic (sharpest)
+
+const SHADOW_RESOLUTIONS = [2048, 1024, 4096];
+let currentShadowResIndex = 0; // Default to 2048
+
+// Cycle shadow map type
+function cycleShadowType() {
+    if (!GAME || !GAME.renderer) {
+        addSystemMessage('Renderer not initialized.');
+        return;
+    }
+
+    currentShadowTypeIndex = (currentShadowTypeIndex + 1) % SHADOW_TYPES.length;
+    const shadowType = SHADOW_TYPES[currentShadowTypeIndex];
+    GAME.renderer.shadowMap.type = shadowType.type;
+    GAME.renderer.shadowMap.needsUpdate = true;
+
+    // Need to update all materials for shadow type change to take effect
+    GAME.scene.traverse((object) => {
+        if (object.isMesh && object.material) {
+            object.material.needsUpdate = true;
+        }
+    });
+
+    addSystemMessage(`Shadow type: ${shadowType.name}`);
+}
+
+// Cycle shadow map resolution
+function cycleShadowResolution() {
+    if (!GAME || !GAME.lighting || !GAME.lighting.directional) {
+        addSystemMessage('Lighting not initialized.');
+        return;
+    }
+
+    currentShadowResIndex = (currentShadowResIndex + 1) % SHADOW_RESOLUTIONS.length;
+    const res = SHADOW_RESOLUTIONS[currentShadowResIndex];
+
+    GAME.lighting.directional.shadow.mapSize.width = res;
+    GAME.lighting.directional.shadow.mapSize.height = res;
+
+    // Force shadow map to regenerate
+    if (GAME.lighting.directional.shadow.map) {
+        GAME.lighting.directional.shadow.map.dispose();
+        GAME.lighting.directional.shadow.map = null;
+    }
+
+    addSystemMessage(`Shadow resolution: ${res}x${res}`);
+}
+
+// Shadow update rate options (in ms)
+const SHADOW_RATES = [
+    { interval: 50, name: '20/sec' },
+    { interval: 100, name: '10/sec' },
+    { interval: 33, name: '30/sec' }
+];
+let currentShadowRateIndex = 0; // Default to 50ms (20/sec)
+
+// Cycle shadow update rate
+function cycleShadowRate() {
+    currentShadowRateIndex = (currentShadowRateIndex + 1) % SHADOW_RATES.length;
+    const rate = SHADOW_RATES[currentShadowRateIndex];
+
+    // Update the interval in game.js (it's a window global)
+    window.shadowUpdateInterval = rate.interval;
+
+    addSystemMessage(`Shadow update rate: ${rate.name}`);
+}
+
 // Handle chat commands (slash commands)
 function handleChatCommand(command) {
     const cmd = command.toLowerCase().trim();
@@ -444,6 +518,9 @@ function handleChatCommand(command) {
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
             addSystemMessage('/shadows - Toggle shadow mapping');
+            addSystemMessage('/shadowtype - Cycle shadow quality (Basic/PCF/Soft)');
+            addSystemMessage('/shadowres - Cycle shadow resolution (1024/2048/4096)');
+            addSystemMessage('/shadowrate - Cycle shadow update rate (5/2/1 per sec)');
             addSystemMessage('/pixelation - Toggle pixelation effect');
             addSystemMessage('/fps - Toggle reduced frame rate (20 FPS)');
             return true;
@@ -461,6 +538,18 @@ function handleChatCommand(command) {
 
         case '/shadows':
             toggleShadows();
+            return true;
+
+        case '/shadowtype':
+            cycleShadowType();
+            return true;
+
+        case '/shadowres':
+            cycleShadowResolution();
+            return true;
+
+        case '/shadowrate':
+            cycleShadowRate();
             return true;
 
         case '/pixelation':

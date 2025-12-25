@@ -386,7 +386,7 @@ function updateSkyColors(phase) {
     uniforms.bottomColor.value.setRGB(bottomColor.r / 255, bottomColor.g / 255, bottomColor.b / 255);
 
     // Update sun position and intensity in shader
-    if (GAME.lighting.sun) {
+    if (GAME.lighting && GAME.lighting.sun) {
         const sunPos = GAME.lighting.sun.position.clone().sub(GAME.camera.position).normalize();
         uniforms.sunPosition.value.copy(sunPos);
 

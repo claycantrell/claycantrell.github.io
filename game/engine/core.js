@@ -101,12 +101,12 @@ function init() {
                 // Dusk - quick transition to dark (avoid purple)
                 const t = (phase - 0.5) / 0.1;
                 // Go through dark quickly - drop red fast
-                fogR = 255 - t * 235; // 255 -> 20
-                fogG = 100 - t * 75;  // 100 -> 25
-                fogB = 80 - t * 30;   // 80 -> 50
+                fogR = 255 - t * 250; // 255 -> 5
+                fogG = 100 - t * 95;  // 100 -> 5
+                fogB = 80 - t * 65;   // 80 -> 15
             } else {
-                // Night - dark blue fog (matches sky horizon)
-                fogR = 20; fogG = 25; fogB = 50;
+                // Night - very dark fog (nearly black)
+                fogR = 5; fogG = 5; fogB = 15;
             }
             GAME.scene.fog.color.setRGB(fogR / 255, fogG / 255, fogB / 255);
         }
@@ -293,8 +293,8 @@ function init() {
     GAME.lighting.directional.shadow.camera.right = 200;
     GAME.lighting.directional.shadow.camera.top = 200;
     GAME.lighting.directional.shadow.camera.bottom = -200;
-    GAME.lighting.directional.shadow.bias = -0.0001;
-    GAME.lighting.directional.shadow.normalBias = 0.02; // Helps with shadow acne on terrain
+    GAME.lighting.directional.shadow.bias = -0.0005;
+    GAME.lighting.directional.shadow.normalBias = 0.03; // Balance between acne and peter panning
     
     // Add directional light and its target to scene (target needed for proper light direction)
     GAME.scene.add(GAME.lighting.directional);
@@ -354,7 +354,8 @@ function init() {
 
     // Enable shadow mapping
     GAME.renderer.shadowMap.enabled = true;
-    GAME.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows for better quality
+    GAME.renderer.shadowMap.type = THREE.BasicShadowMap; // Sharpest shadow edges
+    GAME.renderer.shadowMap.autoUpdate = false; // Manual update for performance
     GAME.renderer.sortObjects = false; // Disable sorting for performance
 
     document.body.appendChild(GAME.renderer.domElement);
