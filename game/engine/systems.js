@@ -20,7 +20,8 @@ const Systems = {
         'birds',
         'animalSync',
         'portals',
-        'building'
+        'building',
+        'terraform'
     ],
 
     // Register a system

@@ -169,6 +169,7 @@ const scripts = [
     '../multiplayer/client.js',
     '../multiplayer/other-players.js',
     '../systems/building.js',
+    '../systems/terraform.js',
     '../maps/map-menu.js',
 
     // Layer 6: Initialization (must be last)
@@ -265,6 +266,7 @@ function getScriptName(src) {
         'client': 'Network client',
         'other-players': 'Multiplayer rendering',
         'building': 'Building system',
+        'terraform': 'Terraforming',
         'map-menu': 'Map selection',
         'core': 'Initializing world',
         'game': 'Starting game'

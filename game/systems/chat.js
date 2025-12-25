@@ -546,6 +546,14 @@ function handleChatCommand(command) {
             }
             return true;
 
+        case '/terraform':
+            if (typeof toggleTerraformMode === 'function') {
+                toggleTerraformMode();
+            } else {
+                addSystemMessage('Terraform system not available.');
+            }
+            return true;
+
         case '/shadows':
             toggleShadows();
             return true;

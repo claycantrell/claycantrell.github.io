@@ -435,6 +435,11 @@ function init() {
         initBuildSystem();
     }
 
+    // Initialize Terraform System
+    if (typeof initTerraformSystem === 'function') {
+        initTerraformSystem();
+    }
+
     // Initialize other player assets (for multiplayer)
     if (typeof initOtherPlayerAssets === 'function') {
         initOtherPlayerAssets();
