@@ -1,0 +1,88 @@
+{
+  "id": "grasslands",
+  "name": "Grasslands",
+  "description": "A vast world with diverse biomes - forests, plains, deserts, and mountains",
+  "version": "2.0",
+
+  "terrain": {
+    "size": 50000,
+    "useChunks": true,
+    "chunks": {
+      "size": 512,
+      "segments": 48,
+      "renderDistance": 6,
+      "unloadDistance": 8
+    },
+    "seed": "skyrim",
+    "noise": {
+      "scale": 0.008,
+      "octaves": 3,
+      "persistence": 0.5,
+      "lacunarity": 2.0
+    },
+    "elevation": {
+      "hillHeight": 25,
+      "plateauRadius": 60,
+      "mountainStartRadius": 400,
+      "mountainHeight": 200
+    }
+  },
+
+  "spawn": {
+    "position": { "x": 0, "z": 0 },
+    "rotation": 0
+  },
+
+  "portals": [
+    { "name": "DESERT", "angle": 0, "color": "#C2B280" }
+  ],
+  "portalRadius": 50,
+
+  "trees": {
+    "count": 5000,
+    "radius": 3000,
+    "exclusionRadius": 50,
+    "minSpacing": 12,
+    "maxAttempts": 15000,
+    "useBiomes": true
+  },
+
+  "entities": {
+    "npc": {
+      "enabled": true,
+      "spawnRadius": { "min": 50, "max": 100 },
+      "wanderRadius": 200,
+      "detectionDistance": 15,
+      "leaveDistance": 20,
+      "speed": 5.0
+    },
+    "deer": { "count": 80, "spawnRadius": { "min": 100, "max": 2500 } },
+    "bunnies": { "count": 100, "spawnRadius": { "min": 80, "max": 2000 } },
+    "birds": { "count": 120, "spawnRadius": { "min": 0, "max": 2000 }, "baseHeight": 30 }
+  },
+
+  "character": {
+    "moveSpeed": 28.0,
+    "rotationSpeed": 2.0,
+    "flySpeed": 24.0,
+    "gravity": 25.0,
+    "collisionRadius": 3.0
+  },
+
+  "rendering": {
+    "backgroundColor": "#87CEEB",
+    "fogColor": "#000000",
+    "fogDensity": 0.0004,
+    "ambientLight": { "color": "#ffffff", "intensity": 0.6 },
+    "directionalLight": { "color": "#ffffff", "intensity": 1.0, "position": { "x": 100, "y": 150, "z": 50 } },
+    "maxDrawDistance": 3000,
+    "lodDistance": 400,
+    "lodUpdateInterval": 350
+  },
+
+  "audio": {
+    "background": "assets/audio/background.mp3",
+    "volume": 0.5,
+    "loop": true
+  }
+}

@@ -10,7 +10,7 @@
 
     <!-- Security headers via meta tags -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss: https://api.openai.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss: https://api.openai.com https://threejs.org;">
 
     <!-- Preconnect to external resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,13 +19,28 @@
     <!-- Inline SVG favicon (prevents 404) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a1a2e'/><polygon points='16,4 28,28 4,28' fill='%2300ff88'/></svg>">
 
-    <title>3D Interactive Demo</title>
-  <script type="module" crossorigin src="./assets/index-ul5c8Frx.js"></script>
+    <title>Graceful World</title>
+  <script type="module" crossorigin src="./assets/index-DBZtxkhN.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/three-DiX2_aTt.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-DR7odVlO.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-CeH3Ls3-.css">
 </head>
 
 <body>
+    <!-- RuneScape-style Loading Screen -->
+    <div id="loading-screen">
+        <div id="loading-content">
+            <div id="loading-title">Graceful World</div>
+            <div id="loading-subtitle">Loading - please wait...</div>
+            <div id="loading-bar-container">
+                <div id="loading-bar-border">
+                    <div id="loading-bar"></div>
+                </div>
+            </div>
+            <div id="loading-percent">0%</div>
+            <div id="loading-status">Initializing...</div>
+        </div>
+    </div>
+
     <div id="notification"></div>
     <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/mute.png" alt="Audio Icon">
 
@@ -45,9 +60,11 @@
     <!-- Info Panel -->
     <div id="info-panel">
         <span class="key">WASD</span> - Move<br>
-        <span class="key">SPACE</span> - Fly<br>
+        <span class="key">SPACE</span> - Jump<br>
+        <span class="key">SHIFT</span> - Sprint<br>
         <span class="key">V</span> - Camera View<br>
         <span class="key">B</span> - Build Mode<br>
+        <span class="key">T</span> - Terraform<br>
         <span class="key">Enter</span> - Chat
     </div>
 

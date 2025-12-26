@@ -120,61 +120,61 @@ window.dispatchEvent(new Event('threeModulesLoaded'));
  */
 const scripts = [
     // Layer 1: Core Framework
-    '../engine/namespace.js',      // GAME namespace (load first)
-    '../engine/systems.js',        // Systems registry
-    '../engine/config.js',         // Centralized configuration
-    '../engine/performance.js',    // Performance config
-    '../engine/utils/random.js',   // Seeded random
-    '../engine/utils/entity-config.js', // Entity configuration
-    '../engine/utils/collision.js',     // Shared collision detection
-    '../engine/utils/terrain.js',       // Cached terrain lookups
-    '../engine/utils/behaviors.js',     // Shared entity behaviors
-    '../engine/utils/entity-factory.js', // Entity system boilerplate
-    '../engine/utils/animal-behaviors.js', // Animal flee/wander logic
-    '../engine/utils/animation-utils.js', // Animation utilities
-    '../maps/map-loader.js',       // Map configuration
+    './engine/namespace.js',      // GAME namespace (load first)
+    './engine/systems.js',        // Systems registry
+    './engine/config.js',         // Centralized configuration
+    './engine/performance.js',    // Performance config
+    './engine/utils/random.js',   // Seeded random
+    './engine/utils/entity-config.js', // Entity configuration
+    './engine/utils/collision.js',     // Shared collision detection
+    './engine/utils/terrain.js',       // Cached terrain lookups
+    './engine/utils/behaviors.js',     // Shared entity behaviors
+    './engine/utils/entity-factory.js', // Entity system boilerplate
+    './engine/utils/animal-behaviors.js', // Animal flee/wander logic
+    './engine/utils/animation-utils.js', // Animation utilities
+    './maps/map-loader.js',       // Map configuration
 
     // Layer 2: World Systems
-    '../systems/character.js',
-    '../systems/climate.js',
-    '../systems/sky.js',          // Beautiful sky with clouds
-    '../systems/biomes.js',
-    '../engine/utils/ground-textures.js', // Procedural terrain textures
-    '../systems/water.js',
-    '../systems/chunks.js',
-    '../systems/terrain.js',
-    '../systems/trees.js',
-    '../systems/shrubs.js',
-    '../systems/portals.js',
+    './systems/character.js',
+    './systems/climate.js',
+    './systems/sky.js',          // Beautiful sky with clouds
+    './systems/biomes.js',
+    './engine/utils/ground-textures.js', // Procedural terrain textures
+    './systems/water.js',
+    './systems/chunks.js',
+    './systems/terrain.js',
+    './systems/trees.js',
+    './systems/shrubs.js',
+    './systems/portals.js',
 
     // Layer 3: Entity Systems
-    '../systems/entities/npc.js',
-    '../systems/entities/deer.js',
-    '../systems/entities/cow.js',
-    '../systems/entities/bunny.js',
-    '../systems/entities/bird.js',
-    '../systems/entities/entity-registry.js',
-    '../systems/entities/animal-spawner.js',
+    './systems/entities/npc.js',
+    './systems/entities/deer.js',
+    './systems/entities/cow.js',
+    './systems/entities/bunny.js',
+    './systems/entities/bird.js',
+    './systems/entities/entity-registry.js',
+    './systems/entities/animal-spawner.js',
 
     // Layer 4: Multiplayer
-    '../multiplayer/player-utils.js',
-    '../multiplayer/time-sync.js',
-    '../multiplayer/sync.js',
+    './multiplayer/player-utils.js',
+    './multiplayer/time-sync.js',
+    './multiplayer/sync.js',
 
     // Layer 5: UI & Input
-    '../engine/input.js',
-    '../engine/audio.js',
-    '../engine/ui.js',
-    '../systems/chat.js',
-    '../multiplayer/client.js',
-    '../multiplayer/other-players.js',
-    '../systems/building.js',
-    '../systems/terraform.js',
-    '../maps/map-menu.js',
+    './engine/input.js',
+    './engine/audio.js',
+    './engine/ui.js',
+    './systems/chat.js',
+    './multiplayer/client.js',
+    './multiplayer/other-players.js',
+    './systems/building.js',
+    './systems/terraform.js',
+    './maps/map-menu.js',
 
     // Layer 6: Initialization (must be last)
-    '../engine/core.js',           // Three.js setup
-    '../engine/game.js'            // Animation loop
+    './engine/core.js',           // Three.js setup
+    './engine/game.js'            // Animation loop
 ];
 
 // Loading screen elements

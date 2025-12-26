@@ -1,0 +1,90 @@
+{
+  "id": "desert",
+  "name": "Scorching Dunes",
+  "description": "A vast desert with rolling sand dunes, oases, and ancient ruins",
+  "version": "2.0",
+
+  "terrain": {
+    "size": 50000,
+    "useChunks": true,
+    "chunks": {
+      "size": 512,
+      "segments": 48,
+      "renderDistance": 6,
+      "unloadDistance": 8
+    },
+    "seed": "sahara",
+    "noise": {
+      "scale": 0.006,
+      "octaves": 3,
+      "persistence": 0.45,
+      "lacunarity": 2.0
+    },
+    "elevation": {
+      "hillHeight": 20,
+      "plateauRadius": 60,
+      "mountainStartRadius": 500,
+      "mountainHeight": 150
+    },
+    "climate": {
+      "temperatureOffset": 0.4,
+      "humidityOffset": -0.3
+    }
+  },
+
+  "spawn": {
+    "position": { "x": 0, "z": 0 },
+    "rotation": 0
+  },
+
+  "portals": [
+    { "name": "GRASSLANDS", "angle": 0, "color": "#228B22" }
+  ],
+  "portalRadius": 50,
+
+  "trees": {
+    "count": 1500,
+    "radius": 2500,
+    "exclusionRadius": 60,
+    "minSpacing": 25,
+    "maxAttempts": 8000,
+    "useBiomes": true
+  },
+
+  "entities": {
+    "npc": {
+      "enabled": true,
+      "spawnRadius": { "min": 60, "max": 120 },
+      "wanderRadius": 200,
+      "detectionDistance": 20,
+      "leaveDistance": 25,
+      "speed": 3.0
+    },
+    "deer": { "count": 40, "spawnRadius": { "min": 100, "max": 2000 } },
+    "bunnies": { "count": 50, "spawnRadius": { "min": 80, "max": 1800 } },
+    "birds": { "count": 60, "spawnRadius": { "min": 0, "max": 1500 }, "baseHeight": 25 }
+  },
+
+  "character": {
+    "moveSpeed": 28.0,
+    "rotationSpeed": 2.0,
+    "flySpeed": 24.0,
+    "gravity": 30.0,
+    "collisionRadius": 3.0
+  },
+
+  "rendering": {
+    "backgroundColor": "#F4E4BC",
+    "fogColor": "#000000",
+    "fogDensity": 0.0003,
+    "ambientLight": { "color": "#ffffff", "intensity": 0.7 },
+    "directionalLight": { "color": "#fffacd", "intensity": 1.2, "position": { "x": 100, "y": 180, "z": 50 } },
+    "maxDrawDistance": 3500,
+    "lodDistance": 500
+  },
+
+  "audio": {
+    "background": "assets/audio/background.mp3",
+    "volume": 0.3
+  }
+}

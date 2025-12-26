@@ -1,8 +1,19 @@
 import { defineConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   root: '.',
   base: './',
+  plugins: [
+    viteStaticCopy({
+      targets: [
+        { src: 'engine/*', dest: 'engine' },
+        { src: 'systems/*', dest: 'systems' },
+        { src: 'multiplayer/*', dest: 'multiplayer' },
+        { src: 'maps/*', dest: 'maps' }
+      ]
+    })
+  ],
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
