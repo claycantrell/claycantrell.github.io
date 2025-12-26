@@ -1,87 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="description" content="3D Interactive Medieval Adventure Game">
-    <meta name="theme-color" content="#1a1a2e">
-
-    <!-- Security headers via meta tags -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss: https://api.openai.com https://threejs.org;">
-
-    <!-- Preconnect to external resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Inline SVG favicon (prevents 404) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%231a1a2e'/><polygon points='16,4 28,28 4,28' fill='%2300ff88'/></svg>">
-
-    <title>Graceful World</title>
-    <link rel="stylesheet" href="css/game.css">
+    <meta http-equiv="refresh" content="0; url=dist/index.html">
+    <title>Graceful World - Redirecting...</title>
 </head>
-
 <body>
-    <!-- RuneScape-style Loading Screen -->
-    <div id="loading-screen">
-        <div id="loading-content">
-            <div id="loading-title">Graceful World</div>
-            <div id="loading-subtitle">Loading - please wait...</div>
-            <div id="loading-bar-container">
-                <div id="loading-bar-border">
-                    <div id="loading-bar"></div>
-                </div>
-            </div>
-            <div id="loading-percent">0%</div>
-            <div id="loading-status">Initializing...</div>
-        </div>
-    </div>
-
-    <div id="notification"></div>
-    <img id="audio-icon" src="https://img.icons8.com/ios-glyphs/30/ffffff/mute.png" alt="Audio Icon">
-
-    <!-- Instructional Message -->
-    <div id="instruction-message">
-        <p id="instructions">
-            <!-- Instructions will be populated by JavaScript -->
-        </p>
-    </div>
-
-    <!-- Exit Button -->
-    <button id="exit-button">Go Home</button>
-
-    <!-- Map Button (hidden) -->
-    <button id="map-button" title="Select Map (M)">Maps</button>
-
-    <!-- Info Panel -->
-    <div id="info-panel">
-        <span class="key">WASD</span> - Move<br>
-        <span class="key">SPACE</span> - Jump<br>
-        <span class="key">SHIFT</span> - Sprint<br>
-        <span class="key">V</span> - Camera View<br>
-        <span class="key">B</span> - Build Mode<br>
-        <span class="key">T</span> - Terraform<br>
-        <span class="key">Enter</span> - Chat
-    </div>
-
-    <!-- Chat System (RuneScape style) -->
-    <div id="chat-container">
-        <div id="chat-toggle">Chat</div>
-        <div id="chat-box" class="chat-closed">
-            <div id="chat-messages"></div>
-            <div id="chat-input-container">
-                <input type="text" id="chat-input" placeholder="Type a message..." maxlength="100">
-            </div>
-        </div>
-    </div>
-
-    <!-- Main game module (Vite bundled) -->
-    <script type="module" src="./src/main.js"></script>
-
-    <!-- White Overlay for fade-out effect -->
-    <div id="white-overlay"></div>
+    <p>Redirecting to game... <a href="dist/index.html">Click here if not redirected</a></p>
 </body>
-
 </html>
