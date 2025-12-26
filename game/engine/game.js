@@ -4,8 +4,16 @@
 
 // Frame rate control state
 let reducedFrameRateEnabled = true; // Default to reduced frame rate (retro feel)
+let motionBlurEnabled = true; // Reduce framerate further when camera moves (retro feel)
 const REDUCED_FPS_INTERVAL = 50; // 20 FPS (50ms per frame)
+const MOTION_FPS_INTERVAL = 67; // 15 FPS when camera is moving
 const FULL_FPS_INTERVAL = 0; // Unlimited (use requestAnimationFrame's native rate)
+
+// Camera motion tracking
+let lastCameraYaw = 0;
+let lastCameraPitch = 0;
+let cameraIsMoving = false;
+let cameraStopTime = 0;
 
 // Shadow update throttling (exposed globally so it can be adjusted via commands)
 let lastShadowUpdate = 0;
@@ -18,8 +26,36 @@ function animate() {
     const currentTime = performance.now();
     const delta = (currentTime - GAME.time.prevTime) / 1000;
 
-    // Implement frame rate control (20 FPS => 50ms per frame) if enabled
-    const frameInterval = reducedFrameRateEnabled ? REDUCED_FPS_INTERVAL : FULL_FPS_INTERVAL;
+    // Detect camera motion for adaptive framerate
+    if (motionBlurEnabled && typeof getCameraYaw === 'function' && typeof getCameraPitch === 'function') {
+        const currentYaw = getCameraYaw();
+        const currentPitch = getCameraPitch();
+        const yawDelta = Math.abs(currentYaw - lastCameraYaw);
+        const pitchDelta = Math.abs(currentPitch - lastCameraPitch);
+
+        // Camera is considered moving if there's significant rotation
+        if (yawDelta > 0.01 || pitchDelta > 0.01) {
+            cameraIsMoving = true;
+            cameraStopTime = currentTime;
+        } else if (currentTime - cameraStopTime > 100) {
+            // Camera stopped for 100ms, return to normal framerate
+            cameraIsMoving = false;
+        }
+
+        lastCameraYaw = currentYaw;
+        lastCameraPitch = currentPitch;
+    }
+
+    // Implement frame rate control with motion blur option
+    let frameInterval = FULL_FPS_INTERVAL;
+    if (reducedFrameRateEnabled) {
+        if (motionBlurEnabled && cameraIsMoving) {
+            frameInterval = MOTION_FPS_INTERVAL; // 10 FPS during camera motion
+        } else {
+            frameInterval = REDUCED_FPS_INTERVAL; // 20 FPS normally
+        }
+    }
+
     if (frameInterval > 0 && currentTime - GAME.time.prevTime < frameInterval) {
         return;
     }
@@ -94,12 +130,27 @@ function toggleReducedFrameRate() {
     reducedFrameRateEnabled = !reducedFrameRateEnabled;
     GAME.rendering = GAME.rendering || {};
     GAME.rendering.reducedFrameRateEnabled = reducedFrameRateEnabled;
+    if (typeof showNotification === 'function') {
+        showNotification(reducedFrameRateEnabled ? 'Reduced FPS: ON' : 'Reduced FPS: OFF');
+    }
     return reducedFrameRateEnabled;
+}
+
+// Toggle motion blur (reduced FPS when camera moves)
+function toggleMotionBlur() {
+    motionBlurEnabled = !motionBlurEnabled;
+    GAME.rendering = GAME.rendering || {};
+    GAME.rendering.motionBlurEnabled = motionBlurEnabled;
+    if (typeof showNotification === 'function') {
+        showNotification(motionBlurEnabled ? 'Motion Blur: ON' : 'Motion Blur: OFF');
+    }
+    return motionBlurEnabled;
 }
 
 // Make available globally
 window.animate = animate;
 window.toggleReducedFrameRate = toggleReducedFrameRate;
+window.toggleMotionBlur = toggleMotionBlur;
 
 // Auto-start animation loop if game is already initialized
 if (typeof GAME !== 'undefined' && GAME.scene && GAME.camera && GAME.renderer) {

@@ -6,8 +6,9 @@ const instructionMessage = document.getElementById('instruction-message');
 const instructionsParagraph = document.getElementById('instructions');
 
 // Pixelation Effect Variables
-const pixelRatio = /Mobi|Android/i.test(navigator.userAgent) ? 0.12 : 0.32;
-let pixelationEnabled = true; // Track pixelation state
+const pixelationLevels = [0.15, 0.25, 0.35, 0.5, 0.75, 1.0]; // Low to high quality
+const pixelationLabels = ['Retro', 'Low', 'Medium', 'High', 'Ultra', 'Off'];
+let pixelationLevelIndex = 0; // Default to Retro for all devices
 let originalPixelRatio = 1; // Store original pixel ratio
 
 // Function to set instructions based on device
@@ -349,12 +350,14 @@ function init() {
     originalPixelRatio = Math.min(1, window.devicePixelRatio);
     // Set initial pixelation state
     GAME.renderer.domElement.style.imageRendering = 'pixelated';
-    // 90s games ran at lower resolution - cap pixel ratio for retro feel
-    GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
-    
+    // Apply initial pixelation level
+    const initialPixelRatio = pixelationLevels[pixelationLevelIndex];
+    GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * initialPixelRatio));
+
     // Store pixelation state in GAME namespace for easy access
     GAME.rendering = GAME.rendering || {};
-    GAME.rendering.pixelationEnabled = pixelationEnabled;
+    GAME.rendering.pixelationLevel = pixelationLevelIndex;
+    GAME.rendering.pixelationLabel = pixelationLabels[pixelationLevelIndex];
     GAME.rendering.reducedFrameRateEnabled = true; // Default to reduced frame rate
 
     // Enable shadow mapping
@@ -600,31 +603,68 @@ Object.defineProperties(window, {
     'moonMesh': { get: () => GAME.lighting.moon, set: (v) => GAME.lighting.moon = v }
 });
 
-// Toggle pixelation effect
-function togglePixelation() {
+// Cycle through pixelation levels (P key)
+function cyclePixelation() {
     if (!GAME || !GAME.renderer) {
-        return false;
+        return null;
     }
-    
-    pixelationEnabled = !pixelationEnabled;
+
+    // Cycle to next level
+    pixelationLevelIndex = (pixelationLevelIndex + 1) % pixelationLevels.length;
+    applyPixelationLevel(pixelationLevelIndex);
+
+    // Show notification
+    if (typeof showNotification === 'function') {
+        showNotification(`Graphics: ${pixelationLabels[pixelationLevelIndex]}`);
+    }
+
+    return pixelationLabels[pixelationLevelIndex];
+}
+
+// Set specific pixelation level (0-5)
+function setPixelation(levelIndex) {
+    if (!GAME || !GAME.renderer) {
+        return null;
+    }
+
+    if (levelIndex < 0 || levelIndex >= pixelationLevels.length) {
+        return null;
+    }
+
+    pixelationLevelIndex = levelIndex;
+    applyPixelationLevel(levelIndex);
+
+    return pixelationLabels[levelIndex];
+}
+
+// Apply pixelation level
+function applyPixelationLevel(levelIndex) {
+    const ratio = pixelationLevels[levelIndex];
+
     GAME.rendering = GAME.rendering || {};
-    GAME.rendering.pixelationEnabled = pixelationEnabled;
-    
-    if (pixelationEnabled) {
-        // Enable pixelation - use reduced pixel ratio
-        GAME.renderer.domElement.style.imageRendering = 'pixelated';
-        GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * pixelRatio));
-    } else {
-        // Disable pixelation - use full pixel ratio and smooth rendering
+    GAME.rendering.pixelationLevel = levelIndex;
+    GAME.rendering.pixelationLabel = pixelationLabels[levelIndex];
+
+    if (ratio >= 1.0) {
+        // Full quality - no pixelation
         GAME.renderer.domElement.style.imageRendering = 'auto';
         GAME.renderer.setPixelRatio(originalPixelRatio);
+    } else {
+        // Apply pixelation
+        GAME.renderer.domElement.style.imageRendering = 'pixelated';
+        GAME.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio * ratio));
     }
-    
-    return pixelationEnabled;
+}
+
+// Legacy toggle function (cycles through levels)
+function togglePixelation() {
+    return cyclePixelation();
 }
 
 window.init = init;
 window.startGame = startGame;
 window.getMapIdFromUrl = getMapIdFromUrl;
 window.togglePixelation = togglePixelation;
+window.cyclePixelation = cyclePixelation;
+window.setPixelation = setPixelation;
 

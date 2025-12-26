@@ -107,7 +107,7 @@ function createSkyDome() {
     // Large inverted sphere for sky gradient
     const geometry = new THREE.SphereGeometry(950, 32, 32);
 
-    // Custom shader material for gradient sky
+    // Custom shader material for gradient sky with retro color banding
     const material = new THREE.ShaderMaterial({
         uniforms: {
             topColor: { value: new THREE.Color(0.2, 0.4, 0.8) },
@@ -115,7 +115,8 @@ function createSkyDome() {
             bottomColor: { value: new THREE.Color(0.7, 0.8, 1.0) },
             sunPosition: { value: new THREE.Vector3(0, 1, 0) },
             sunColor: { value: new THREE.Color(1, 0.9, 0.7) },
-            sunIntensity: { value: 0.5 }
+            sunIntensity: { value: 0.5 },
+            colorBands: { value: 24.0 } // Number of color bands for retro look (higher = smoother)
         },
         vertexShader: `
             varying vec3 vWorldPosition;
@@ -135,30 +136,39 @@ function createSkyDome() {
             uniform vec3 sunPosition;
             uniform vec3 sunColor;
             uniform float sunIntensity;
+            uniform float colorBands;
 
             varying vec3 vWorldPosition;
             varying vec3 vNormal;
+
+            // Posterize/quantize a value to create color banding
+            vec3 posterize(vec3 color, float bands) {
+                return floor(color * bands) / bands;
+            }
 
             void main() {
                 // Normalized height from -1 (bottom) to 1 (top)
                 float h = normalize(vWorldPosition).y;
 
-                // Three-color gradient
+                // Quantize height for banded gradient (retro look)
+                float bandedH = floor(h * colorBands) / colorBands;
+
+                // Three-color gradient using banded height
                 vec3 color;
-                if (h < 0.0) {
+                if (bandedH < 0.0) {
                     // Below horizon - blend bottom to mid
-                    float t = (h + 1.0);
+                    float t = (bandedH + 1.0);
                     color = mix(bottomColor, midColor, t);
-                } else if (h < 0.5) {
+                } else if (bandedH < 0.5) {
                     // Lower sky - blend mid to top
-                    float t = h * 2.0;
+                    float t = bandedH * 2.0;
                     color = mix(midColor, topColor, t);
                 } else {
                     // Upper sky - mostly top color
                     color = topColor;
                 }
 
-                // Sun glow effect
+                // Sun glow effect (also posterized)
                 vec3 sunDir = normalize(sunPosition);
                 vec3 viewDir = normalize(vWorldPosition);
                 float sunDot = max(0.0, dot(viewDir, sunDir));
@@ -166,6 +176,9 @@ function createSkyDome() {
                 float sunHalo = pow(sunDot, 2.0) * sunIntensity * 0.3;
 
                 color += sunColor * (sunGlow + sunHalo);
+
+                // Final posterization for retro color palette
+                color = posterize(color, colorBands);
 
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -211,23 +224,52 @@ function createClouds() {
 }
 
 function createCloudTexture() {
-    // Create procedural cloud texture using canvas
+    // Create low-res pixelated cloud texture for retro look
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 16;  // Low res for pixelated look
+    canvas.height = 16;
     const ctx = canvas.getContext('2d');
 
-    // Radial gradient for soft cloud
-    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.8)');
-    gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.3)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    // Draw a simple blocky cloud shape
+    ctx.fillStyle = 'rgba(255, 255, 255, 0)';
+    ctx.fillRect(0, 0, 16, 16);
 
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 128, 128);
+    // Blocky cloud pattern - center is solid, edges fade in steps
+    const pattern = [
+        [0, 0, 0, 0, 0.3, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0, 0, 0, 0],
+        [0, 0, 0, 0.5, 0.8, 1, 1, 1, 1, 1, 1, 0.8, 0.5, 0, 0, 0],
+        [0, 0, 0.5, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.5, 0, 0],
+        [0, 0.3, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.3, 0],
+        [0.3, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.3],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5],
+        [0.3, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.3],
+        [0, 0.3, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.3, 0],
+        [0, 0, 0.5, 0.8, 1, 1, 1, 1, 1, 1, 1, 1, 0.8, 0.5, 0, 0],
+        [0, 0, 0, 0.5, 0.8, 1, 1, 1, 1, 1, 1, 0.8, 0.5, 0, 0, 0],
+        [0, 0, 0, 0, 0.3, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0, 0, 0, 0]
+    ];
+
+    const imageData = ctx.createImageData(16, 16);
+    for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+            const i = (y * 16 + x) * 4;
+            const alpha = pattern[y][x];
+            imageData.data[i] = 255;     // R
+            imageData.data[i + 1] = 255; // G
+            imageData.data[i + 2] = 255; // B
+            imageData.data[i + 3] = Math.floor(alpha * 255); // A
+        }
+    }
+    ctx.putImageData(imageData, 0, 0);
 
     const texture = new THREE.CanvasTexture(canvas);
+    texture.magFilter = THREE.NearestFilter; // Pixelated scaling
+    texture.minFilter = THREE.NearestFilter;
     texture.needsUpdate = true;
     return texture;
 }
@@ -235,28 +277,29 @@ function createCloudTexture() {
 function createCloud(texture) {
     const cloud = new THREE.Group();
 
-    // Each cloud is made of several overlapping sprites
-    const puffCount = 5 + Math.floor(Math.random() * 4);
+    // Simpler clouds - fewer, blockier puffs for retro look
+    const puffCount = 2 + Math.floor(Math.random() * 2); // 2-3 puffs
     const baseSize = CLOUD_CONFIG.minSize + Math.random() * (CLOUD_CONFIG.maxSize - CLOUD_CONFIG.minSize);
 
     for (let i = 0; i < puffCount; i++) {
         const material = new THREE.SpriteMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.9,
             depthWrite: false,
             fog: false
         });
 
         const sprite = new THREE.Sprite(material);
 
-        // Randomize puff size and position
-        const puffSize = baseSize * (0.6 + Math.random() * 0.8);
-        sprite.scale.set(puffSize, puffSize * 0.6, 1);
+        // Larger, blockier puffs with less overlap
+        const puffSize = baseSize * (0.8 + Math.random() * 0.4);
+        sprite.scale.set(puffSize, puffSize * 0.5, 1);
 
-        sprite.position.x = (Math.random() - 0.5) * baseSize * 0.8;
-        sprite.position.y = (Math.random() - 0.5) * baseSize * 0.2;
-        sprite.position.z = (Math.random() - 0.5) * baseSize * 0.5;
+        // Less random positioning - more uniform cloud shape
+        sprite.position.x = (i - (puffCount - 1) / 2) * baseSize * 0.4;
+        sprite.position.y = (Math.random() - 0.5) * baseSize * 0.1;
+        sprite.position.z = 0;
 
         cloud.add(sprite);
     }

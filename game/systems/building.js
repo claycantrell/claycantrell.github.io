@@ -210,7 +210,8 @@ function toggleBuildMode() {
 
     if (isBuildMode) {
         ui.style.display = 'block';
-        if (crosshair) crosshair.style.display = 'block';
+        // Only show crosshair in first person
+        if (crosshair) crosshair.style.display = isFirstPerson ? 'block' : 'none';
         if (buildGhost) buildGhost.visible = true;
         showNotification("Build Mode ON - Left click to place, Right click to remove");
     } else {

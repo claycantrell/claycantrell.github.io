@@ -42,12 +42,18 @@ function createCrosshair() {
     `;
     document.body.appendChild(crosshairEl);
 
-    // Show/hide crosshair based on pointer lock
+    // Show/hide crosshair based on pointer lock AND first person mode
     document.addEventListener('pointerlockchange', () => {
-        if (crosshairEl) {
-            crosshairEl.style.display = document.pointerLockElement ? 'block' : 'none';
-        }
+        updateCrosshairVisibility();
     });
+}
+
+// Update crosshair visibility - only show in first person with pointer lock
+function updateCrosshairVisibility() {
+    if (crosshairEl) {
+        const shouldShow = document.pointerLockElement && (typeof isFirstPerson !== 'undefined' ? isFirstPerson : true);
+        crosshairEl.style.display = shouldShow ? 'block' : 'none';
+    }
 }
 
 // Initialize UI
@@ -122,4 +128,5 @@ function fadeOutToWhite() {
 window.initUI = initUI;
 window.showNotification = showNotification;
 window.fadeOutToWhite = fadeOutToWhite;
+window.updateCrosshairVisibility = updateCrosshairVisibility;
 

@@ -56,6 +56,21 @@ function onKeyDown(event) {
             if (typeof showNotification === 'function') {
                 showNotification(isFirstPerson ? 'First Person Mode' : 'Third Person Mode');
             }
+            // Update crosshair visibility (hide in third person)
+            if (typeof updateCrosshairVisibility === 'function') {
+                updateCrosshairVisibility();
+            }
+            break;
+        case 'Enter':
+            // Open chat
+            if (typeof toggleChat === 'function') {
+                toggleChat();
+                // Focus the input after opening
+                setTimeout(() => {
+                    const chatInput = document.getElementById('chat-input');
+                    if (chatInput) chatInput.focus();
+                }, 50);
+            }
             break;
     }
 }

@@ -522,8 +522,9 @@ function handleChatCommand(command) {
             addSystemMessage('/shadowtype - Cycle shadow quality (Basic/PCF/Soft)');
             addSystemMessage('/shadowres - Cycle shadow resolution (1024/2048/4096)');
             addSystemMessage('/shadowrate - Cycle shadow update rate (5/2/1 per sec)');
-            addSystemMessage('/pixelation - Toggle pixelation effect');
+            addSystemMessage('/graphics - Cycle graphics quality (Retro/Low/Med/High/Ultra/Off)');
             addSystemMessage('/fps - Toggle reduced frame rate (20 FPS)');
+            addSystemMessage('/motionblur - Toggle motion blur (15 FPS when looking)');
             return true;
 
         case '/pos':
@@ -571,11 +572,12 @@ function handleChatCommand(command) {
             return true;
 
         case '/pixelation':
-            if (typeof togglePixelation === 'function') {
-                const enabled = togglePixelation();
-                addSystemMessage(`Pixelation ${enabled ? 'enabled' : 'disabled'}.`);
+        case '/graphics':
+            if (typeof cyclePixelation === 'function') {
+                const level = cyclePixelation();
+                addSystemMessage(`Graphics: ${level}`);
             } else {
-                addSystemMessage('Pixelation system not available.');
+                addSystemMessage('Graphics system not available.');
             }
             return true;
 
@@ -585,6 +587,15 @@ function handleChatCommand(command) {
                 addSystemMessage(`Reduced frame rate ${enabled ? 'enabled (20 FPS)' : 'disabled (full FPS)'}.`);
             } else {
                 addSystemMessage('Frame rate system not available.');
+            }
+            return true;
+
+        case '/motionblur':
+            if (typeof toggleMotionBlur === 'function') {
+                const enabled = toggleMotionBlur();
+                addSystemMessage(`Motion blur ${enabled ? 'enabled (15 FPS when looking)' : 'disabled'}.`);
+            } else {
+                addSystemMessage('Motion blur system not available.');
             }
             return true;
 
@@ -859,3 +870,4 @@ function addSystemMessage(message) {
 // Make available globally
 window.initChat = initChat;
 window.addChatMessage = addChatMessage;
+window.toggleChat = toggleChat;
