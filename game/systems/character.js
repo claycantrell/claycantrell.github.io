@@ -379,7 +379,7 @@ function updateCharacterMovement(delta) {
         const camZ = character.position.z - Math.cos(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
 
         camera.position.set(camX, camY, camZ);
-        camera.lookAt(character.position.x, character.position.y + 2, character.position.z);
+        camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
     }
 }
 

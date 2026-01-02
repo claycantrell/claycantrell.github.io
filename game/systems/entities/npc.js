@@ -275,7 +275,7 @@ function updateNPC(delta) {
                     
                     // Only move if not blocked
                     if (!blocked) {
-                        npc.position.addScaledVector(direction, moveAmount);
+                        npc.position.addScaledVector(_npcDirection, moveAmount);
                     }
 
                     // Update NPC height to follow terrain
@@ -283,7 +283,7 @@ function updateNPC(delta) {
                     npc.position.y = terrainHeight + 1.0;
 
                     // Rotate to face wander target
-                    const targetAngle = Math.atan2(direction.x, direction.z);
+                    const targetAngle = Math.atan2(_npcDirection.x, _npcDirection.z);
                     npc.rotation.y = targetAngle;
                 }
             }
