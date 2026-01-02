@@ -160,6 +160,88 @@ function applyBanking(group, targetAngle, currentAngle, bankMultiplier = 0.3) {
     group.rotation.z = -rotDiff * bankMultiplier;
 }
 
+// ============================================
+// BIPED ANIMATIONS (for humanoid characters)
+// ============================================
+
+/**
+ * Animate biped legs (2-legged walk/run cycle)
+ * @param {THREE.Object3D} leftLeg - Left leg group (pivot at hip)
+ * @param {THREE.Object3D} rightLeg - Right leg group (pivot at hip)
+ * @param {number} time - Animation time
+ * @param {number} speed - Leg swing speed
+ * @param {number} amplitude - Swing amplitude (radians)
+ */
+function animateBipedLegs(leftLeg, rightLeg, time, speed, amplitude) {
+    if (!leftLeg || !rightLeg) return;
+
+    const cycle = time * speed;
+
+    // Opposite phase for natural walking
+    leftLeg.rotation.x = Math.sin(cycle) * amplitude;
+    rightLeg.rotation.x = Math.sin(cycle + Math.PI) * amplitude;
+}
+
+/**
+ * Animate biped arms (swing opposite to legs for natural walk)
+ * @param {THREE.Object3D} leftArm - Left arm group (pivot at shoulder)
+ * @param {THREE.Object3D} rightArm - Right arm group (pivot at shoulder)
+ * @param {number} time - Animation time
+ * @param {number} speed - Arm swing speed
+ * @param {number} amplitude - Swing amplitude (radians)
+ */
+function animateBipedArms(leftArm, rightArm, time, speed, amplitude) {
+    if (!leftArm || !rightArm) return;
+
+    const cycle = time * speed;
+
+    // Arms swing opposite to legs (opposite phase from legs)
+    leftArm.rotation.x = Math.sin(cycle + Math.PI) * amplitude;
+    rightArm.rotation.x = Math.sin(cycle) * amplitude;
+}
+
+/**
+ * Animate idle breathing (subtle torso movement)
+ * @param {THREE.Object3D} torso - Torso mesh
+ * @param {number} time - Animation time
+ * @param {number} baseY - Base Y position of torso
+ * @param {number} amplitude - Breathing amplitude (default 0.02)
+ */
+function animateIdleBreathing(torso, time, baseY, amplitude = 0.02) {
+    if (!torso) return;
+
+    torso.position.y = baseY + Math.sin(time * 2) * amplitude;
+}
+
+/**
+ * Animate arm with shield (subtle defensive movement)
+ * @param {THREE.Object3D} arm - Arm group holding shield
+ * @param {number} time - Animation time
+ * @param {number} amplitude - Movement amplitude (default 0.05)
+ */
+function animateArmWithShield(arm, time, amplitude = 0.05) {
+    if (!arm) return;
+
+    // Subtle shield bob
+    arm.rotation.x = Math.sin(time * 1.5) * amplitude - 0.3; // Held slightly forward
+}
+
+/**
+ * Reset biped limbs to neutral (smoothly)
+ * @param {THREE.Object3D} leftLimb - Left arm or leg
+ * @param {THREE.Object3D} rightLimb - Right arm or leg
+ * @param {number} delta - Time delta
+ * @param {number} lerpSpeed - Lerp speed (default 3)
+ */
+function resetBipedLimbsToNeutral(leftLimb, rightLimb, delta, lerpSpeed = 3) {
+    if (leftLimb) {
+        leftLimb.rotation.x = THREE.MathUtils.lerp(leftLimb.rotation.x, 0, delta * lerpSpeed);
+    }
+    if (rightLimb) {
+        rightLimb.rotation.x = THREE.MathUtils.lerp(rightLimb.rotation.x, 0, delta * lerpSpeed);
+    }
+}
+
 // Make available globally
 window.getAnimTime = getAnimTime;
 window.animateQuadrupedLegs = animateQuadrupedLegs;
@@ -171,3 +253,9 @@ window.animateHop = animateHop;
 window.animateGrazing = animateGrazing;
 window.resetHeadToNeutral = resetHeadToNeutral;
 window.applyBanking = applyBanking;
+// Biped animations
+window.animateBipedLegs = animateBipedLegs;
+window.animateBipedArms = animateBipedArms;
+window.animateIdleBreathing = animateIdleBreathing;
+window.animateArmWithShield = animateArmWithShield;
+window.resetBipedLimbsToNeutral = resetBipedLimbsToNeutral;

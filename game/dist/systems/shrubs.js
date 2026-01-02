@@ -219,7 +219,7 @@ function createShrubSprite(x, z, shrubType, terrainHeight) {
     color.g = Math.max(0, Math.min(1, color.g + (Math.random() - 0.5) * variation));
     color.b = Math.max(0, Math.min(1, color.b + (Math.random() - 0.5) * variation));
 
-    const material = new THREE.MeshLambertMaterial({
+    const material = new THREE.MeshBasicMaterial({
         color: color,
         side: THREE.DoubleSide
     });
@@ -450,17 +450,17 @@ function createShrubs() {
 function updateShrubBillboards() {
     if (!camera || !shrubGroup) return;
 
-    shrubData.forEach(shrub => {
-        if (shrub.sprite) {
-            const direction = new THREE.Vector3();
-            direction.subVectors(camera.position, shrub.sprite.position);
-            direction.y = 0;
-            direction.normalize();
+    const camX = camera.position.x;
+    const camZ = camera.position.z;
 
-            const angle = Math.atan2(direction.x, direction.z);
-            shrub.sprite.rotation.y = angle;
+    for (let i = 0; i < shrubData.length; i++) {
+        const shrub = shrubData[i];
+        if (shrub.sprite) {
+            const dx = camX - shrub.sprite.position.x;
+            const dz = camZ - shrub.sprite.position.z;
+            shrub.sprite.rotation.y = Math.atan2(dx, dz);
         }
-    });
+    }
 }
 
 // Clean up shrubs
@@ -485,3 +485,6 @@ function getShrubConfig() {
 window.createShrubs = createShrubs;
 window.updateShrubBillboards = updateShrubBillboards;
 window.getShrubConfig = getShrubConfig;
+
+// Expose shrubData for terraforming vegetation updates
+window.getShrubData = () => shrubData;

@@ -187,9 +187,9 @@ function create3DTree(x, z, detail, variantName = 'pine') {
     const tree = new THREE.Group();
     const variant = TREE_VARIANTS[variantName] || TREE_VARIANTS.pine;
 
-    // Create materials for this variant - use Lambert for shadows
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor });
-    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c }));
+    // Create materials for this variant - use Lambert with flatShading for PS2-style visible polygons
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor, flatShading: true });
+    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
 
     // Calculate random height within variant range
     const heightRange = variant.trunkHeight;
@@ -646,21 +646,25 @@ function updateTreeLOD() {
     });
 }
 
+// Reusable vector for billboard calculations - no allocations in hot loop
+const _billboardDir = new THREE.Vector3();
+
 // Update sprite billboards to face camera
 function updateSpriteBillboards() {
     if (!camera || !character) return;
 
-    treeData.forEach((tree) => {
-        if (tree.sprite && !tree.is3D) {
-            const direction = new THREE.Vector3();
-            direction.subVectors(camera.position, tree.sprite.position);
-            direction.y = 0;
-            direction.normalize();
+    const camX = camera.position.x;
+    const camZ = camera.position.z;
 
-            const angle = Math.atan2(direction.x, direction.z);
-            tree.sprite.rotation.y = angle;
+    for (let i = 0; i < treeData.length; i++) {
+        const tree = treeData[i];
+        if (tree.sprite && !tree.is3D) {
+            // Direct math instead of vector operations
+            const dx = camX - tree.sprite.position.x;
+            const dz = camZ - tree.sprite.position.z;
+            tree.sprite.rotation.y = Math.atan2(dx, dz);
         }
-    });
+    }
 }
 
 // Make available globally
@@ -668,3 +672,6 @@ window.createMoreComplexTrees = createMoreComplexTrees;
 window.updateTreeLOD = updateTreeLOD;
 window.updateSpriteBillboards = updateSpriteBillboards;
 window.TreeSystem = TreeSystem;
+
+// Expose treeData for terraforming vegetation updates
+window.getTreeData = () => treeData;

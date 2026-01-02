@@ -21,6 +21,9 @@ if (typeof Systems !== 'undefined') {
     Systems.register('sky', SkySystem);
 }
 
+// Reusable color for cloud updates - avoids allocation every frame
+const _cloudColor = new THREE.Color();
+
 // Sky color palettes for different times of day
 const SKY_COLORS = {
     // Dawn/Sunrise (phase 0.85-0.95 coming from night, or 0.05-0.15 going to day)
@@ -460,70 +463,64 @@ function updateClouds(delta, phase) {
     if (!SkySystem.cloudGroup || !GAME.camera) return;
 
     const camPos = GAME.camera.position;
+    const camX = camPos.x;
+    const camZ = camPos.z;
+    const spread = CLOUD_CONFIG.spread;
 
-    // Determine cloud color based on time of day
-    let cloudColor, cloudOpacity;
+    // Determine cloud color based on time of day (reuse _cloudColor)
+    let cloudOpacity;
 
     if (phase < 0.4) {
         // Day - white clouds
-        cloudColor = new THREE.Color(1, 1, 1);
+        _cloudColor.setRGB(1, 1, 1);
         cloudOpacity = CLOUD_CONFIG.opacity.day;
     } else if (phase < 0.6) {
         // Sunset - pink/orange clouds (cotton candy!)
         const t = (phase - 0.4) / 0.2;
-        cloudColor = new THREE.Color(
-            1.0,
-            0.7 + t * 0.1,
-            0.7 - t * 0.3
-        );
+        _cloudColor.setRGB(1.0, 0.7 + t * 0.1, 0.7 - t * 0.3);
         cloudOpacity = CLOUD_CONFIG.opacity.sunset;
     } else if (phase < 0.75) {
         // Dusk - purple/gray clouds
         const t = (phase - 0.6) / 0.15;
-        cloudColor = new THREE.Color(
-            0.6 - t * 0.3,
-            0.5 - t * 0.2,
-            0.7 - t * 0.2
-        );
+        _cloudColor.setRGB(0.6 - t * 0.3, 0.5 - t * 0.2, 0.7 - t * 0.2);
         cloudOpacity = CLOUD_CONFIG.opacity.sunset - t * 0.3;
     } else if (phase < 0.9) {
         // Night - dark, barely visible
-        cloudColor = new THREE.Color(0.2, 0.2, 0.3);
+        _cloudColor.setRGB(0.2, 0.2, 0.3);
         cloudOpacity = CLOUD_CONFIG.opacity.night;
     } else {
         // Pre-dawn - starting to lighten
         const t = (phase - 0.9) / 0.1;
-        cloudColor = new THREE.Color(
-            0.2 + t * 0.6,
-            0.2 + t * 0.4,
-            0.3 + t * 0.3
-        );
+        _cloudColor.setRGB(0.2 + t * 0.6, 0.2 + t * 0.4, 0.3 + t * 0.3);
         cloudOpacity = CLOUD_CONFIG.opacity.night + t * 0.4;
     }
 
-    // Update each cloud
-    SkySystem.clouds.forEach(cloud => {
+    // Update each cloud using for loops (faster than forEach)
+    const clouds = SkySystem.clouds;
+    for (let i = 0; i < clouds.length; i++) {
+        const cloud = clouds[i];
+
         // Move cloud
         cloud.position.x += cloud.userData.velocity.x * delta;
         cloud.position.z += cloud.userData.velocity.z * delta;
 
         // Wrap around when too far from camera
-        const dx = cloud.position.x - camPos.x;
-        const dz = cloud.position.z - camPos.z;
+        const dx = cloud.position.x - camX;
+        const dz = cloud.position.z - camZ;
 
-        if (Math.abs(dx) > CLOUD_CONFIG.spread) {
-            cloud.position.x = camPos.x - Math.sign(dx) * CLOUD_CONFIG.spread;
-        }
-        if (Math.abs(dz) > CLOUD_CONFIG.spread) {
-            cloud.position.z = camPos.z - Math.sign(dz) * CLOUD_CONFIG.spread;
-        }
+        if (dx > spread) cloud.position.x = camX - spread;
+        else if (dx < -spread) cloud.position.x = camX + spread;
+
+        if (dz > spread) cloud.position.z = camZ - spread;
+        else if (dz < -spread) cloud.position.z = camZ + spread;
 
         // Update cloud puff colors
-        cloud.children.forEach(sprite => {
-            sprite.material.color.copy(cloudColor);
-            sprite.material.opacity = cloudOpacity;
-        });
-    });
+        const children = cloud.children;
+        for (let j = 0; j < children.length; j++) {
+            children[j].material.color.copy(_cloudColor);
+            children[j].material.opacity = cloudOpacity;
+        }
+    }
 }
 
 function updateStars(phase) {

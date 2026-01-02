@@ -330,7 +330,7 @@ function create2DSprite(x, z, variantName = 'pine') {
     const trunkHeight = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
     const radiusRange = variant.trunkRadius;
 
-    const trunkMaterial = new THREE.MeshLambertMaterial({
+    const trunkMaterial = new THREE.MeshBasicMaterial({
         color: variant.trunkColor,
         transparent: true,
         opacity: 0.9,
@@ -354,7 +354,7 @@ function create2DSprite(x, z, variantName = 'pine') {
 
     if (variant.base === 'palm') {
         // Palm fronds as drooping leaves from top of trunk
-        const foliageMaterial = new THREE.MeshLambertMaterial({
+        const foliageMaterial = new THREE.MeshBasicMaterial({
             color: variant.foliageColors[0],
             transparent: true,
             opacity: 0.9,
@@ -386,7 +386,7 @@ function create2DSprite(x, z, variantName = 'pine') {
 
     } else if (variant.base === 'oak') {
         // Deciduous - blob/oval shape
-        const foliageMaterial = new THREE.MeshLambertMaterial({
+        const foliageMaterial = new THREE.MeshBasicMaterial({
             color: variant.foliageColors[0],
             transparent: true,
             opacity: 0.9,
@@ -429,7 +429,7 @@ function create2DSprite(x, z, variantName = 'pine') {
         for (let j = 0; j < layers; j++) {
             const coneRadius = baseRadius - j * (baseRadius / layers);
 
-            const foliageMaterial = new THREE.MeshLambertMaterial({
+            const foliageMaterial = new THREE.MeshBasicMaterial({
                 color: variant.foliageColors[j % variant.foliageColors.length],
                 transparent: true,
                 opacity: 0.85,
@@ -646,21 +646,25 @@ function updateTreeLOD() {
     });
 }
 
+// Reusable vector for billboard calculations - no allocations in hot loop
+const _billboardDir = new THREE.Vector3();
+
 // Update sprite billboards to face camera
 function updateSpriteBillboards() {
     if (!camera || !character) return;
 
-    treeData.forEach((tree) => {
-        if (tree.sprite && !tree.is3D) {
-            const direction = new THREE.Vector3();
-            direction.subVectors(camera.position, tree.sprite.position);
-            direction.y = 0;
-            direction.normalize();
+    const camX = camera.position.x;
+    const camZ = camera.position.z;
 
-            const angle = Math.atan2(direction.x, direction.z);
-            tree.sprite.rotation.y = angle;
+    for (let i = 0; i < treeData.length; i++) {
+        const tree = treeData[i];
+        if (tree.sprite && !tree.is3D) {
+            // Direct math instead of vector operations
+            const dx = camX - tree.sprite.position.x;
+            const dz = camZ - tree.sprite.position.z;
+            tree.sprite.rotation.y = Math.atan2(dx, dz);
         }
-    });
+    }
 }
 
 // Make available globally
@@ -668,3 +672,6 @@ window.createMoreComplexTrees = createMoreComplexTrees;
 window.updateTreeLOD = updateTreeLOD;
 window.updateSpriteBillboards = updateSpriteBillboards;
 window.TreeSystem = TreeSystem;
+
+// Expose treeData for terraforming vegetation updates
+window.getTreeData = () => treeData;

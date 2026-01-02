@@ -166,9 +166,11 @@ function updateBirds(delta) {
         bird.group.position.lerp(bird.targetPos, delta * 3);
 
         // Face movement direction with banking
-        const moveDir = new THREE.Vector3().subVectors(bird.targetPos, bird.group.position);
-        if (moveDir.lengthSq() > 0.01) {
-            const targetAngle = Math.atan2(moveDir.x, moveDir.z);
+        const dx = bird.targetPos.x - bird.group.position.x;
+        const dy = bird.targetPos.y - bird.group.position.y;
+        const dz = bird.targetPos.z - bird.group.position.z;
+        if (dx * dx + dy * dy + dz * dz > 0.01) {
+            const targetAngle = Math.atan2(dx, dz);
             bird.group.rotation.y = smoothRotateToward(bird.group.rotation.y, targetAngle, delta, 3);
             applyBanking(bird.group, targetAngle, bird.group.rotation.y);
         }

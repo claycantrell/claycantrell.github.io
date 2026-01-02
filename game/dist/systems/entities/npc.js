@@ -24,6 +24,11 @@ let npcSpawnPosition = new THREE.Vector3(0, 0, 0);
 let npcHasGreeted = false; // Track if NPC has greeted player
 let npcIsNearby = false; // Track if player is near NPC
 
+// Reusable vectors to avoid allocations in update loop
+const _npcDirection = new THREE.Vector3();
+const _npcBlockDir = new THREE.Vector3();
+const _npcPerpDir = new THREE.Vector3();
+
 // Get NPC config values from config with fallbacks
 function getNPCConfig() {
     if (typeof CONFIG === 'undefined') {
@@ -210,13 +215,13 @@ function updateNPC(delta) {
                     
                     npcWanderTarget.set(targetX, 1, targetZ);
                 } else {
-                    // Move toward target
-                    const direction = new THREE.Vector3().subVectors(npcWanderTarget, npc.position).normalize();
+                    // Move toward target - reuse vector to avoid allocation
+                    _npcDirection.subVectors(npcWanderTarget, npc.position).normalize();
                     const moveAmount = config.speed * delta;
-                    
+
                     // Check for block collisions before moving
-                    const newX = npc.position.x + direction.x * moveAmount;
-                    const newZ = npc.position.z + direction.z * moveAmount;
+                    const newX = npc.position.x + _npcDirection.x * moveAmount;
+                    const newZ = npc.position.z + _npcDirection.z * moveAmount;
                     const npcY = npc.position.y;
                     
                     // Check if new position collides with blocks
@@ -241,11 +246,11 @@ function updateNPC(delta) {
                             
                             if (dx < BLOCK_HALF + NPC_RADIUS && dz < BLOCK_HALF + NPC_RADIUS) {
                                 blocked = true;
-                                // Try to find alternative path - move perpendicular to block
-                                const blockDir = new THREE.Vector3(newX - obj.position.x, 0, newZ - obj.position.z).normalize();
-                                const perpDir = new THREE.Vector3(-blockDir.z, 0, blockDir.x);
-                                const altX = npc.position.x + perpDir.x * moveAmount;
-                                const altZ = npc.position.z + perpDir.z * moveAmount;
+                                // Try to find alternative path - move perpendicular to block (reuse vectors)
+                                _npcBlockDir.set(newX - obj.position.x, 0, newZ - obj.position.z).normalize();
+                                _npcPerpDir.set(-_npcBlockDir.z, 0, _npcBlockDir.x);
+                                const altX = npc.position.x + _npcPerpDir.x * moveAmount;
+                                const altZ = npc.position.z + _npcPerpDir.z * moveAmount;
                                 
                                 // Check if alternative path is clear
                                 let altBlocked = false;
@@ -308,17 +313,16 @@ function updateNPC(delta) {
                 targetZ = npc.position.z + (Math.random() - 0.5) * wanderRange;
             }
             
-            npcWanderTarget = new THREE.Vector3(targetX, 1, targetZ);
+            npcWanderTarget.set(targetX, 1, targetZ);
         } else {
             npcIsNearby = true;
-            // Stare at player - rotate to face player
-            const direction = new THREE.Vector3();
-            direction.subVectors(character.position, npc.position);
-            direction.y = 0;
-            direction.normalize();
-            
-            if (direction.length() > 0.1) {
-                const angle = Math.atan2(direction.x, direction.z);
+            // Stare at player - rotate to face player (reuse vector)
+            _npcDirection.subVectors(character.position, npc.position);
+            _npcDirection.y = 0;
+
+            const lenSq = _npcDirection.x * _npcDirection.x + _npcDirection.z * _npcDirection.z;
+            if (lenSq > 0.01) {
+                const angle = Math.atan2(_npcDirection.x, _npcDirection.z);
                 npc.rotation.y = angle;
             }
         }

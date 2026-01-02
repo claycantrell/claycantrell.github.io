@@ -40,6 +40,14 @@ let terraformShiftHeld = false;
 let terraformMode = 'raise'; // 'raise', 'flatten', 'smooth'
 const terraformModes = ['raise', 'flatten', 'smooth'];
 
+// Track modified area during terraforming session for deferred vegetation update
+let terraformSessionMinX = Infinity, terraformSessionMaxX = -Infinity;
+let terraformSessionMinZ = Infinity, terraformSessionMaxZ = -Infinity;
+
+// Throttle vegetation updates during terraforming (update every 200ms)
+let lastVegetationUpdate = 0;
+const VEGETATION_UPDATE_INTERVAL = 200;
+
 // Store terrain modifications: "chunkX,chunkZ" -> Map of "localX,localZ" -> heightDelta
 const terrainMods = new Map();
 
@@ -274,6 +282,19 @@ function onTerraformMouseDown(event) {
 function onTerraformMouseUp(event) {
     if (event.button === 0 || event.button === 2) {
         terraformMouseHeld = 0;
+
+        // Update vegetation only once when terraforming ends (not every frame)
+        if (terraformSessionMinX !== Infinity) {
+            updateVegetationInBounds(
+                terraformSessionMinX, terraformSessionMaxX,
+                terraformSessionMinZ, terraformSessionMaxZ
+            );
+            // Reset bounds for next session
+            terraformSessionMinX = Infinity;
+            terraformSessionMaxX = -Infinity;
+            terraformSessionMinZ = Infinity;
+            terraformSessionMaxZ = -Infinity;
+        }
     }
 }
 
@@ -281,10 +302,9 @@ function modifyTerrain(worldX, worldZ, heightDelta) {
     if (typeof loadedChunks === 'undefined') return;
 
     // Find affected chunks and modify their geometry
-    const chunkSize = typeof CHUNK_CONFIG !== 'undefined' ? CHUNK_CONFIG.size : 512;
     const brushRadius = terraformBrushSize * 2; // Simple radius in world units
 
-    for (const [key, chunk] of loadedChunks) {
+    for (const [, chunk] of loadedChunks) {
         const bounds = chunk.data.bounds;
 
         // Check if brush overlaps this chunk
@@ -294,6 +314,19 @@ function modifyTerrain(worldX, worldZ, heightDelta) {
         }
 
         modifyChunkTerrain(chunk, worldX, worldZ, brushRadius, heightDelta);
+    }
+
+    // Track modified area bounds for vegetation update
+    terraformSessionMinX = Math.min(terraformSessionMinX, worldX - brushRadius);
+    terraformSessionMaxX = Math.max(terraformSessionMaxX, worldX + brushRadius);
+    terraformSessionMinZ = Math.min(terraformSessionMinZ, worldZ - brushRadius);
+    terraformSessionMaxZ = Math.max(terraformSessionMaxZ, worldZ + brushRadius);
+
+    // Throttled vegetation update while terraforming (5 times per second)
+    const now = performance.now();
+    if (now - lastVegetationUpdate > VEGETATION_UPDATE_INTERVAL) {
+        updateVegetationInBounds(terraformSessionMinX, terraformSessionMaxX, terraformSessionMinZ, terraformSessionMaxZ);
+        lastVegetationUpdate = now;
     }
 }
 
@@ -361,7 +394,7 @@ function flattenTerrain(worldX, targetY, worldZ) {
 
     const brushRadius = terraformBrushSize * 2;
 
-    for (const [key, chunk] of loadedChunks) {
+    for (const [, chunk] of loadedChunks) {
         const bounds = chunk.data.bounds;
 
         if (worldX + brushRadius < bounds.minX || worldX - brushRadius > bounds.maxX ||
@@ -370,6 +403,19 @@ function flattenTerrain(worldX, targetY, worldZ) {
         }
 
         flattenChunkTerrain(chunk, worldX, worldZ, brushRadius, targetY);
+    }
+
+    // Track modified area bounds for vegetation update
+    terraformSessionMinX = Math.min(terraformSessionMinX, worldX - brushRadius);
+    terraformSessionMaxX = Math.max(terraformSessionMaxX, worldX + brushRadius);
+    terraformSessionMinZ = Math.min(terraformSessionMinZ, worldZ - brushRadius);
+    terraformSessionMaxZ = Math.max(terraformSessionMaxZ, worldZ + brushRadius);
+
+    // Throttled vegetation update while terraforming (5 times per second)
+    const now = performance.now();
+    if (now - lastVegetationUpdate > VEGETATION_UPDATE_INTERVAL) {
+        updateVegetationInBounds(terraformSessionMinX, terraformSessionMaxX, terraformSessionMinZ, terraformSessionMaxZ);
+        lastVegetationUpdate = now;
     }
 }
 
@@ -434,7 +480,7 @@ function smoothTerrain(worldX, worldZ) {
 
     const brushRadius = terraformBrushSize * 2;
 
-    for (const [key, chunk] of loadedChunks) {
+    for (const [, chunk] of loadedChunks) {
         const bounds = chunk.data.bounds;
 
         if (worldX + brushRadius < bounds.minX || worldX - brushRadius > bounds.maxX ||
@@ -443,6 +489,19 @@ function smoothTerrain(worldX, worldZ) {
         }
 
         smoothChunkTerrain(chunk, worldX, worldZ, brushRadius);
+    }
+
+    // Track modified area bounds for vegetation update
+    terraformSessionMinX = Math.min(terraformSessionMinX, worldX - brushRadius);
+    terraformSessionMaxX = Math.max(terraformSessionMaxX, worldX + brushRadius);
+    terraformSessionMinZ = Math.min(terraformSessionMinZ, worldZ - brushRadius);
+    terraformSessionMaxZ = Math.max(terraformSessionMaxZ, worldZ + brushRadius);
+
+    // Throttled vegetation update while terraforming (5 times per second)
+    const now = performance.now();
+    if (now - lastVegetationUpdate > VEGETATION_UPDATE_INTERVAL) {
+        updateVegetationInBounds(terraformSessionMinX, terraformSessionMaxX, terraformSessionMinZ, terraformSessionMaxZ);
+        lastVegetationUpdate = now;
     }
 }
 
@@ -533,6 +592,67 @@ function smoothChunkTerrain(chunk, worldX, worldZ, brushRadius) {
     }
 }
 
+// Update vegetation (trees and shrubs) within bounds - called once on mouse up
+function updateVegetationInBounds(minX, maxX, minZ, maxZ) {
+    // Add small buffer for safety
+    const buffer = 10;
+    minX -= buffer;
+    maxX += buffer;
+    minZ -= buffer;
+    maxZ += buffer;
+
+    // Update trees - simple bounds check, no distance calc
+    const trees = typeof getTreeData === 'function' ? getTreeData() : [];
+    if (trees && trees.length > 0) {
+        for (let i = 0; i < trees.length; i++) {
+            const tree = trees[i];
+            const x = tree.position.x;
+            const z = tree.position.z;
+
+            // Fast bounds check - skip if outside affected area
+            if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
+
+            const newY = typeof getTerrainHeightAt === 'function'
+                ? getTerrainHeightAt(x, z)
+                : tree.position.y;
+
+            tree.position.y = newY;
+
+            if (tree.group) {
+                tree.group.position.y = newY;
+                if (tree.group.userData && tree.group.userData.treeHeight) {
+                    tree.group.userData.absoluteTreeHeight = newY + tree.group.userData.treeHeight;
+                }
+            }
+            if (tree.sprite) {
+                tree.sprite.position.y = newY;
+            }
+        }
+    }
+
+    // Update shrubs
+    const shrubs = typeof getShrubData === 'function' ? getShrubData() : [];
+    if (shrubs && shrubs.length > 0) {
+        for (let i = 0; i < shrubs.length; i++) {
+            const shrub = shrubs[i];
+            const x = shrub.position.x;
+            const z = shrub.position.z;
+
+            if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
+
+            const newY = typeof getTerrainHeightAt === 'function'
+                ? getTerrainHeightAt(x, z)
+                : shrub.position.y;
+
+            shrub.position.y = newY;
+
+            if (shrub.sprite) {
+                shrub.sprite.position.y = newY;
+            }
+        }
+    }
+}
+
 // Make available globally
 Object.defineProperty(window, 'isTerraformMode', {
     get: () => isTerraformMode,
@@ -540,3 +660,4 @@ Object.defineProperty(window, 'isTerraformMode', {
 });
 window.toggleTerraformMode = toggleTerraformMode;
 window.initTerraformSystem = initTerraformSystem;
+window.updateVegetationInBounds = updateVegetationInBounds;

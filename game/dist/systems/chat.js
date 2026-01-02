@@ -517,14 +517,15 @@ function handleChatCommand(command) {
             addSystemMessage('=== COMMANDS ===');
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
+            addSystemMessage('/knight - Switch to knight character');
+            addSystemMessage('/test - Switch to test character');
             addSystemMessage('/textures - Toggle ground textures');
             addSystemMessage('/shadows - Toggle shadow mapping');
             addSystemMessage('/shadowtype - Cycle shadow quality (Basic/PCF/Soft)');
             addSystemMessage('/shadowres - Cycle shadow resolution (1024/2048/4096)');
-            addSystemMessage('/shadowrate - Cycle shadow update rate (5/2/1 per sec)');
+            addSystemMessage('/shadowrate - Cycle shadow update rate');
             addSystemMessage('/graphics - Cycle graphics quality (Retro/Low/Med/High/Ultra/Off)');
-            addSystemMessage('/fps - Toggle reduced frame rate (20 FPS)');
-            addSystemMessage('/motionblur - Toggle motion blur (15 FPS when looking)');
+            addSystemMessage('/retro - Toggle retro mode (choppy objects, smooth camera)');
             return true;
 
         case '/pos':
@@ -535,6 +536,24 @@ function handleChatCommand(command) {
                 addSystemMessage(`Position: X=${x}, Y=${y}, Z=${z}`);
             } else {
                 addSystemMessage('Character not loaded.');
+            }
+            return true;
+
+        case '/knight':
+            if (typeof switchCharacterType === 'function') {
+                switchCharacterType('knight');
+                addSystemMessage('Switched to Knight character.');
+            } else {
+                addSystemMessage('Character system not available.');
+            }
+            return true;
+
+        case '/test':
+            if (typeof switchCharacterType === 'function') {
+                switchCharacterType('test');
+                addSystemMessage('Switched to Test character.');
+            } else {
+                addSystemMessage('Character system not available.');
             }
             return true;
 
@@ -581,21 +600,13 @@ function handleChatCommand(command) {
             }
             return true;
 
+        case '/retro':
         case '/fps':
             if (typeof toggleReducedFrameRate === 'function') {
                 const enabled = toggleReducedFrameRate();
-                addSystemMessage(`Reduced frame rate ${enabled ? 'enabled (20 FPS)' : 'disabled (full FPS)'}.`);
+                addSystemMessage(enabled ? 'Retro mode ON: Objects at 20 FPS, camera smooth.' : 'Retro mode OFF: Full FPS for everything.');
             } else {
                 addSystemMessage('Frame rate system not available.');
-            }
-            return true;
-
-        case '/motionblur':
-            if (typeof toggleMotionBlur === 'function') {
-                const enabled = toggleMotionBlur();
-                addSystemMessage(`Motion blur ${enabled ? 'enabled (15 FPS when looking)' : 'disabled'}.`);
-            } else {
-                addSystemMessage('Motion blur system not available.');
             }
             return true;
 
