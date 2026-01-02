@@ -24,7 +24,8 @@ const CharacterSystem = {
     },
 
     update(delta) {
-        updateCharacterMovement(delta);
+        // Movement is now handled at full FPS in game.js for smooth camera
+        // Only animations run at throttled 20 FPS for retro choppy feel
         updateCharacterAnimation(delta);
     },
 

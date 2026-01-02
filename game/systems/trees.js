@@ -187,9 +187,9 @@ function create3DTree(x, z, detail, variantName = 'pine') {
     const tree = new THREE.Group();
     const variant = TREE_VARIANTS[variantName] || TREE_VARIANTS.pine;
 
-    // Create materials for this variant - use Lambert for shadows
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor });
-    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c }));
+    // Create materials for this variant - use Lambert with flatShading for PS2-style visible polygons
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor, flatShading: true });
+    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
 
     // Calculate random height within variant range
     const heightRange = variant.trunkHeight;
@@ -330,7 +330,7 @@ function create2DSprite(x, z, variantName = 'pine') {
     const trunkHeight = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
     const radiusRange = variant.trunkRadius;
 
-    const trunkMaterial = new THREE.MeshBasicMaterial({
+    const trunkMaterial = new THREE.MeshLambertMaterial({
         color: variant.trunkColor,
         transparent: true,
         opacity: 0.9,
@@ -354,7 +354,7 @@ function create2DSprite(x, z, variantName = 'pine') {
 
     if (variant.base === 'palm') {
         // Palm fronds as drooping leaves from top of trunk
-        const foliageMaterial = new THREE.MeshBasicMaterial({
+        const foliageMaterial = new THREE.MeshLambertMaterial({
             color: variant.foliageColors[0],
             transparent: true,
             opacity: 0.9,
@@ -386,7 +386,7 @@ function create2DSprite(x, z, variantName = 'pine') {
 
     } else if (variant.base === 'oak') {
         // Deciduous - blob/oval shape
-        const foliageMaterial = new THREE.MeshBasicMaterial({
+        const foliageMaterial = new THREE.MeshLambertMaterial({
             color: variant.foliageColors[0],
             transparent: true,
             opacity: 0.9,
@@ -429,7 +429,7 @@ function create2DSprite(x, z, variantName = 'pine') {
         for (let j = 0; j < layers; j++) {
             const coneRadius = baseRadius - j * (baseRadius / layers);
 
-            const foliageMaterial = new THREE.MeshBasicMaterial({
+            const foliageMaterial = new THREE.MeshLambertMaterial({
                 color: variant.foliageColors[j % variant.foliageColors.length],
                 transparent: true,
                 opacity: 0.85,

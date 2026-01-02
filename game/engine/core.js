@@ -8,7 +8,7 @@ const instructionsParagraph = document.getElementById('instructions');
 // Pixelation Effect Variables
 const pixelationLevels = [0.17, 0.25, 0.35, 0.5, 0.75, 1.0]; // Low to high quality
 const pixelationLabels = ['Retro', 'Low', 'Medium', 'High', 'Ultra', 'Off'];
-let pixelationLevelIndex = 0; // Default to Retro for all devices
+let pixelationLevelIndex = 1; // Default to Low for all devices
 let originalPixelRatio = 1; // Store original pixel ratio
 
 // Function to set instructions based on device
