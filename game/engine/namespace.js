@@ -9,6 +9,8 @@ const GAME = {
 
     // Player
     character: null,
+    characterType: 'knight',  // 'knight' or 'test'
+    characterParts: null,     // Body part references for animation (set by character-types.js)
 
     // Lighting
     lighting: {

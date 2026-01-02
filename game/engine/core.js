@@ -6,7 +6,7 @@ const instructionMessage = document.getElementById('instruction-message');
 const instructionsParagraph = document.getElementById('instructions');
 
 // Pixelation Effect Variables
-const pixelationLevels = [0.15, 0.25, 0.35, 0.5, 0.75, 1.0]; // Low to high quality
+const pixelationLevels = [0.17, 0.25, 0.35, 0.5, 0.75, 1.0]; // Low to high quality
 const pixelationLabels = ['Retro', 'Low', 'Medium', 'High', 'Ultra', 'Off'];
 let pixelationLevelIndex = 0; // Default to Retro for all devices
 let originalPixelRatio = 1; // Store original pixel ratio
@@ -383,7 +383,10 @@ function init() {
     createHillyGround();
 
     // Character setup - position will be set from map config or multiplayer
-    GAME.character = createCharacter();
+    // Use character type from GAME namespace (default: 'knight')
+    GAME.character = typeof createCharacterOfType === 'function'
+        ? createCharacterOfType(GAME.characterType || 'knight')
+        : createCharacter();  // Fallback to old function
     GAME.scene.add(GAME.character);
 
     // Initialize spawn position from config (uses character.js config)

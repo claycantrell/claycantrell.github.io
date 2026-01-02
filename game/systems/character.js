@@ -1,5 +1,18 @@
 // Character creation and movement logic
 // Uses Systems registry pattern for organized update loop
+// Supports multiple character types with animations
+
+// Animation state tracking
+let characterAnimState = 'IDLE';
+let lastMoveX = 0;
+let lastMoveZ = 0;
+
+// Animation config for knight
+const KNIGHT_ANIM_CONFIG = {
+    walk: { legSpeed: 6, legAmplitude: 0.4, armSpeed: 6, armAmplitude: 0.3 },
+    run: { legSpeed: 12, legAmplitude: 0.6, armSpeed: 12, armAmplitude: 0.5 },
+    sprint: { legSpeed: 18, legAmplitude: 0.7, armSpeed: 18, armAmplitude: 0.6 }
+};
 
 // CharacterSystem - manages player character creation and movement
 const CharacterSystem = {
@@ -12,6 +25,7 @@ const CharacterSystem = {
 
     update(delta) {
         updateCharacterMovement(delta);
+        updateCharacterAnimation(delta);
     },
 
     getSettings() {
@@ -171,6 +185,22 @@ function updateCharacterMovement(delta) {
         while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
         while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
         character.rotation.y += rotDiff * Math.min(1, delta * 10);
+    }
+
+    // Track movement for animation state
+    lastMoveX = moveX;
+    lastMoveZ = moveZ;
+
+    // Determine animation state based on movement
+    const isMoving = moveX !== 0 || moveZ !== 0;
+    if (!isMoving) {
+        characterAnimState = 'IDLE';
+    } else if (isSprinting) {
+        characterAnimState = 'SPRINT';
+    } else {
+        // Check movement speed to determine walk vs run
+        const moveSpeed = Math.sqrt(moveX * moveX + moveZ * moveZ) / delta;
+        characterAnimState = moveSpeed > 15 ? 'RUN' : 'WALK';
     }
 
     // Block collision constants
@@ -353,8 +383,79 @@ function updateCharacterMovement(delta) {
 }
 
 
+// Update character animation based on state
+function updateCharacterAnimation(delta) {
+    // Skip if no character parts (test character has none)
+    if (!GAME.characterParts) return;
+
+    const parts = GAME.characterParts;
+    const time = typeof getAnimTime === 'function' ? getAnimTime() : Date.now() * 0.001;
+
+    // Get animation config based on state
+    let animConfig;
+    switch (characterAnimState) {
+        case 'SPRINT':
+            animConfig = KNIGHT_ANIM_CONFIG.sprint;
+            break;
+        case 'RUN':
+            animConfig = KNIGHT_ANIM_CONFIG.run;
+            break;
+        case 'WALK':
+            animConfig = KNIGHT_ANIM_CONFIG.walk;
+            break;
+        default:
+            animConfig = null;
+    }
+
+    if (animConfig) {
+        // Animate legs
+        if (typeof animateBipedLegs === 'function' && parts.leftLeg && parts.rightLeg) {
+            animateBipedLegs(parts.leftLeg, parts.rightLeg, time, animConfig.legSpeed, animConfig.legAmplitude);
+        }
+
+        // Animate arms (right arm swings less due to sword)
+        if (typeof animateBipedArms === 'function' && parts.leftArm && parts.rightArm) {
+            animateBipedArms(parts.leftArm, parts.rightArm, time, animConfig.armSpeed, animConfig.armAmplitude * 0.7);
+        }
+
+        // Subtle torso lean when moving
+        if (parts.torso) {
+            const leanAmount = characterAnimState === 'SPRINT' ? 0.15 : 0.08;
+            parts.torso.rotation.x = leanAmount;
+        }
+    } else {
+        // IDLE state - reset limbs and add breathing
+        if (typeof resetBipedLimbsToNeutral === 'function') {
+            if (parts.leftLeg && parts.rightLeg) {
+                resetBipedLimbsToNeutral(parts.leftLeg, parts.rightLeg, delta);
+            }
+            if (parts.leftArm && parts.rightArm) {
+                resetBipedLimbsToNeutral(parts.leftArm, parts.rightArm, delta);
+            }
+        }
+
+        // Breathing animation
+        if (typeof animateIdleBreathing === 'function' && parts.torso && parts.torsoBaseY !== undefined) {
+            animateIdleBreathing(parts.torso, time, parts.torsoBaseY);
+        }
+
+        // Reset torso lean
+        if (parts.torso) {
+            parts.torso.rotation.x = THREE.MathUtils.lerp(parts.torso.rotation.x, 0, delta * 3);
+        }
+
+        // Subtle shield movement
+        if (typeof animateArmWithShield === 'function' && parts.leftArm) {
+            // Only apply shield animation in idle
+            animateArmWithShield(parts.leftArm, time, 0.03);
+        }
+    }
+}
+
 // Make available globally
 window.createCharacter = createCharacter;
 window.initCharacterSpawn = initCharacterSpawn;
 window.updateCharacterMovement = updateCharacterMovement;
+window.updateCharacterAnimation = updateCharacterAnimation;
 window.CharacterSystem = CharacterSystem;
+window.characterAnimState = characterAnimState;

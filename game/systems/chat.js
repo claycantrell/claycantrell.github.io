@@ -517,6 +517,8 @@ function handleChatCommand(command) {
             addSystemMessage('=== COMMANDS ===');
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
+            addSystemMessage('/knight - Switch to knight character');
+            addSystemMessage('/test - Switch to test character');
             addSystemMessage('/textures - Toggle ground textures');
             addSystemMessage('/shadows - Toggle shadow mapping');
             addSystemMessage('/shadowtype - Cycle shadow quality (Basic/PCF/Soft)');
@@ -535,6 +537,24 @@ function handleChatCommand(command) {
                 addSystemMessage(`Position: X=${x}, Y=${y}, Z=${z}`);
             } else {
                 addSystemMessage('Character not loaded.');
+            }
+            return true;
+
+        case '/knight':
+            if (typeof switchCharacterType === 'function') {
+                switchCharacterType('knight');
+                addSystemMessage('Switched to Knight character.');
+            } else {
+                addSystemMessage('Character system not available.');
+            }
+            return true;
+
+        case '/test':
+            if (typeof switchCharacterType === 'function') {
+                switchCharacterType('test');
+                addSystemMessage('Switched to Test character.');
+            } else {
+                addSystemMessage('Character system not available.');
             }
             return true;
 

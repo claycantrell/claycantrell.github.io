@@ -132,6 +132,7 @@ const scripts = [
     './engine/utils/entity-factory.js', // Entity system boilerplate
     './engine/utils/animal-behaviors.js', // Animal flee/wander logic
     './engine/utils/animation-utils.js', // Animation utilities
+    './engine/utils/character-types.js', // Character type factory (knight, test)
     './maps/map-loader.js',       // Map configuration
 
     // Layer 2: World Systems
@@ -239,6 +240,7 @@ function getScriptName(src) {
         'terrain': 'Terrain utilities',
         'behaviors': 'Entity behaviors',
         'map-loader': 'Map loader',
+        'character-types': 'Character types',
         'character': 'Character system',
         'climate': 'Climate system',
         'biomes': 'Biome data',

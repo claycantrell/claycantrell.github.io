@@ -1,11 +1,11 @@
 // Animal Spawner System - Minecraft-style chunk-based spawning
-// Animals spawn 24-128 blocks from player, despawn beyond 128 blocks
+// Animals spawn 60-150 units from player, despawn beyond 180 units
 
 const SPAWN_CONFIG = {
-    minDistance: 24,        // Don't spawn closer than this
-    maxDistance: 128,       // Don't spawn farther than this
-    despawnDistance: 128,   // Instant despawn beyond this
-    gradualDespawnDist: 64, // Start random despawn chance here
+    minDistance: 60,        // Don't spawn closer than this (outside player view)
+    maxDistance: 150,       // Don't spawn farther than this
+    despawnDistance: 180,   // Instant despawn beyond this
+    gradualDespawnDist: 120, // Start random despawn chance here
     spawnCheckInterval: 2,  // Seconds between spawn attempts
     despawnCheckInterval: 1, // Seconds between despawn checks
 
@@ -59,7 +59,7 @@ function distanceFromPlayer(x, z) {
     return Math.sqrt(dx * dx + dz * dz);
 }
 
-// Pick random spawn position in valid range (24-128 blocks from player)
+// Pick random spawn position in valid range (60-150 units from player's current position)
 function getSpawnPosition() {
     const player = getPlayerPos();
     if (!player) return null;
