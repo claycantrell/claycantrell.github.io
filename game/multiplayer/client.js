@@ -126,7 +126,7 @@ function handleServerMessage(data) {
             if (data.allPlayers) {
                 data.allPlayers.forEach(player => {
                     if (player.id !== playerId) {
-                        addOtherPlayer(player.id, player.position, player.rotation);
+                        addOtherPlayer(player.id, player.position, player.rotation, player.characterType);
                     }
                 });
             }
@@ -147,7 +147,7 @@ function handleServerMessage(data) {
             break;
 
         case 'playerUpdate':
-            updateOtherPlayer(data.id, data.position, data.rotation);
+            updateOtherPlayer(data.id, data.position, data.rotation, data.characterType);
             break;
 
         case 'playerLeft':
@@ -199,7 +199,7 @@ function handleServerMessage(data) {
              // Add players on this map
              if (data.players && Array.isArray(data.players)) {
                  data.players.forEach(player => {
-                     addOtherPlayer(player.id, player.position, player.rotation);
+                     addOtherPlayer(player.id, player.position, player.rotation, player.characterType);
                  });
              }
              break;
@@ -246,11 +246,17 @@ function sendPlayerUpdate() {
         y: character.rotation.y
     };
 
+    // Include character type so other players see correct model
+    const charType = (typeof GAME !== 'undefined' && GAME.characterType)
+        ? GAME.characterType
+        : 'knight';
+
     socket.send(JSON.stringify({
         type: 'update',
         id: playerId,
         position: position,
-        rotation: rotation
+        rotation: rotation,
+        characterType: charType
     }));
 }
 

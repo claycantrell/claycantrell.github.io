@@ -67,12 +67,25 @@ function initOtherPlayerAssets() {
     };
 }
 
-// Create a visual representation of another player (optimized)
-function createOtherPlayerMesh() {
-    // Initialize shared assets if needed
+// Create a visual representation of another player using actual character type
+function createOtherPlayerMesh(characterType) {
+    // Use the character factory to create the correct character type
+    // This ensures other players look the same as the local player (knight, test, etc.)
+    const type = characterType || 'knight';
+
+    // Use the global createCharacterOfType if available, otherwise fall back to simple mesh
+    if (typeof createCharacterOfType === 'function') {
+        const char = createCharacterOfType(type);
+        // Store the character type on the mesh for reference
+        char.userData.otherPlayerCharType = type;
+        return char;
+    }
+
+    // Fallback to simple mesh if character factory not available
     initOtherPlayerAssets();
-    
+
     const group = new THREE.Group();
+    group.userData.otherPlayerCharType = 'fallback';
 
     // Body - use shared geometry and material
     const body = new THREE.Mesh(
@@ -102,34 +115,52 @@ function createOtherPlayerMesh() {
 }
 
 // Add another player to the scene
-function addOtherPlayer(id, position, rotation) {
+function addOtherPlayer(id, position, rotation, characterType) {
     if (otherPlayers.has(id)) {
         return; // Already exists
     }
 
-    const playerMesh = createOtherPlayerMesh();
+    const playerMesh = createOtherPlayerMesh(characterType);
     playerMesh.position.set(position.x, position.y, position.z);
     playerMesh.rotation.y = rotation.y;
-    
+
     scene.add(playerMesh);
     otherPlayers.set(id, {
         mesh: playerMesh,
         targetPosition: new THREE.Vector3(position.x, position.y, position.z),
         targetRotation: rotation.y,
+        characterType: characterType || 'knight',
         lastUpdate: performance.now()
     });
 }
 
 // Update another player's position/rotation (with interpolation)
-function updateOtherPlayer(id, position, rotation) {
+function updateOtherPlayer(id, position, rotation, characterType) {
     if (!otherPlayers.has(id)) {
         // Player doesn't exist yet, add them
-        addOtherPlayer(id, position, rotation);
+        addOtherPlayer(id, position, rotation, characterType);
         return;
     }
 
     const player = otherPlayers.get(id);
-    
+
+    // Check if character type changed - if so, recreate the mesh
+    const newType = characterType || 'knight';
+    if (player.characterType !== newType) {
+        // Remove old mesh
+        scene.remove(player.mesh);
+        if (typeof disposeCharacter === 'function') {
+            disposeCharacter(player.mesh);
+        }
+        // Create new mesh with correct type
+        const newMesh = createOtherPlayerMesh(newType);
+        newMesh.position.copy(player.mesh.position);
+        newMesh.rotation.y = player.mesh.rotation.y;
+        scene.add(newMesh);
+        player.mesh = newMesh;
+        player.characterType = newType;
+    }
+
     // Store target position/rotation for interpolation
     player.targetPosition.set(position.x, position.y, position.z);
     player.targetRotation = rotation.y;

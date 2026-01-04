@@ -299,7 +299,7 @@ function onBuildMouseMove(event) {
 }
 
 function updateGhostPosition() {
-    if (!buildGhost || !camera) return;
+    if (!buildGhost || !camera || !camera.matrixWorld) return;
 
     // In third-person, cast ray from above character's head in look direction
     if (!isFirstPerson && typeof character !== 'undefined' && character) {
