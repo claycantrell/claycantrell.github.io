@@ -14,7 +14,13 @@ const SPAWN_CONFIG = {
         deer: 12,
         cows: 10,
         bunnies: 15,
-        birds: 20
+        birds: 20,
+        frogs: 10,
+        penguins: 8,
+        pandas: 6,
+        crabs: 12,
+        butterflies: 15,
+        salamanders: 8
     },
 
     // Spawn chances per check (0-1)
@@ -22,7 +28,13 @@ const SPAWN_CONFIG = {
         deer: 0.15,
         cows: 0.12,
         bunnies: 0.25,
-        birds: 0.20
+        birds: 0.20,
+        frogs: 0.18,
+        penguins: 0.12,
+        pandas: 0.10,
+        crabs: 0.15,
+        butterflies: 0.20,
+        salamanders: 0.12
     },
 
     // Group spawn sizes
@@ -30,7 +42,13 @@ const SPAWN_CONFIG = {
         deer: { min: 2, max: 4 },
         cows: { min: 2, max: 5 },
         bunnies: { min: 1, max: 3 },
-        birds: { min: 3, max: 6 }
+        birds: { min: 3, max: 6 },
+        frogs: { min: 2, max: 4 },
+        penguins: { min: 3, max: 6 },
+        pandas: { min: 1, max: 2 },
+        crabs: { min: 2, max: 5 },
+        butterflies: { min: 3, max: 7 },
+        salamanders: { min: 1, max: 3 }
     }
 };
 
@@ -79,13 +97,23 @@ function getSpawnPosition() {
     return { x, y, z };
 }
 
-// Check if spawn position is valid (not in water, etc.)
-function isValidSpawnPosition(x, z) {
-    // Check if in water
-    if (typeof getChunkBiomeAt === 'function') {
-        const biome = getChunkBiomeAt(x, z);
-        if (biome && biome.id === 'ocean') return false;
+// Check if spawn position is valid for given animal type
+function isValidSpawnPosition(x, z, animalType) {
+    if (typeof getChunkBiomeAt !== 'function') return true;
+
+    const biome = getChunkBiomeAt(x, z);
+    if (!biome) return true;
+
+    // Never spawn in ocean
+    if (biome.id === 'ocean') return false;
+
+    // Check if biome supports this animal type
+    if (biome.entities && typeof biome.entities === 'object') {
+        const spawnRate = biome.entities[animalType];
+        // If spawn rate is undefined or 0, don't spawn this animal here
+        if (spawnRate === undefined || spawnRate === 0) return false;
     }
+
     return true;
 }
 
@@ -120,18 +148,58 @@ function trySpawnAnimals(type) {
             createFn = typeof createBird === 'function' ? createBird : null;
             currentCount = list.length;
             break;
+        case 'frogs':
+            list = typeof frogList !== 'undefined' ? frogList : [];
+            createFn = typeof createFrog === 'function' ? createFrog : null;
+            currentCount = list.length;
+            break;
+        case 'penguins':
+            list = typeof penguinList !== 'undefined' ? penguinList : [];
+            createFn = typeof createPenguin === 'function' ? createPenguin : null;
+            currentCount = list.length;
+            break;
+        case 'pandas':
+            list = typeof pandaList !== 'undefined' ? pandaList : [];
+            createFn = typeof createPanda === 'function' ? createPanda : null;
+            currentCount = list.length;
+            break;
+        case 'crabs':
+            list = typeof crabList !== 'undefined' ? crabList : [];
+            createFn = typeof createCrab === 'function' ? createCrab : null;
+            currentCount = list.length;
+            break;
+        case 'butterflies':
+            list = typeof butterflyList !== 'undefined' ? butterflyList : [];
+            createFn = typeof createButterfly === 'function' ? createButterfly : null;
+            currentCount = list.length;
+            break;
+        case 'salamanders':
+            list = typeof salamanderList !== 'undefined' ? salamanderList : [];
+            createFn = typeof createSalamander === 'function' ? createSalamander : null;
+            currentCount = list.length;
+            break;
     }
 
     // Check cap
     if (currentCount >= cap) return;
 
-    // Random chance to spawn
-    if (Math.random() > chance) return;
-
     // Get spawn position
     const pos = getSpawnPosition();
     if (!pos) return;
-    if (!isValidSpawnPosition(pos.x, pos.z)) return;
+    if (!isValidSpawnPosition(pos.x, pos.z, type)) return;
+
+    // Adjust spawn chance based on biome spawn rate
+    let adjustedChance = chance;
+    if (typeof getChunkBiomeAt === 'function') {
+        const biome = getChunkBiomeAt(pos.x, pos.z);
+        if (biome && biome.entities && biome.entities[type] !== undefined) {
+            // Multiply base chance by biome spawn rate (e.g., 2.0 doubles the chance)
+            adjustedChance = chance * biome.entities[type];
+        }
+    }
+
+    // Random chance to spawn (with biome-adjusted rate)
+    if (Math.random() > Math.min(adjustedChance, 1.0)) return;
 
     // Spawn a group
     const count = groupSize.min + Math.floor(Math.random() * (groupSize.max - groupSize.min + 1));
@@ -166,6 +234,24 @@ function despawnFarAnimals(type) {
             break;
         case 'birds':
             list = typeof birdList !== 'undefined' ? birdList : [];
+            break;
+        case 'frogs':
+            list = typeof frogList !== 'undefined' ? frogList : [];
+            break;
+        case 'penguins':
+            list = typeof penguinList !== 'undefined' ? penguinList : [];
+            break;
+        case 'pandas':
+            list = typeof pandaList !== 'undefined' ? pandaList : [];
+            break;
+        case 'crabs':
+            list = typeof crabList !== 'undefined' ? crabList : [];
+            break;
+        case 'butterflies':
+            list = typeof butterflyList !== 'undefined' ? butterflyList : [];
+            break;
+        case 'salamanders':
+            list = typeof salamanderList !== 'undefined' ? salamanderList : [];
             break;
     }
 
@@ -218,6 +304,12 @@ function updateAnimalSpawner(delta) {
         trySpawnAnimals('cows');
         trySpawnAnimals('bunnies');
         trySpawnAnimals('birds');
+        trySpawnAnimals('frogs');
+        trySpawnAnimals('penguins');
+        trySpawnAnimals('pandas');
+        trySpawnAnimals('crabs');
+        trySpawnAnimals('butterflies');
+        trySpawnAnimals('salamanders');
     }
 
     // Despawn check
@@ -228,6 +320,12 @@ function updateAnimalSpawner(delta) {
         despawnFarAnimals('cows');
         despawnFarAnimals('bunnies');
         despawnFarAnimals('birds');
+        despawnFarAnimals('frogs');
+        despawnFarAnimals('penguins');
+        despawnFarAnimals('pandas');
+        despawnFarAnimals('crabs');
+        despawnFarAnimals('butterflies');
+        despawnFarAnimals('salamanders');
     }
 }
 
@@ -238,7 +336,13 @@ function initAnimalSpawner() {
         typeof deerList !== 'undefined' ? deerList : [],
         typeof cowList !== 'undefined' ? cowList : [],
         typeof bunnyList !== 'undefined' ? bunnyList : [],
-        typeof birdList !== 'undefined' ? birdList : []
+        typeof birdList !== 'undefined' ? birdList : [],
+        typeof frogList !== 'undefined' ? frogList : [],
+        typeof penguinList !== 'undefined' ? penguinList : [],
+        typeof pandaList !== 'undefined' ? pandaList : [],
+        typeof crabList !== 'undefined' ? crabList : [],
+        typeof butterflyList !== 'undefined' ? butterflyList : [],
+        typeof salamanderList !== 'undefined' ? salamanderList : []
     ];
 
     lists.forEach(list => {
