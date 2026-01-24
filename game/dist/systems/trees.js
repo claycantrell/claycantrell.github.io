@@ -114,6 +114,64 @@ const TREE_VARIANTS = {
         trunkHeight: [20, 30],
         trunkRadius: [0.8, 1.0],
         fronds: 12                  // Number of palm fronds (increased to match sprite fullness)
+    },
+
+    // === NEW BIOME VARIANTS ===
+    cherry: {
+        base: 'oak',
+        trunkColor: 0x3D2817,       // Dark brown bark
+        foliageColors: [0xFFB7C5, 0xFFC0CB, 0xFF69B4],  // Pink cherry blossoms
+        trunkHeight: [15, 22],
+        trunkRadius: [1.2, 1.8],
+        foliageRadius: 9,
+        foliageLayers: 3            // Full, rounded canopy
+    },
+    mangrove: {
+        base: 'mangrove',           // Special type with roots
+        trunkColor: 0x4A3C2A,       // Dark muddy brown
+        foliageColors: [0x2F4F2F, 0x3A5F3A, 0x556B2F],  // Dark green
+        trunkHeight: [12, 18],      // Shorter, stocky
+        trunkRadius: [1.0, 1.5],
+        foliageRadius: 8,
+        foliageLayers: 2,
+        rootHeight: 4               // Exposed roots above water/ground
+    },
+    bamboo: {
+        base: 'bamboo',             // Special type
+        trunkColor: 0x6B8E23,       // Green bamboo color
+        foliageColors: [0x228B22, 0x32CD32, 0x7CFC00],  // Bright green leaves
+        trunkHeight: [35, 50],      // Very tall
+        trunkRadius: [0.4, 0.5],    // Very thin
+        segments: 8,                // Bamboo segments
+        topFoliageRadius: 3         // Small leafy top
+    },
+    giantMushroom: {
+        base: 'mushroom',           // Special type
+        trunkColor: 0xE8D5C4,       // Cream/tan stem
+        foliageColors: [0x8B0000, 0xA52A2A, 0xB22222],  // Red mushroom cap
+        trunkHeight: [15, 25],
+        trunkRadius: [2.0, 2.5],    // Thick stem
+        capRadius: 12,              // Large cap
+        capHeight: 6
+    },
+    charred: {
+        base: 'pine',
+        trunkColor: 0x1C1C1C,       // Charred black
+        foliageColors: [0x2F2F2F, 0x3D3D3D, 0x4A4A4A],  // Dark ash gray
+        trunkHeight: [18, 28],
+        trunkRadius: [0.9, 1.3],
+        foliageLayers: 2,           // Sparse, dead branches
+        foliageRadius: 4,
+        coneHeight: 7
+    },
+    swampTree: {
+        base: 'oak',
+        trunkColor: 0x3D3D2A,       // Dark grayish-brown
+        foliageColors: [0x4F6F4F, 0x556B2F, 0x6B8E23],  // Mossy dark green
+        trunkHeight: [20, 30],      // Tall, drooping
+        trunkRadius: [1.8, 2.5],    // Thick, gnarled
+        foliageRadius: 11,
+        foliageLayers: 2
     }
 };
 
@@ -124,6 +182,7 @@ const BIOME_TREES = {
     snowySlopes: { types: { snowyPine: 0.7, spruce: 0.3 }, density: 0.05 },
     tundra: { types: { deadwood: 0.6, snowyPine: 0.4 }, density: 0.02 },
     taiga: { types: { spruce: 0.8, snowyPine: 0.2 }, density: 0.65 },
+    iceSpikes: { types: { snowyPine: 0.6, spruce: 0.4 }, density: 0.03 },
 
     // Cold
     coldForest: { types: { spruce: 0.5, birch: 0.3, pine: 0.2 }, density: 0.7 },
@@ -135,6 +194,7 @@ const BIOME_TREES = {
     forest: { types: { oak: 0.5, birch: 0.3, pine: 0.2 }, density: 0.85 },
     plains: { types: { oak: 0.6, birch: 0.4 }, density: 0.12 },
     meadow: { types: { birch: 0.6, oak: 0.4 }, density: 0.08 },
+    cherryGrove: { types: { cherry: 0.9, birch: 0.1 }, density: 0.75 },
 
     // Warm
     grassland: { types: { oak: 0.5, acacia: 0.5 }, density: 0.1 },
@@ -145,10 +205,17 @@ const BIOME_TREES = {
     desert: { types: { palm: 0.8, deadwood: 0.2 }, density: 0.03 },
     badlands: { types: { deadwood: 1.0 }, density: 0.01 },
     jungle: { types: { jungleTree: 0.7, palm: 0.3 }, density: 0.95 },
+    bambooJungle: { types: { bamboo: 0.8, jungleTree: 0.2 }, density: 0.85 },
+    volcanicPeaks: { types: { charred: 0.7, deadwood: 0.3 }, density: 0.05 },
 
-    // Coastal
+    // Coastal & Wetlands
     beach: { types: { palm: 1.0 }, density: 0.0 },
-    stonyShore: { types: {}, density: 0.0 }
+    stonyShore: { types: {}, density: 0.0 },
+    swamp: { types: { swampTree: 0.7, oak: 0.3 }, density: 0.6 },
+    mangroveSwamp: { types: { mangrove: 0.9, swampTree: 0.1 }, density: 0.7 },
+
+    // Special
+    mushroomFields: { types: { giantMushroom: 1.0 }, density: 0.4 }
 };
 
 // Get tree config values from map config, with fallbacks
@@ -243,6 +310,122 @@ function create3DTree(x, z, detail, variantName = 'pine') {
             tree.add(frond);
         }
         tree.userData.treeHeight = trunkHeight + 6;
+
+    } else if (variant.base === 'mangrove') {
+        // Mangrove tree - trunk with exposed root system
+        const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        trunk.position.y = trunkHeight / 2 + (variant.rootHeight || 4);
+        tree.add(trunk);
+
+        // Add visible arching roots from base
+        const rootCount = 4;
+        const rootHeight = variant.rootHeight || 4;
+        for (let i = 0; i < rootCount; i++) {
+            const angle = (i / rootCount) * Math.PI * 2;
+            const rootCurve = new THREE.QuadraticBezierCurve3(
+                new THREE.Vector3(0, rootHeight, 0), // Start at trunk base
+                new THREE.Vector3(Math.cos(angle) * 3, rootHeight / 2, Math.sin(angle) * 3), // Arc out
+                new THREE.Vector3(Math.cos(angle) * 4, 0, Math.sin(angle) * 4) // End at ground
+            );
+            const rootGeometry = new THREE.TubeGeometry(rootCurve, 8, 0.4, 4, false);
+            const root = new THREE.Mesh(rootGeometry, trunkMaterial);
+            root.castShadow = true;
+            root.receiveShadow = true;
+            tree.add(root);
+        }
+
+        // Add canopy foliage on top
+        const layers = variant.foliageLayers || 2;
+        const baseRadius = variant.foliageRadius || 8;
+        for (let j = 0; j < layers; j++) {
+            const radius = baseRadius - j * 2;
+            const foliageGeometry = new THREE.IcosahedronGeometry(radius, 0);
+            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterials[j % foliageMaterials.length]);
+            foliage.castShadow = true;
+            foliage.receiveShadow = true;
+            foliage.position.y = trunkHeight + rootHeight + 2 + j * 3;
+            foliage.position.x = (Math.random() - 0.5) * 3;
+            foliage.position.z = (Math.random() - 0.5) * 3;
+            foliage.scale.set(1.5, 0.8, 1.5);
+            tree.add(foliage);
+        }
+        tree.userData.treeHeight = trunkHeight + rootHeight + baseRadius + 5;
+
+    } else if (variant.base === 'bamboo') {
+        // Bamboo - tall segmented stalk with small leafy top
+        const segments = variant.segments || 8;
+        const segmentHeight = trunkHeight / segments;
+
+        for (let i = 0; i < segments; i++) {
+            const segmentGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], segmentHeight * 0.85, 8);
+            const segment = new THREE.Mesh(segmentGeometry, trunkMaterial);
+            segment.castShadow = true;
+            segment.receiveShadow = true;
+            segment.position.y = i * segmentHeight + segmentHeight / 2;
+            tree.add(segment);
+
+            // Add ring at segment joint
+            const ringGeometry = new THREE.TorusGeometry(radiusRange[1] * 1.1, 0.15, 4, 8);
+            const ringMaterial = new THREE.MeshLambertMaterial({ color: 0x4A5F23, flatShading: true });
+            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+            ring.position.y = i * segmentHeight;
+            ring.rotation.x = Math.PI / 2;
+            tree.add(ring);
+        }
+
+        // Small leafy top
+        const topFoliageRadius = variant.topFoliageRadius || 3;
+        const topFoliage = new THREE.IcosahedronGeometry(topFoliageRadius, 0);
+        const foliage = new THREE.Mesh(topFoliage, foliageMaterials[0]);
+        foliage.castShadow = true;
+        foliage.receiveShadow = true;
+        foliage.position.y = trunkHeight + topFoliageRadius;
+        foliage.scale.set(1.5, 0.6, 1.5);
+        tree.add(foliage);
+
+        tree.userData.treeHeight = trunkHeight + topFoliageRadius * 2;
+
+    } else if (variant.base === 'mushroom') {
+        // Giant mushroom - thick stem with large cap
+        const stemGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 8);
+        const stem = new THREE.Mesh(stemGeometry, trunkMaterial);
+        stem.castShadow = true;
+        stem.receiveShadow = true;
+        stem.position.y = trunkHeight / 2;
+        tree.add(stem);
+
+        // Mushroom cap - flat cylinder with rounded top
+        const capRadius = variant.capRadius || 12;
+        const capHeight = variant.capHeight || 6;
+        const capGeometry = new THREE.CylinderGeometry(capRadius * 0.9, capRadius, capHeight, 12);
+        const cap = new THREE.Mesh(capGeometry, foliageMaterials[0]);
+        cap.castShadow = true;
+        cap.receiveShadow = true;
+        cap.position.y = trunkHeight + capHeight / 2;
+        tree.add(cap);
+
+        // Add spots on cap (optional decorative touch)
+        const spotCount = 5 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < spotCount; i++) {
+            const spotRadius = 0.8 + Math.random() * 1.2;
+            const spotGeometry = new THREE.SphereGeometry(spotRadius, 6, 6);
+            const spotMaterial = new THREE.MeshLambertMaterial({
+                color: 0xFFFFCC,
+                flatShading: true
+            });
+            const spot = new THREE.Mesh(spotGeometry, spotMaterial);
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * capRadius * 0.7;
+            spot.position.x = Math.cos(angle) * distance;
+            spot.position.y = trunkHeight + capHeight - spotRadius * 0.3;
+            spot.position.z = Math.sin(angle) * distance;
+            tree.add(spot);
+        }
+
+        tree.userData.treeHeight = trunkHeight + capHeight;
 
     } else if (variant.base === 'oak') {
         // Deciduous tree - trunk with blob foliage
@@ -383,6 +566,155 @@ function create2DSprite(x, z, variantName = 'pine') {
         const frondGeom = new THREE.ShapeGeometry(frondShape);
         const frond = new THREE.Mesh(frondGeom, foliageMaterial);
         spriteGroup.add(frond);
+
+    } else if (variant.base === 'mangrove') {
+        // Mangrove sprite - trunk with visible roots and canopy
+        const foliageMaterial = new THREE.MeshBasicMaterial({
+            color: variant.foliageColors[0],
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        const rootHeight = variant.rootHeight || 4;
+
+        // Draw arching roots
+        const rootShape = new THREE.Shape();
+        rootShape.moveTo(-4, 0);
+        rootShape.quadraticCurveTo(-3, rootHeight / 2, -1, rootHeight);
+        rootShape.lineTo(1, rootHeight);
+        rootShape.quadraticCurveTo(3, rootHeight / 2, 4, 0);
+        rootShape.lineTo(3.5, 0);
+        rootShape.quadraticCurveTo(2.5, rootHeight / 2, 0.5, rootHeight);
+        rootShape.lineTo(-0.5, rootHeight);
+        rootShape.quadraticCurveTo(-2.5, rootHeight / 2, -3.5, 0);
+
+        const rootGeom = new THREE.ShapeGeometry(rootShape);
+        const rootMesh = new THREE.Mesh(rootGeom, trunkMaterial);
+        spriteGroup.add(rootMesh);
+
+        // Canopy blob on top
+        const radius = variant.foliageRadius || 8;
+        const foliageShape = new THREE.Shape();
+        const segments = 8;
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            const px = Math.cos(theta) * radius * 1.2;
+            const py = Math.sin(theta) * radius * 0.8;
+            if (i === 0) foliageShape.moveTo(px, py + trunkHeight + rootHeight + radius * 0.8);
+            else foliageShape.lineTo(px, py + trunkHeight + rootHeight + radius * 0.8);
+        }
+        const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
+        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+        spriteGroup.add(foliage);
+
+    } else if (variant.base === 'bamboo') {
+        // Bamboo sprite - tall thin stalk with segments and small top
+        const foliageMaterial = new THREE.MeshBasicMaterial({
+            color: variant.foliageColors[0],
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        // Draw segmented trunk (vertical lines for segments)
+        const segments = variant.segments || 8;
+        const segmentHeight = trunkHeight / segments;
+
+        // Main stalk outline
+        const bambooShape = new THREE.Shape();
+        bambooShape.moveTo(-topWidth * 0.6, 0);
+        bambooShape.lineTo(-topWidth * 0.6, trunkHeight);
+        bambooShape.lineTo(topWidth * 0.6, trunkHeight);
+        bambooShape.lineTo(topWidth * 0.6, 0);
+        bambooShape.lineTo(-topWidth * 0.6, 0);
+
+        const bambooGeom = new THREE.ShapeGeometry(bambooShape);
+        const bambooMesh = new THREE.Mesh(bambooGeom, trunkMaterial);
+        spriteGroup.add(bambooMesh);
+
+        // Add segment lines
+        const segmentMaterial = new THREE.MeshBasicMaterial({
+            color: 0x4A5F23,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        for (let i = 1; i < segments; i++) {
+            const lineShape = new THREE.Shape();
+            const y = i * segmentHeight;
+            lineShape.moveTo(-topWidth * 0.8, y);
+            lineShape.lineTo(topWidth * 0.8, y);
+            lineShape.lineTo(topWidth * 0.8, y + 0.3);
+            lineShape.lineTo(-topWidth * 0.8, y + 0.3);
+            const lineGeom = new THREE.ShapeGeometry(lineShape);
+            const line = new THREE.Mesh(lineGeom, segmentMaterial);
+            spriteGroup.add(line);
+        }
+
+        // Small leafy top
+        const topRadius = variant.topFoliageRadius || 3;
+        const topShape = new THREE.Shape();
+        topShape.moveTo(0, trunkHeight + topRadius * 1.5);
+        topShape.lineTo(-topRadius, trunkHeight);
+        topShape.lineTo(topRadius, trunkHeight);
+        topShape.lineTo(0, trunkHeight + topRadius * 1.5);
+
+        const topGeom = new THREE.ShapeGeometry(topShape);
+        const topMesh = new THREE.Mesh(topGeom, foliageMaterial);
+        spriteGroup.add(topMesh);
+
+    } else if (variant.base === 'mushroom') {
+        // Giant mushroom sprite - stem with flat cap
+        const foliageMaterial = new THREE.MeshBasicMaterial({
+            color: variant.foliageColors[0],
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        const capRadius = variant.capRadius || 12;
+        const capHeight = variant.capHeight || 6;
+
+        // Mushroom cap (wide oval/dome)
+        const capShape = new THREE.Shape();
+        capShape.moveTo(-capRadius, trunkHeight);
+        capShape.quadraticCurveTo(-capRadius, trunkHeight + capHeight, 0, trunkHeight + capHeight);
+        capShape.quadraticCurveTo(capRadius, trunkHeight + capHeight, capRadius, trunkHeight);
+        capShape.lineTo(capRadius * 0.8, trunkHeight);
+        capShape.quadraticCurveTo(capRadius * 0.8, trunkHeight + capHeight * 0.7, 0, trunkHeight + capHeight * 0.7);
+        capShape.quadraticCurveTo(-capRadius * 0.8, trunkHeight + capHeight * 0.7, -capRadius * 0.8, trunkHeight);
+        capShape.lineTo(-capRadius, trunkHeight);
+
+        const capGeom = new THREE.ShapeGeometry(capShape);
+        const cap = new THREE.Mesh(capGeom, foliageMaterial);
+        spriteGroup.add(cap);
+
+        // Add some spots
+        const spotMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFFFFCC,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        for (let i = 0; i < 4; i++) {
+            const spotRadius = 0.8 + Math.random() * 0.8;
+            const spotX = (Math.random() - 0.5) * capRadius * 1.2;
+            const spotY = trunkHeight + capHeight * 0.6 + Math.random() * capHeight * 0.3;
+
+            const spotShape = new THREE.Shape();
+            const segments = 6;
+            for (let j = 0; j <= segments; j++) {
+                const theta = (j / segments) * Math.PI * 2;
+                const px = spotX + Math.cos(theta) * spotRadius;
+                const py = spotY + Math.sin(theta) * spotRadius;
+                if (j === 0) spotShape.moveTo(px, py);
+                else spotShape.lineTo(px, py);
+            }
+            const spotGeom = new THREE.ShapeGeometry(spotShape);
+            const spot = new THREE.Mesh(spotGeom, spotMaterial);
+            spriteGroup.add(spot);
+        }
 
     } else if (variant.base === 'oak') {
         // Deciduous - blob/oval shape
