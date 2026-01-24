@@ -259,12 +259,83 @@ function updateCharacterMovement(delta) {
         // In fly mode: Space to ascend, no Space to descend
         const flyVerticalSpeed = flySpeed * 0.8; // Vertical speed slightly slower than horizontal
 
+        // Calculate ground height to prevent falling through floor
+        let groundY = 0;
+        if (typeof getTerrainHeightAt === 'function') {
+            groundY = getTerrainHeightAt(character.position.x, character.position.z);
+        }
+
+        // Check for block landing (even while flying)
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (obj && obj.userData.isBlock && !obj.userData.noCollision) {
+                const blockTop = obj.position.y + BLOCK_HALF;
+                const dx = Math.abs(character.position.x - obj.position.x);
+                const dz = Math.abs(character.position.z - obj.position.z);
+
+                // Check if character is within block's horizontal bounds
+                if (dx < BLOCK_HALF + 0.3 && dz < BLOCK_HALF + 0.3) {
+                    // Only use this block if it's higher than current ground
+                    if (blockTop > groundY && character.position.y >= blockTop - 1) {
+                        groundY = blockTop;
+                    }
+                }
+            }
+        }
+
+        // Check for tree landing (even while flying)
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (obj && obj.userData.isTree) {
+                const treeTop = obj.userData.absoluteTreeHeight || (obj.position.y + 40);
+                const dx = character.position.x - obj.position.x;
+                const dz = character.position.z - obj.position.z;
+
+                if (Math.sqrt(dx * dx + dz * dz) < 3.5 && character.position.y >= treeTop - 1) {
+                    groundY = Math.max(groundY, treeTop);
+                }
+            }
+        }
+
+        // Minimum floor height (1 unit above ground/block/tree)
+        const minY = groundY + 1.0;
+
         if (isJumping) {
             // Space is held - ascend
-            character.position.y += flyVerticalSpeed * delta;
+            const newY = character.position.y + flyVerticalSpeed * delta;
+
+            // Check for ceiling collision (blocks above)
+            let hitCeiling = false;
+            for (let i = 0; i < objects.length; i++) {
+                const obj = objects[i];
+                if (obj && obj.userData.isBlock && !obj.userData.noCollision) {
+                    const blockBottom = obj.position.y - BLOCK_HALF;
+                    const dx = Math.abs(character.position.x - obj.position.x);
+                    const dz = Math.abs(character.position.z - obj.position.z);
+
+                    // Check if ascending into a block from below
+                    if (dx < BLOCK_HALF + 0.3 && dz < BLOCK_HALF + 0.3) {
+                        if (newY + 1.5 >= blockBottom && character.position.y + 1.5 < blockBottom) {
+                            hitCeiling = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!hitCeiling) {
+                character.position.y = newY;
+            }
         } else {
             // Space is not held - descend
-            character.position.y -= flyVerticalSpeed * delta;
+            const newY = character.position.y - flyVerticalSpeed * delta;
+
+            // Prevent falling through floor
+            if (newY >= minY) {
+                character.position.y = newY;
+            } else {
+                character.position.y = minY;
+            }
         }
 
         // No gravity in fly mode
