@@ -36,7 +36,7 @@ const CONFIG = {
     defaults: {
         character: {
             moveSpeed: 20.0,
-            flySpeed: 15.0,
+            flySpeed: 50.0,
             rotationSpeed: 2.0,
             gravity: 25.0,
             collisionRadius: 3.0

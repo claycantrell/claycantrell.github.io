@@ -517,6 +517,7 @@ function handleChatCommand(command) {
             addSystemMessage('=== COMMANDS ===');
             addSystemMessage('/help - Show this help');
             addSystemMessage('/pos - Show current position');
+            addSystemMessage('/fly - Toggle fly mode (Space to ascend)');
             addSystemMessage('/knight - Switch to knight character');
             addSystemMessage('/test - Switch to test character');
             addSystemMessage('/textures - Toggle ground textures');
@@ -536,6 +537,15 @@ function handleChatCommand(command) {
                 addSystemMessage(`Position: X=${x}, Y=${y}, Z=${z}`);
             } else {
                 addSystemMessage('Character not loaded.');
+            }
+            return true;
+
+        case '/fly':
+            if (typeof window.isFlying !== 'undefined') {
+                window.isFlying = !window.isFlying;
+                addSystemMessage(window.isFlying ? 'Fly mode enabled. Hold Space to ascend.' : 'Fly mode disabled.');
+            } else {
+                addSystemMessage('Fly mode not available.');
             }
             return true;
 
