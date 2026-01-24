@@ -1,8 +1,8 @@
-// Shrub system - biome-specific sprite-based ground vegetation
-// Shrubs are 2D billboards that always face the camera
+// Shrub system - biome-specific ground vegetation with LOD
+// LOD: Close = 3D models, Distant = 2D sprites (billboards)
 // Uses Systems registry pattern for organized update loop
 
-// ShrubSystem - manages shrub creation and billboard updates
+// ShrubSystem - manages shrub creation, LOD, and billboard updates
 const ShrubSystem = {
     init() {
         // Shrubs are created after terrain via createShrubs()
@@ -12,6 +12,13 @@ const ShrubSystem = {
         // Update billboard rotation to face camera
         if (typeof updateShrubBillboards === 'function') {
             updateShrubBillboards();
+        }
+    },
+
+    // Throttled LOD update (called separately for performance)
+    updateLOD() {
+        if (typeof updateShrubLOD === 'function') {
+            updateShrubLOD();
         }
     }
 };
@@ -319,6 +326,107 @@ function createShrubSprite(x, z, shrubType, terrainHeight) {
     return spriteGroup;
 }
 
+// Create a 3D shrub model for close-up viewing
+function create3DShrub(x, z, shrubType, terrainHeight) {
+    const shrubGroup = new THREE.Group();
+
+    // Color with variation
+    const color = new THREE.Color(shrubType.color);
+    const variation = 0.15;
+    color.r = Math.max(0, Math.min(1, color.r + (Math.random() - 0.5) * variation));
+    color.g = Math.max(0, Math.min(1, color.g + (Math.random() - 0.5) * variation));
+    color.b = Math.max(0, Math.min(1, color.b + (Math.random() - 0.5) * variation));
+
+    const material = new THREE.MeshLambertMaterial({ color: color });
+
+    // Scale with randomness
+    const scale = 1.5 + Math.random() * 1.0;
+    const height = shrubType.height * scale;
+    const width = shrubType.width * scale;
+
+    // Create 3D geometry based on shrub type
+    if (shrubType.name === 'boulder' || shrubType.name === 'rock' || shrubType.name === 'smallRock') {
+        // Irregular rock - use dodecahedron with random scale
+        const radius = Math.max(width, height) / 2;
+        const geometry = new THREE.DodecahedronGeometry(radius, 0);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.scale.set(
+            0.8 + Math.random() * 0.4,
+            0.6 + Math.random() * 0.3,
+            0.8 + Math.random() * 0.4
+        );
+        mesh.position.y = height / 2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        shrubGroup.add(mesh);
+
+    } else if (shrubType.name === 'cactus') {
+        // Cylindrical cactus
+        const geometry = new THREE.CylinderGeometry(width * 0.3, width * 0.35, height, 6);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = height / 2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        shrubGroup.add(mesh);
+
+    } else if (shrubType.name.includes('grass') || shrubType.name === 'seaOats' || shrubType.name === 'tallGrass') {
+        // Multiple thin blades
+        const blades = 5 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < blades; i++) {
+            const bladeGeom = new THREE.PlaneGeometry(width / blades, height);
+            const blade = new THREE.Mesh(bladeGeom, material);
+            blade.position.y = height / 2;
+            const angle = (i / blades) * Math.PI * 2;
+            blade.rotation.y = angle;
+            blade.castShadow = true;
+            blade.receiveShadow = true;
+            shrubGroup.add(blade);
+        }
+
+    } else if (shrubType.name.includes('fern') || shrubType.name === 'tropicalPlant') {
+        // Crossed planes in X pattern for ferns
+        const planeGeom = new THREE.PlaneGeometry(width, height);
+        const plane1 = new THREE.Mesh(planeGeom, material);
+        const plane2 = new THREE.Mesh(planeGeom, material);
+        plane1.position.y = height / 2;
+        plane2.position.y = height / 2;
+        plane2.rotation.y = Math.PI / 2;
+        plane1.castShadow = true;
+        plane2.castShadow = true;
+        plane1.receiveShadow = true;
+        plane2.receiveShadow = true;
+        shrubGroup.add(plane1);
+        shrubGroup.add(plane2);
+
+    } else if (shrubType.name.includes('moss') || shrubType.name.includes('lichen')) {
+        // Flat disc for moss/lichen
+        const geometry = new THREE.CylinderGeometry(width / 2, width / 2, height, 8, 1);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.y = height / 2;
+        mesh.scale.y = 0.3; // Make it flat
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        shrubGroup.add(mesh);
+
+    } else {
+        // Default bush - sphere
+        const geometry = new THREE.SphereGeometry(Math.max(width, height) / 2, 6, 6);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.scale.set(width / height, 1, width / height);
+        mesh.position.y = height / 2;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        shrubGroup.add(mesh);
+    }
+
+    // Position in world
+    shrubGroup.position.set(x, terrainHeight, z);
+    shrubGroup.userData.isShrub = true;
+    shrubGroup.userData.shrubType = shrubType.name;
+
+    return shrubGroup;
+}
+
 // Select a shrub type based on weights
 function selectShrubType(types) {
     const totalWeight = types.reduce((sum, t) => sum + t.weight, 0);
@@ -424,17 +532,40 @@ function createShrubs() {
         // Select shrub type
         const shrubType = selectShrubType(shrubConfig.types);
 
-        // Create the shrub
-        const shrub = createShrubSprite(x, z, shrubType, terrainHeight);
-        shrubGroup.add(shrub);
+        // LOD: Create 3D or sprite based on distance from character
+        const lodDistance = (typeof PERFORMANCE !== 'undefined' && PERFORMANCE.rendering)
+            ? PERFORMANCE.rendering.lodDistance
+            : 50;
+        const charPos = (typeof character !== 'undefined' && character)
+            ? character.position
+            : new THREE.Vector3(0, 0, 0);
+        const position = new THREE.Vector3(x, terrainHeight, z);
+        const distFromChar = position.distanceTo(charPos);
+
+        let shrubGroup3D = null;
+        let shrubSprite = null;
+        let is3D = distFromChar < lodDistance;
+
+        if (is3D) {
+            // Create 3D model for close shrubs
+            shrubGroup3D = create3DShrub(x, z, shrubType, terrainHeight);
+            shrubGroup.add(shrubGroup3D);
+        } else {
+            // Create 2D sprite for distant shrubs
+            shrubSprite = createShrubSprite(x, z, shrubType, terrainHeight);
+            shrubGroup.add(shrubSprite);
+        }
 
         // Track
         addToHash(x, z);
         shrubData.push({
-            position: new THREE.Vector3(x, terrainHeight, z),
-            sprite: shrub,
+            position: position,
+            group: shrubGroup3D,
+            sprite: shrubSprite,
+            is3D: is3D,
             biome: biomeId,
-            type: shrubType.name
+            type: shrubType.name,
+            shrubType: shrubType  // Store type definition for LOD switching
         });
 
         biomeCounts[biomeId] = (biomeCounts[biomeId] || 0) + 1;
@@ -446,6 +577,65 @@ function createShrubs() {
     // Shrubs placed
 }
 
+// Update LOD based on distance from character
+function updateShrubLOD() {
+    if (!character || !shrubGroup) return;
+    if (typeof PERFORMANCE === 'undefined' || !PERFORMANCE.rendering.lodEnabled) return;
+
+    const lodDistance = PERFORMANCE.rendering.lodDistance;
+    const charPos = character.position;
+
+    for (let i = 0; i < shrubData.length; i++) {
+        const shrub = shrubData[i];
+        const dist = shrub.position.distanceTo(charPos);
+        const shouldBe3D = dist < lodDistance;
+
+        if (shouldBe3D !== shrub.is3D) {
+            if (shouldBe3D) {
+                // Switch sprite -> 3D
+                if (shrub.sprite) {
+                    shrubGroup.remove(shrub.sprite);
+                    shrub.sprite.traverse(obj => {
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) obj.material.dispose();
+                    });
+                    shrub.sprite = null;
+                }
+                if (!shrub.group) {
+                    shrub.group = create3DShrub(
+                        shrub.position.x,
+                        shrub.position.z,
+                        shrub.shrubType,
+                        shrub.position.y
+                    );
+                    shrubGroup.add(shrub.group);
+                }
+                shrub.is3D = true;
+            } else {
+                // Switch 3D -> sprite
+                if (shrub.group) {
+                    shrubGroup.remove(shrub.group);
+                    shrub.group.traverse(obj => {
+                        if (obj.geometry) obj.geometry.dispose();
+                        if (obj.material) obj.material.dispose();
+                    });
+                    shrub.group = null;
+                }
+                if (!shrub.sprite) {
+                    shrub.sprite = createShrubSprite(
+                        shrub.position.x,
+                        shrub.position.z,
+                        shrub.shrubType,
+                        shrub.position.y
+                    );
+                    shrubGroup.add(shrub.sprite);
+                }
+                shrub.is3D = false;
+            }
+        }
+    }
+}
+
 // Update shrub billboards to face camera
 function updateShrubBillboards() {
     if (!camera || !shrubGroup) return;
@@ -455,7 +645,8 @@ function updateShrubBillboards() {
 
     for (let i = 0; i < shrubData.length; i++) {
         const shrub = shrubData[i];
-        if (shrub.sprite) {
+        // Only update sprites, not 3D models
+        if (shrub.sprite && !shrub.is3D) {
             const dx = camX - shrub.sprite.position.x;
             const dz = camZ - shrub.sprite.position.z;
             shrub.sprite.rotation.y = Math.atan2(dx, dz);
@@ -484,6 +675,7 @@ function getShrubConfig() {
 // Make available globally
 window.createShrubs = createShrubs;
 window.updateShrubBillboards = updateShrubBillboards;
+window.updateShrubLOD = updateShrubLOD;
 window.getShrubConfig = getShrubConfig;
 
 // Expose shrubData for terraforming vegetation updates

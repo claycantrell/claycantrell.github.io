@@ -94,10 +94,11 @@ function animate() {
             Systems.updateAll(delta);
         }
 
-        // Tree LOD updates (throttled separately for performance)
+        // Tree and Shrub LOD updates (throttled separately for performance)
         if (PERFORMANCE.rendering.lodEnabled) {
             if (currentTime - GAME.time.lastLODUpdate > PERFORMANCE.rendering.lodUpdateInterval) {
                 if (typeof updateTreeLOD === 'function') updateTreeLOD();
+                if (typeof updateShrubLOD === 'function') updateShrubLOD();
                 GAME.time.lastLODUpdate = currentTime;
             }
         }
