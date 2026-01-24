@@ -56,7 +56,7 @@ function getCharacterSettings() {
 
     return {
         moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
-        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 50.0) : 50.0,
+        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 80.0) : 80.0,
         rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
         gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
         boundary: useConfig ? CONFIG.get('terrain.boundary', defaultBoundary) : defaultBoundary,
@@ -145,7 +145,7 @@ function updateCharacterMovement(delta) {
     const flySpeed = charConfig.flySpeed;
     const gravity = charConfig.gravity;
 
-    // Flying mode - use increased speed (2.5x normal)
+    // Flying mode - use increased speed (4x normal, ~2.7x sprint)
     if (isFlying) {
         moveSpeed = flySpeed;
     }
