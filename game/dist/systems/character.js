@@ -55,8 +55,8 @@ function getCharacterSettings() {
     const defaultBoundary = worldSize / 2;
 
     return {
-        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 12.0) : 12.0,
-        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 10.0) : 10.0,
+        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
+        flySpeed: useConfig ? CONFIG.get('character.flySpeed', 50.0) : 50.0,
         rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
         gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
         boundary: useConfig ? CONFIG.get('terrain.boundary', defaultBoundary) : defaultBoundary,
@@ -145,8 +145,12 @@ function updateCharacterMovement(delta) {
     const flySpeed = charConfig.flySpeed;
     const gravity = charConfig.gravity;
 
-    // Sprint multiplier
-    if (isSprinting) {
+    // Flying mode - use increased speed (2.5x normal)
+    if (isFlying) {
+        moveSpeed = flySpeed;
+    }
+    // Sprint multiplier (only when not flying)
+    else if (isSprinting) {
         moveSpeed *= 1.5;
     }
 
@@ -250,86 +254,105 @@ function updateCharacterMovement(delta) {
         character.position.z = newZ;
     }
 
-    // Get terrain height
-    let groundY = 0;
-    if (typeof getTerrainHeightAt === 'function') {
-        groundY = getTerrainHeightAt(character.position.x, character.position.z);
-    }
+    // Flying mode logic
+    if (isFlying) {
+        // In fly mode: Space to ascend, no Space to descend
+        const flyVerticalSpeed = flySpeed * 0.8; // Vertical speed slightly slower than horizontal
 
-    // Check for block landing (Minecraft-style blocks)
-    let onBlock = false;
+        if (isJumping) {
+            // Space is held - ascend
+            character.position.y += flyVerticalSpeed * delta;
+        } else {
+            // Space is not held - descend
+            character.position.y -= flyVerticalSpeed * delta;
+        }
 
-    for (let i = 0; i < objects.length; i++) {
-        const obj = objects[i];
-        if (obj && obj.userData.isBlock && !obj.userData.noCollision) {
-            const blockTop = obj.position.y + BLOCK_HALF;
-            const dx = Math.abs(character.position.x - obj.position.x);
-            const dz = Math.abs(character.position.z - obj.position.z);
+        // No gravity in fly mode
+        verticalVelocity = 0;
+        isOnGround = false;
+    } else {
+        // Normal ground-based movement
+        // Get terrain height
+        let groundY = 0;
+        if (typeof getTerrainHeightAt === 'function') {
+            groundY = getTerrainHeightAt(character.position.x, character.position.z);
+        }
 
-            // Check if character is within block's horizontal bounds
-            if (dx < BLOCK_HALF + 0.3 && dz < BLOCK_HALF + 0.3) {
-                // Check if character is above the block (within landing range)
-                if (character.position.y >= blockTop - 0.5 && character.position.y <= blockTop + 3) {
-                    // Only use this block if it's higher than current ground
-                    if (blockTop > groundY) {
-                        groundY = blockTop;
-                        onBlock = true;
+        // Check for block landing (Minecraft-style blocks)
+        let onBlock = false;
+
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (obj && obj.userData.isBlock && !obj.userData.noCollision) {
+                const blockTop = obj.position.y + BLOCK_HALF;
+                const dx = Math.abs(character.position.x - obj.position.x);
+                const dz = Math.abs(character.position.z - obj.position.z);
+
+                // Check if character is within block's horizontal bounds
+                if (dx < BLOCK_HALF + 0.3 && dz < BLOCK_HALF + 0.3) {
+                    // Check if character is above the block (within landing range)
+                    if (character.position.y >= blockTop - 0.5 && character.position.y <= blockTop + 3) {
+                        // Only use this block if it's higher than current ground
+                        if (blockTop > groundY) {
+                            groundY = blockTop;
+                            onBlock = true;
+                        }
                     }
                 }
             }
         }
-    }
 
-    // Check for tree landing
-    let onTree = false;
-    for (let i = 0; i < objects.length; i++) {
-        const obj = objects[i];
-        if (obj && obj.userData.isTree) {
-            const treeTop = obj.userData.absoluteTreeHeight || (obj.position.y + 40);
-            const dx = character.position.x - obj.position.x;
-            const dz = character.position.z - obj.position.z;
+        // Check for tree landing
+        let onTree = false;
+        for (let i = 0; i < objects.length; i++) {
+            const obj = objects[i];
+            if (obj && obj.userData.isTree) {
+                const treeTop = obj.userData.absoluteTreeHeight || (obj.position.y + 40);
+                const dx = character.position.x - obj.position.x;
+                const dz = character.position.z - obj.position.z;
 
-            if (Math.sqrt(dx * dx + dz * dz) < 3.5 && character.position.y >= treeTop - 1 && character.position.y <= treeTop + 2) {
-                groundY = treeTop;
-                onTree = true;
-                break;
+                if (Math.sqrt(dx * dx + dz * dz) < 3.5 && character.position.y >= treeTop - 1 && character.position.y <= treeTop + 2) {
+                    groundY = treeTop;
+                    onTree = true;
+                    break;
+                }
             }
         }
-    }
 
-    // Target Y position (1 unit above ground/tree)
-    const targetY = groundY + 1.0;
+        // Target Y position (1 unit above ground/tree)
+        const targetY = groundY + 1.0;
 
-    // Check if on ground
-    isOnGround = character.position.y <= targetY + 0.1;
+        // Check if on ground
+        isOnGround = character.position.y <= targetY + 0.1;
 
-    // Handle jumping (Minecraft-style)
-    if (isJumping && isOnGround) {
-        verticalVelocity = JUMP_FORCE;
-        isOnGround = false;
-    }
-
-    // Apply gravity and vertical velocity
-    if (!isOnGround || verticalVelocity > 0) {
-        verticalVelocity -= gravity * delta;
-        character.position.y += verticalVelocity * delta;
-
-        // Land on ground
-        if (character.position.y <= targetY) {
-            character.position.y = targetY;
-            verticalVelocity = 0;
-            isOnGround = true;
+        // Handle jumping (Minecraft-style)
+        if (isJumping && isOnGround) {
+            verticalVelocity = JUMP_FORCE;
+            isOnGround = false;
         }
-    } else {
-        // On ground - follow terrain
-        const heightDiff = targetY - character.position.y;
-        if (Math.abs(heightDiff) > 0.01) {
-            if (heightDiff > 0) {
-                // Going up (climbing slope)
-                character.position.y += Math.min(heightDiff, moveSpeed * delta * 1.5);
-            } else {
-                // Going down
+
+        // Apply gravity and vertical velocity
+        if (!isOnGround || verticalVelocity > 0) {
+            verticalVelocity -= gravity * delta;
+            character.position.y += verticalVelocity * delta;
+
+            // Land on ground
+            if (character.position.y <= targetY) {
                 character.position.y = targetY;
+                verticalVelocity = 0;
+                isOnGround = true;
+            }
+        } else {
+            // On ground - follow terrain
+            const heightDiff = targetY - character.position.y;
+            if (Math.abs(heightDiff) > 0.01) {
+                if (heightDiff > 0) {
+                    // Going up (climbing slope)
+                    character.position.y += Math.min(heightDiff, moveSpeed * delta * 1.5);
+                } else {
+                    // Going down
+                    character.position.y = targetY;
+                }
             }
         }
     }

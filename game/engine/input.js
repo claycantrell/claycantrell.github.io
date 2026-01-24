@@ -19,7 +19,7 @@ function onKeyDown(event) {
     }
 
     // Prevent default for game keys to avoid browser shortcuts
-    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight'].includes(event.code)) {
+    if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'KeyF', 'KeyV'].includes(event.code)) {
         event.preventDefault();
     }
 
@@ -59,6 +59,13 @@ function onKeyDown(event) {
             // Update crosshair visibility (hide in third person)
             if (typeof updateCrosshairVisibility === 'function') {
                 updateCrosshairVisibility();
+            }
+            break;
+        case 'KeyF':
+            // Toggle fly mode
+            window.isFlying = !window.isFlying;
+            if (typeof showNotification === 'function') {
+                showNotification(window.isFlying ? 'Fly Mode Enabled - Hold Space to Ascend' : 'Fly Mode Disabled');
             }
             break;
         case 'Enter':
@@ -382,4 +389,5 @@ window.strafeLeft = false;
 window.strafeRight = false;
 window.isJumping = false;
 window.isSprinting = false;
+window.isFlying = false;
 
