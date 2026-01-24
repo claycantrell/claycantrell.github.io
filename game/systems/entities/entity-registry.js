@@ -119,6 +119,60 @@ if (typeof initBirds === 'function' && typeof updateBirds === 'function') {
     });
 }
 
+// Register Frogs
+if (typeof initFrogs === 'function' && typeof updateFrogs === 'function') {
+    registerEntity('frogs', {
+        init: initFrogs,
+        update: updateFrogs,
+        getCount: () => typeof frogList !== 'undefined' ? frogList.length : 0
+    });
+}
+
+// Register Penguins
+if (typeof initPenguins === 'function' && typeof updatePenguins === 'function') {
+    registerEntity('penguins', {
+        init: initPenguins,
+        update: updatePenguins,
+        getCount: () => typeof penguinList !== 'undefined' ? penguinList.length : 0
+    });
+}
+
+// Register Pandas
+if (typeof initPandas === 'function' && typeof updatePandas === 'function') {
+    registerEntity('pandas', {
+        init: initPandas,
+        update: updatePandas,
+        getCount: () => typeof pandaList !== 'undefined' ? pandaList.length : 0
+    });
+}
+
+// Register Crabs
+if (typeof initCrabs === 'function' && typeof updateCrabs === 'function') {
+    registerEntity('crabs', {
+        init: initCrabs,
+        update: updateCrabs,
+        getCount: () => typeof crabList !== 'undefined' ? crabList.length : 0
+    });
+}
+
+// Register Butterflies
+if (typeof initButterflies === 'function' && typeof updateButterflies === 'function') {
+    registerEntity('butterflies', {
+        init: initButterflies,
+        update: updateButterflies,
+        getCount: () => typeof butterflyList !== 'undefined' ? butterflyList.length : 0
+    });
+}
+
+// Register Salamanders
+if (typeof initSalamanders === 'function' && typeof updateSalamanders === 'function') {
+    registerEntity('salamanders', {
+        init: initSalamanders,
+        update: updateSalamanders,
+        getCount: () => typeof salamanderList !== 'undefined' ? salamanderList.length : 0
+    });
+}
+
 if (typeof gameLog === 'function') gameLog('Entity registry loaded, registered types:', getRegisteredEntities());
 
 // Make available globally (if not already)

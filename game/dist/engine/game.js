@@ -38,7 +38,7 @@ function updatePlayerSmooth(currentTime) {
 
     if (isFirstPerson) {
         // First-person: camera at character's eye level, mouse controls view
-        const eyeHeight = 2.5;
+        const eyeHeight = 3.5;
         camera.position.set(
             character.position.x,
             character.position.y + eyeHeight,
@@ -67,7 +67,7 @@ function updatePlayerSmooth(currentTime) {
         const camZ = character.position.z - Math.cos(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
 
         camera.position.set(camX, camY, camZ);
-        camera.lookAt(character.position.x, character.position.y + 2, character.position.z);
+        camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
     }
 }
 

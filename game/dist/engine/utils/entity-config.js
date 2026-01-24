@@ -114,6 +114,152 @@ const ENTITY_CONFIG = {
             wingSpeed: 15,
             wingAmplitude: 0.8
         }
+    },
+
+    // Frog configuration (Swamp biome)
+    frog: {
+        count: 25,
+        speed: 6.0,
+        fleeSpeed: 12.0,
+        collisionRadius: 0.3,
+        heightOffset: 0.15,
+        flee: {
+            detectRadius: 8,
+            panicRadius: 4,
+            duration: 1.5,
+            distance: 15,
+            panicBonus: 10
+        },
+        wander: {
+            minDistance: 2,
+            maxDistance: 8,
+            idleDuration: { min: 1, max: 3 },
+            moveDuration: { min: 1.5, max: 3.5 }
+        },
+        animation: {
+            hopFrequency: 3.0,
+            hopFrequencyFlee: 4.5,
+            hopHeight: 0.6,
+            rotationSpeed: 10
+        }
+    },
+
+    // Penguin configuration (Ice Spikes biome)
+    penguin: {
+        count: 15,
+        speed: 4.0,
+        collisionRadius: 0.5,
+        heightOffset: 0,
+        flee: {
+            detectRadius: 10,
+            panicRadius: 4,
+            duration: 2,
+            distance: 12,
+            panicBonus: 8
+        },
+        wander: {
+            minDistance: 3,
+            maxDistance: 12,
+            idleDuration: { min: 2, max: 5 },
+            moveDuration: { min: 3, max: 6 }
+        },
+        animation: {
+            rotationSpeed: 4
+        }
+    },
+
+    // Panda configuration (Bamboo Jungle biome)
+    panda: {
+        count: 12,
+        speed: 5.0,
+        walkSpeed: 3.0,
+        collisionRadius: 0.9,
+        heightOffset: 0,
+        flee: {
+            detectRadius: 8,
+            panicRadius: 3,
+            duration: 2,
+            distance: 15,
+            panicBonus: 8
+        },
+        wander: {
+            minDistance: 5,
+            maxDistance: 20,
+            idleDuration: { min: 3, max: 8 },
+            moveDuration: { min: 2, max: 5 }
+        },
+        animation: {
+            walkLegSpeed: 6,
+            legSwing: 0.4,
+            rotationSpeed: 2.5
+        }
+    },
+
+    // Crab configuration (Mangrove Swamp biome)
+    crab: {
+        count: 20,
+        speed: 5.0,
+        collisionRadius: 0.3,
+        heightOffset: 0.1,
+        flee: {
+            detectRadius: 6,
+            panicRadius: 3,
+            duration: 1.5,
+            distance: 10,
+            panicBonus: 8
+        },
+        wander: {
+            minDistance: 2,
+            maxDistance: 10,
+            idleDuration: { min: 1, max: 4 },
+            moveDuration: { min: 2, max: 4 }
+        },
+        animation: {
+            rotationSpeed: 8
+        }
+    },
+
+    // Butterfly configuration (Cherry Grove biome)
+    butterfly: {
+        count: 35,
+        speed: 3.0,
+        collisionRadius: 0.2,
+        heightOffset: 0,
+        flee: {
+            detectRadius: 12,
+            panicRadius: 6,
+            duration: 2,
+            distance: 20,
+            fleeHeight: 8
+        },
+        animation: {
+            wingSpeed: 20,
+            wingAmplitude: 0.6
+        }
+    },
+
+    // Salamander configuration (Volcanic Peaks biome)
+    salamander: {
+        count: 10,
+        speed: 4.0,
+        collisionRadius: 0.4,
+        heightOffset: 0.15,
+        flee: {
+            detectRadius: 10,
+            panicRadius: 4,
+            duration: 2,
+            distance: 15,
+            panicBonus: 10
+        },
+        wander: {
+            minDistance: 3,
+            maxDistance: 12,
+            idleDuration: { min: 2, max: 5 },
+            moveDuration: { min: 2, max: 5 }
+        },
+        animation: {
+            rotationSpeed: 6
+        }
     }
 };
 

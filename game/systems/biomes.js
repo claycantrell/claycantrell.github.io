@@ -27,6 +27,15 @@ const BIOMES = {
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.3 }
     },
+    iceSpikes: {
+        id: 'iceSpikes',
+        name: 'Ice Spikes',
+        params: { temp: -0.8, humid: -0.3, cont: 0.3, erosion: -0.6, weird: 0.5 },
+        color: 0xB0E0E6,
+        textureType: 'snow',
+        vegetation: { density: 0.0, types: {} },
+        entities: { penguin: 0.8, bird: 0.2 }
+    },
     snowySlopes: {
         id: 'snowySlopes',
         name: 'Snowy Slopes',
@@ -121,6 +130,24 @@ const BIOMES = {
         vegetation: { density: 0.08, types: { oak: 0.8, pine: 0.2 } },
         entities: { deer: 0.8, cow: 1.5, bunny: 1.2, bird: 1.0 }
     },
+    cherryGrove: {
+        id: 'cherryGrove',
+        name: 'Cherry Grove',
+        params: { temp: 0.1, humid: 0.4, cont: 0.25, erosion: 0.2, weird: 0.3 },
+        color: 0xFFB7D5,
+        textureType: 'grass',
+        vegetation: { density: 0.75, types: { oak: 0.1, pine: 0 } },
+        entities: { butterfly: 2.0, bird: 1.5, bunny: 0.8 }
+    },
+    mushroomFields: {
+        id: 'mushroomFields',
+        name: 'Mushroom Fields',
+        params: { temp: 0, humid: 0.5, cont: 0.4, erosion: 0.4, weird: 0.8 },
+        color: 0x9370DB,
+        textureType: 'grass',
+        vegetation: { density: 0.4, types: {} },
+        entities: { bunny: 0.3, bird: 0.4 }
+    },
 
     // === WARM BIOMES (temp level 3: 0.2 to 0.55) ===
     grassland: {
@@ -178,6 +205,42 @@ const BIOMES = {
         textureType: 'mud',
         vegetation: { density: 0.95, types: { oak: 1.0 } },
         entities: { deer: 0.3, bunny: 0.2, bird: 2.0 }
+    },
+    bambooJungle: {
+        id: 'bambooJungle',
+        name: 'Bamboo Jungle',
+        params: { temp: 0.75, humid: 0.8, cont: 0.15, erosion: 0.25, weird: 0.4 },
+        color: 0x228B22,
+        textureType: 'grass',
+        vegetation: { density: 0.85, types: { oak: 0.2 } },
+        entities: { panda: 1.2, bird: 1.5 }
+    },
+    swamp: {
+        id: 'swamp',
+        name: 'Swamp',
+        params: { temp: 0.5, humid: 0.9, cont: -0.05, erosion: 0.6, weird: 0 },
+        color: 0x4A5D23,
+        textureType: 'mud',
+        vegetation: { density: 0.6, types: { oak: 0.7 } },
+        entities: { frog: 2.0, bird: 1.0 }
+    },
+    mangroveSwamp: {
+        id: 'mangroveSwamp',
+        name: 'Mangrove Swamp',
+        params: { temp: 0.8, humid: 0.9, cont: -0.2, erosion: 0.5, weird: 0 },
+        color: 0x3A4D1A,
+        textureType: 'mud',
+        vegetation: { density: 0.7, types: { oak: 0.1 } },
+        entities: { crab: 1.5, bird: 1.2 }
+    },
+    volcanicPeaks: {
+        id: 'volcanicPeaks',
+        name: 'Volcanic Peaks',
+        params: { temp: 0.9, humid: -0.4, cont: 0.6, erosion: -0.95, weird: 0.6 },
+        color: 0x8B0000,
+        textureType: 'rock',
+        vegetation: { density: 0.05, types: {} },
+        entities: { salamander: 0.6, bird: 0.3 }
     },
 
     // === COASTAL BIOMES (low continentalness) ===
