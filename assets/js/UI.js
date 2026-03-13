@@ -1,5 +1,5 @@
 var GravS = false;
-document.querySelectorAll('.btn')[0].addEventListener('click', function (event) {
+document.querySelectorAll('.btn')[1].addEventListener('click', function (event) {
     console.log('gravity');
     GravS = !GravS;
     if (GravS) {
@@ -8,11 +8,11 @@ document.querySelectorAll('.btn')[0].addEventListener('click', function (event) 
         engine.gravity.scale = .001;
     }
 
-    document.querySelectorAll('.btn')[0].classList.toggle('brand');
+    document.querySelectorAll('.btn')[1].classList.toggle('brand');
 });
 
 var FireS = false;
-document.querySelectorAll('.btn')[1].addEventListener('click', function (event) {
+document.querySelectorAll('.btn')[2].addEventListener('click', function (event) {
     console.log('fire');
     FireS = !FireS;
     if (FireS) {
@@ -21,11 +21,11 @@ document.querySelectorAll('.btn')[1].addEventListener('click', function (event) 
         mouseReturn = false;
     }
 
-    document.querySelectorAll('.btn')[1].classList.toggle('brand');
+    document.querySelectorAll('.btn')[2].classList.toggle('brand');
 });
 
 var XPS = false;
-document.querySelectorAll('.btn')[2].addEventListener('click', function (event) {
+document.querySelectorAll('.btn')[3].addEventListener('click', function (event) {
     console.log('XP');
     XPS = !XPS;
     if (XPS) {
@@ -34,5 +34,5 @@ document.querySelectorAll('.btn')[2].addEventListener('click', function (event) 
         isClear = true;
     }
 
-    document.querySelectorAll('.btn')[2].classList.toggle('brand');
+    document.querySelectorAll('.btn')[3].classList.toggle('brand');
 });
