@@ -16,13 +16,20 @@ function setInstructions() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
         instructionsParagraph.innerHTML = `
-            Touch edges of screen to rotate right or left.<br>
-            Touch bottom and top of screen to move<br>
-            forward and backward.
+            <strong>Welcome to Graceful World</strong><br><br>
+            <strong>Move:</strong> Left joystick (bottom-left)<br>
+            <strong>Look:</strong> Drag right side of screen<br>
+            <strong>Sprint:</strong> Push joystick to edge<br>
+            <strong>Chat:</strong> Tap "Chat" — find the Wandering Scribe<br>
         `;
     } else {
         instructionsParagraph.innerHTML = `
-            Use Arrow Keys or WASD to move and rotate.
+            <strong>Welcome to Graceful World</strong><br><br>
+            <strong>Move:</strong> WASD or Arrow Keys<br>
+            <strong>Look:</strong> Arrow Keys to rotate<br>
+            <strong>Chat:</strong> Press Enter to talk — find the Wandering Scribe for conversation<br>
+            <strong>Build:</strong> B to toggle build mode, click to place blocks<br>
+            <strong>Fly:</strong> Type /fly in chat
         `;
     }
 }
@@ -531,7 +538,7 @@ async function startGame() {
             }, 300);
             setTimeout(() => {
                 instructionMessage.style.opacity = '0';
-            }, 3000);
+            }, 6000);
         },
         // Progress callback (optional)
         undefined,
@@ -560,7 +567,7 @@ async function startGame() {
             }, 300);
             setTimeout(() => {
                 instructionMessage.style.opacity = '0';
-            }, 3000);
+            }, 6000);
         }
     );
 }

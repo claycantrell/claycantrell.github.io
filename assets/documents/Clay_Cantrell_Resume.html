@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Clay Augustine Cantrell - Resume</title>
+<style>
+  @page { margin: 0.5in 0.6in; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 11pt;
+    line-height: 1.3;
+    color: #000;
+    max-width: 7.5in;
+    margin: 0.5in auto;
+  }
+  header { text-align: center; margin-bottom: 6pt; }
+  header h1 { font-size: 16pt; font-weight: bold; margin-bottom: 2pt; }
+  header .contact {
+    font-size: 11pt;
+    border-top: 1.5px solid #000;
+    padding-top: 4pt;
+  }
+  header .contact a { color: #1a0dab; text-decoration: underline; }
+  .section-title {
+    font-size: 11pt;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+  }
+  .entry { margin-bottom: 6pt; }
+  .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .entry-header .left { font-weight: bold; font-size: 11pt; }
+  .entry-header .right { font-size: 11pt; text-align: right; }
+  .entry-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .entry-title .left { font-weight: bold; font-size: 11pt; }
+  .entry-title .right { font-size: 11pt; }
+  .entry-title .left em { font-weight: normal; }
+  ul {
+    margin-left: 18pt;
+    margin-top: 1pt;
+  }
+  ul li {
+    margin-bottom: 1pt;
+    font-size: 11pt;
+  }
+  .coursework { margin-top: 1pt; font-size: 11pt; }
+  .education-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  @media print {
+    body { margin: 0; max-width: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Clay Augustine Cantrell</h1>
+  <div class="contact">
+    Los Angeles, CA &bull; clay.cantrell@me.com &bull; 206-612-1744 &bull;
+    <a href="https://www.linkedin.com/in/clay-cantrell-808676202">LinkedIn Profile</a> &bull;
+    <a href="#">Personal Website</a>
+  </div>
+</header>
+
+<div class="section-title">Experience</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">DYRT</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div class="entry-title">
+    <span class="left">Software Engineer</span>
+    <span class="right">Mar 2025 &ndash; Present</span>
+  </div>
+  <ul>
+    <li>Conducted customer discovery interviews and translated findings into a cross-platform iOS/Android application for dumpster rental dispatch, inventory management, and invoicing — built in three days, in the App Store within a week, first paying customer within two weeks via SEO-driven content on the marketing site.</li>
+    <li>Built an automated issue-to-PR pipeline that funnels bug reports and feature requests from product touchpoints into Linear, triages them for AI agent compatibility, and dispatches coding agents to branch, implement fixes, and submit pull requests for human review.</li>
+    <li>Led development of a bin-tracking and weight-based billing system using Android scanners to log pickup/drop-off events and a warehouse interface for location assignment, with QuickBooks integration for automated monthly invoicing and billing.</li>
+    <li>Built an automated routing and scheduling system used to coordinate fleet operations processing over 1,000,000 lbs of food waste per month.</li>
+    <li>Led development of a waste bill analysis product that extracts line-item level data from invoices using LLMs, benchmarking rates against regional data to flag overcharges, avoidable fees, and disproportionate spend across location tiers.</li>
+    <li>Built a Scope 3 waste emissions platform with customer-facing dashboards tracking diversion rates, per-location emissions breakdowns, provider tonnage distribution, and reduction opportunities, generating export-ready reports for Scope 3 Category 5, WARM v16, and other common compliance formats.</li>
+  </ul>
+</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">MIDDLE LLC.</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div class="entry-title">
+    <span class="left">Software Engineer</span>
+    <span class="right">Aug 2024 &ndash; Feb 2025</span>
+  </div>
+  <ul>
+    <li>Created a script for timestamp-based audio search leveraging WhisperX, OpenAI embeddings, FAISS, and Cohere Rerank.</li>
+    <li>Developed a package that employs LLMs to automate qualitative coding tasks, encompassing both inductive and deductive approaches, across diverse textual data categories.</li>
+    <li>Designed a pipeline to enhance embedding accuracy by incorporating LLM-generated, query-specific metadata for improved clustering performance.</li>
+    <li>Built interactive dashboards and data visualizations utilizing Python libraries like Seaborn and Streamlit.</li>
+  </ul>
+</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">FREELANCE</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div class="entry-title">
+    <span class="left">Production Coordinator</span>
+    <span class="right">2021 &ndash; 2024</span>
+  </div>
+  <ul>
+    <li>Managed end-to-end production logistics for music video and commercial projects, coordinating teams, schedules, locations, and vendor operations.</li>
+  </ul>
+</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">UNIVERSITY OF SOUTHERN CALIFORNIA</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div style="margin-bottom: 2pt;">Part-time &bull; 2 yrs 11 mos</div>
+
+  <div class="entry-title">
+    <span class="left">Research Assistant, MMM Lab</span>
+    <span class="right">Dec 2020 &ndash; Dec 2021</span>
+  </div>
+  <ul>
+    <li>Developed an interactive Shiny app for <a href="https://mmm-usc.github.io/unbiasr/">unbiasr</a> that lets users run PartInv scenarios and inspect selection/classification metrics directly in the browser.</li>
+  </ul>
+
+  <div class="entry-title" style="margin-top: 4pt;">
+    <span class="left">Research Assistant, SLAC Lab</span>
+    <span class="right">Feb 2019 &ndash; Dec 2020</span>
+  </div>
+  <ul>
+    <li>Behavioral Experiment Developer (PsychoPy)</li>
+  </ul>
+</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">NEW GLOBE</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div class="entry-title">
+    <span class="left">Intern, Measurement and Evaluation</span>
+    <span class="right">June 2021 &ndash; Sep 2021</span>
+  </div>
+  <ul>
+    <li>Migrated data pipeline scripts from a local setup to Google Colab, ensuring seamless functionality in the cloud.</li>
+  </ul>
+</div>
+
+<div class="section-title">Education</div>
+
+<div class="entry">
+  <div class="entry-header">
+    <span class="left">UNIVERSITY OF SOUTHERN CALIFORNIA</span>
+    <span class="right">Los Angeles, CA</span>
+  </div>
+  <div class="education-line">
+    <span>BA, Cognitive Science, <em>magna cum laude</em></span>
+    <span>Dec 2021</span>
+  </div>
+  <div>Minor in Computer Programming</div>
+  <div class="coursework">Relevant Coursework: Object-Oriented Programming in Java, Managing Data in C++, Programming in Python, Physical Computing, User Experience, Full-Stack Web Development, Cognitive Neuroscience</div>
+</div>
+
+<div class="section-title">Publications</div>
+
+<div class="entry">
+  <div>Cantrell, C. (2026). <a href="https://philarchive.org/rec/CANHCA-4">Human Capacity-Building as AI Governance Strategy: Agency, Dependency, and the Stewardship Bottleneck.</a> <em>PhilArchive.</em></div>
+</div>
+
+</body>
+</html>

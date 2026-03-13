@@ -112,9 +112,9 @@ canvas {
 
 #instruction-message p {
     margin: 10px 0;
-    font-size: 34px;
-    /* Increased font size for better readability */
-    line-height: 1.5;
+    font-size: 22px;
+    line-height: 1.6;
+    text-align: left;
 }
 
 /* Exit button styling */
@@ -191,7 +191,8 @@ canvas {
     }
 
     #instruction-message p {
-        font-size: 62px;
+        font-size: 18px;
+        text-align: left;
     }
 
     /* Scale down the exit button */

@@ -126,144 +126,134 @@ function onWindowResize() {
 }
 
 // Function to create touch controls for mobile
+// Dual joystick: left = move, right = look/rotate
 function createTouchControls() {
-    const controlZones = {
-        top: document.createElement('div'),
-        bottom: document.createElement('div'),
-        left: document.createElement('div'),
-        right: document.createElement('div')
-    };
+    // Prevent default touch behavior on the canvas
+    document.body.style.touchAction = 'none';
 
-    // Style touch zones
-    Object.keys(controlZones).forEach(zone => {
-        const element = controlZones[zone];
-        element.style.position = 'absolute';
-        element.style.backgroundColor = 'rgba(0, 0, 0, 0)';
-        element.style.zIndex = '10';
-        element.style.touchAction = 'none';
-        document.body.appendChild(element);
-    });
+    // --- Left Joystick (Movement) ---
+    const leftStick = document.createElement('div');
+    leftStick.id = 'joystick-left';
+    leftStick.style.cssText = 'position:fixed;bottom:20px;left:20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);z-index:45;touch-action:none;';
+    const leftKnob = document.createElement('div');
+    leftKnob.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.4);';
+    leftStick.appendChild(leftKnob);
+    document.body.appendChild(leftStick);
 
-    // Define sizes and positions based on screen orientation
-    function adjustTouchZones() {
-        const isLandscape = window.innerWidth > window.innerHeight;
-        if (isLandscape) {
-            // Landscape layout
-            controlZones.left.style.left = '0';
-            controlZones.left.style.top = '0';
-            controlZones.left.style.width = '20%';
-            controlZones.left.style.height = '100%';
+    // --- Right side is just the right half of the screen for look ---
+    // No visible joystick — just drag to look
 
-            controlZones.right.style.right = '0';
-            controlZones.right.style.top = '0';
-            controlZones.right.style.width = '20%';
-            controlZones.right.style.height = '100%';
+    let leftTouchId = null;
+    let leftCenter = { x: 0, y: 0 };
+    const JOYSTICK_RADIUS = 50;
+    const DEAD_ZONE = 10;
 
-            controlZones.top.style.top = '0';
-            controlZones.top.style.left = '20%';
-            controlZones.top.style.width = '60%';
-            controlZones.top.style.height = '20%';
+    let rightTouchId = null;
+    let rightLastPos = { x: 0, y: 0 };
+    const LOOK_SENSITIVITY = 0.004;
 
-            controlZones.bottom.style.bottom = '0';
-            controlZones.bottom.style.left = '20%';
-            controlZones.bottom.style.width = '60%';
-            controlZones.bottom.style.height = '20%';
-        } else {
-            // Portrait layout
-            controlZones.top.style.top = '0';
-            controlZones.top.style.left = '0';
-            controlZones.top.style.width = '100%';
-            controlZones.top.style.height = '20%';
+    function handleTouchStart(e) {
+        // Don't intercept touches on UI elements (chat, buttons)
+        const tag = e.target.tagName.toLowerCase();
+        if (tag === 'button' || tag === 'input' || tag === 'a' || e.target.closest('#chat-container')) {
+            return;
+        }
 
-            controlZones.bottom.style.bottom = '0';
-            controlZones.bottom.style.left = '0';
-            controlZones.bottom.style.width = '100%';
-            controlZones.bottom.style.height = '20%';
+        for (const touch of e.changedTouches) {
+            // Check if touch landed on the joystick element
+            const rect = leftStick.getBoundingClientRect();
+            const onJoystick = touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                               touch.clientY >= rect.top && touch.clientY <= rect.bottom;
 
-            controlZones.left.style.left = '0';
-            controlZones.left.style.top = '20%';
-            controlZones.left.style.width = '20%';
-            controlZones.left.style.height = '60%';
-
-            controlZones.right.style.right = '0';
-            controlZones.right.style.top = '20%';
-            controlZones.right.style.width = '20%';
-            controlZones.right.style.height = '60%';
+            if (onJoystick && leftTouchId === null) {
+                // Joystick touch
+                leftTouchId = touch.identifier;
+                leftCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                activeKeys.add('TouchJoystick');
+                e.preventDefault();
+            } else if (!onJoystick && rightTouchId === null) {
+                // Anywhere else — camera look
+                rightTouchId = touch.identifier;
+                rightLastPos = { x: touch.clientX, y: touch.clientY };
+                activeKeys.add('TouchLook');
+                e.preventDefault();
+            }
         }
     }
 
-    // Initial adjustment
-    adjustTouchZones();
-    window.addEventListener('resize', adjustTouchZones, false);
+    function handleTouchMove(e) {
+        for (const touch of e.changedTouches) {
+            if (touch.identifier === leftTouchId) {
+                // Movement joystick
+                let dx = touch.clientX - leftCenter.x;
+                let dy = touch.clientY - leftCenter.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // Touch event listeners with better error handling
-    // Bottom Control => Move Backward
-    controlZones.bottom.addEventListener('touchstart', function (event) {
-        event.preventDefault();
-        moveBackward = true;
-        activeKeys.add('TouchBottom');
-    }, { passive: false });
-    controlZones.bottom.addEventListener('touchend', function (event) {
-        event.preventDefault();
-        moveBackward = false;
-        activeKeys.delete('TouchBottom');
-    }, { passive: false });
-    controlZones.bottom.addEventListener('touchcancel', function (event) {
-        event.preventDefault();
-        moveBackward = false;
-        activeKeys.delete('TouchBottom');
-    }, { passive: false });
+                // Clamp to radius
+                if (dist > JOYSTICK_RADIUS) {
+                    dx = (dx / dist) * JOYSTICK_RADIUS;
+                    dy = (dy / dist) * JOYSTICK_RADIUS;
+                }
 
-    // Top Control => Move Forward
-    controlZones.top.addEventListener('touchstart', function (event) {
-        event.preventDefault();
-        moveForward = true;
-        activeKeys.add('TouchTop');
-    }, { passive: false });
-    controlZones.top.addEventListener('touchend', function (event) {
-        event.preventDefault();
-        moveForward = false;
-        activeKeys.delete('TouchTop');
-    }, { passive: false });
-    controlZones.top.addEventListener('touchcancel', function (event) {
-        event.preventDefault();
-        moveForward = false;
-        activeKeys.delete('TouchTop');
-    }, { passive: false });
+                // Move knob visually
+                leftKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-    // Left Control => Strafe Left
-    controlZones.left.addEventListener('touchstart', function (event) {
-        event.preventDefault();
-        strafeLeft = true;
-        activeKeys.add('TouchLeft');
-    }, { passive: false });
-    controlZones.left.addEventListener('touchend', function (event) {
-        event.preventDefault();
-        strafeLeft = false;
-        activeKeys.delete('TouchLeft');
-    }, { passive: false });
-    controlZones.left.addEventListener('touchcancel', function (event) {
-        event.preventDefault();
-        strafeLeft = false;
-        activeKeys.delete('TouchLeft');
-    }, { passive: false });
+                // Apply dead zone
+                if (dist < DEAD_ZONE) {
+                    moveForward = false;
+                    moveBackward = false;
+                    strafeLeft = false;
+                    strafeRight = false;
+                } else {
+                    // Normalize
+                    const nx = dx / JOYSTICK_RADIUS;
+                    const ny = dy / JOYSTICK_RADIUS;
 
-    // Right Control => Strafe Right
-    controlZones.right.addEventListener('touchstart', function (event) {
-        event.preventDefault();
-        strafeRight = true;
-        activeKeys.add('TouchRight');
-    }, { passive: false });
-    controlZones.right.addEventListener('touchend', function (event) {
-        event.preventDefault();
-        strafeRight = false;
-        activeKeys.delete('TouchRight');
-    }, { passive: false });
-    controlZones.right.addEventListener('touchcancel', function (event) {
-        event.preventDefault();
-        strafeRight = false;
-        activeKeys.delete('TouchRight');
-    }, { passive: false });
+                    moveForward = ny < -0.3;
+                    moveBackward = ny > 0.3;
+                    strafeLeft = nx < -0.3;
+                    strafeRight = nx > 0.3;
+                    isSprinting = dist > JOYSTICK_RADIUS * 0.85;
+                }
+                e.preventDefault();
+
+            } else if (touch.identifier === rightTouchId) {
+                // Camera look
+                const dx = touch.clientX - rightLastPos.x;
+                const dy = touch.clientY - rightLastPos.y;
+
+                cameraYaw -= dx * LOOK_SENSITIVITY;
+                cameraPitch -= dy * LOOK_SENSITIVITY;
+                cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, cameraPitch));
+
+                rightLastPos = { x: touch.clientX, y: touch.clientY };
+                e.preventDefault();
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        for (const touch of e.changedTouches) {
+            if (touch.identifier === leftTouchId) {
+                leftTouchId = null;
+                leftKnob.style.transform = 'translate(-50%, -50%)';
+                moveForward = false;
+                moveBackward = false;
+                strafeLeft = false;
+                strafeRight = false;
+                isSprinting = false;
+                activeKeys.delete('TouchJoystick');
+            } else if (touch.identifier === rightTouchId) {
+                rightTouchId = null;
+                activeKeys.delete('TouchLook');
+            }
+        }
+    }
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 }
 
 // Track active keys to prevent stuck controls

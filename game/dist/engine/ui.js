@@ -64,9 +64,9 @@ function initUI() {
     // Create crosshair for Minecraft-style controls
     createCrosshair();
 
-    // Exit Button -> Home (relative path for GitHub Pages compatibility)
+    // Exit Button -> Clay Cantrell's Personal Website
     document.getElementById('exit-button').addEventListener('click', () => {
-        window.location.href = '../pages/home.html';
+        window.location.href = 'https://claycantrell.github.io/pages/home.html';
     });
 
     // Map Button -> Open map menu
