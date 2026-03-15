@@ -28,32 +28,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const wordGap = isMobile ? 10 : 16;
     const jitterX = isMobile ? 5 : 10;
     const jitterY = isMobile ? 6 : 12;
-    const charWidth = isMobile ? 12 : 14;
-    const padWidth = isMobile ? 16 : 32;
-
-    // First pass: calculate line widths for centering
-    const lines = [[]];
-    const lineWidths = [0];
     const maxLineWidth = isMobile ? screenW - 60 : screenW * 0.5;
 
+    // Pre-render magnets offscreen to measure actual widths
+    const measuredWidths = [];
+    words.forEach(word => {
+        const tmp = document.createElement('div');
+        tmp.textContent = word;
+        tmp.className = 'magnet';
+        tmp.style.visibility = 'hidden';
+        tmp.style.position = 'absolute';
+        container.appendChild(tmp);
+        measuredWidths.push(tmp.offsetWidth);
+        container.removeChild(tmp);
+    });
+
+    // Calculate line breaks using real widths
+    const lines = [[]];
+    const lineWidths = [0];
+
     for (let i = 0; i < words.length; i++) {
-        const estWidth = words[i].length * charWidth + padWidth;
+        const w = measuredWidths[i];
         const currentLine = lines.length - 1;
 
-        if (lineWidths[currentLine] + estWidth + (lines[currentLine].length > 0 ? wordGap : 0) > maxLineWidth && lines[currentLine].length > 0) {
+        if (lineWidths[currentLine] + w + (lines[currentLine].length > 0 ? wordGap : 0) > maxLineWidth && lines[currentLine].length > 0) {
             lines.push([]);
             lineWidths.push(0);
         }
 
         const ln = lines.length - 1;
         const gap = lines[ln].length > 0 ? wordGap : 0;
-        lines[ln].push({ word: words[i], width: estWidth });
-        lineWidths[ln] += estWidth + gap;
+        lines[ln].push({ word: words[i], width: w });
+        lineWidths[ln] += w + gap;
     }
 
-    // Position centered below hero title (roughly 58% down the hero)
+    // Position centered below hero title
     const startY = isMobile ? screenH * 0.55 : screenH * 0.58;
-    let wordIndex = 0;
 
     for (let row = 0; row < lines.length; row++) {
         const lineW = lineWidths[row];
@@ -63,15 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let col = 0; col < lines[row].length; col++) {
             const w = lines[row][col].width;
             initialLayout.push({
-                x: cursorX + (seededRandom() - 0.5) * jitterX,
+                x: cursorX + w / 2 + (seededRandom() - 0.5) * jitterX,
                 y: cursorY + (seededRandom() - 0.5) * jitterY
             });
             cursorX += w + wordGap;
-            wordIndex++;
         }
-    }
-
-    if (isMobile) {
     }
 
     // Matter.js aliases
