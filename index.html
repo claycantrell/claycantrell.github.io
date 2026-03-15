@@ -216,23 +216,22 @@
 
         .magnet-photo {
             position: absolute;
-            background: #fff;
+            background: #fefefe;
             border-radius: 2px;
-            box-shadow: 2px 3px 8px rgba(0,0,0,0.25);
+            box-shadow: 2px 3px 10px rgba(0,0,0,0.3);
             cursor: default;
             user-select: none;
             pointer-events: none;
             will-change: transform, left, top;
             transform-origin: center center;
             overflow: visible;
-            padding: 6px;
+            padding: 8px 8px 32px 8px;
         }
 
         .magnet-photo img {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 24px);
             object-fit: cover;
-            border-radius: 1px;
             display: block;
         }
 
