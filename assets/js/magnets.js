@@ -142,8 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Create Photo Magnets — two different proportions, static but collidable
     const photoMagnets = [
-        { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 110 : 180, h: isMobile ? 145 : 235, caption: 'My planted aquarium & Cheese the mystery snail' },
-        { src: 'assets/media/images/zoo.jpg', w: isMobile ? 120 : 195, h: isMobile ? 150 : 250, caption: 'w/ Zoë and wallabies at the Santa Barbara Zoo' },
+        { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 110 : 180, h: isMobile ? 145 : 235, caption: 'My planted aquarium & Cheese the mystery snail', tape: 'tape-top' },
+        { src: 'assets/media/images/zoo.jpg', w: isMobile ? 120 : 195, h: isMobile ? 150 : 250, caption: 'w/ Zoë and wallabies at the Santa Barbara Zoo', tape: 'tape-corners' },
     ];
 
     // Lightbox overlay (created once, reused)
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     photoMagnets.forEach((photo, i) => {
         const el = document.createElement('div');
-        el.className = 'magnet-photo';
+        el.className = 'magnet-photo ' + photo.tape;
         el.style.width = photo.w + 'px';
         el.style.height = photo.h + 'px';
         el.style.pointerEvents = 'auto';
