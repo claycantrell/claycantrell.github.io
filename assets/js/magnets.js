@@ -142,8 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Create Photo Magnets — two different proportions, static but collidable
     const photoMagnets = [
-        { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 110 : 180, h: isMobile ? 145 : 235, caption: 'My planted aquarium & Cheese the mystery snail', tape: 'tape-top' },
-        { src: 'assets/media/images/zoo.jpg', w: isMobile ? 120 : 195, h: isMobile ? 150 : 250, caption: 'w/ Zoë and wallabies at the Santa Barbara Zoo', tape: 'tape-corners' },
+        { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 75 : 180, h: isMobile ? 100 : 235, caption: 'My planted aquarium & Cheese the mystery snail', tape: 'tape-top' },
+        { src: 'assets/media/images/zoo.jpg', w: isMobile ? 80 : 195, h: isMobile ? 105 : 250, caption: 'w/ Zoë and wallabies at the Santa Barbara Zoo', tape: 'tape-corners' },
     ];
 
     // Lightbox overlay (created once, reused)
@@ -186,11 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const outerW = photo.w;
         const outerH = photo.h;
 
-        // Place them on either side of the word magnets
-        const offsetX = i === 0
-            ? screenW * (isMobile ? 0.12 : 0.18)
-            : screenW * (isMobile ? 0.88 : 0.82);
-        const offsetY = screenH * (isMobile ? 0.25 : 0.30);
+        // Place them on either side of the word magnets, clamped to stay on screen
+        var rawX = i === 0
+            ? screenW * (isMobile ? 0.15 : 0.18)
+            : screenW * (isMobile ? 0.85 : 0.82);
+        const offsetX = Math.max(outerW / 2 + 10, Math.min(screenW - outerW / 2 - 10, rawX));
+        const offsetY = screenH * (isMobile ? 0.18 : 0.30);
 
         // Static so cursor doesn't push them, but word magnets still bounce off
         const body = Bodies.rectangle(offsetX, offsetY, outerW, outerH, {
