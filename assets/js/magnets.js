@@ -146,6 +146,42 @@ document.addEventListener('DOMContentLoaded', () => {
         magnets.push({ element: magnet, body: body, width, height });
     });
 
+    // USC magnet
+    (function() {
+        var nW = isMobile ? 45 : 70;
+        var nH = isMobile ? 55 : 85;
+        var el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.width = nW + 'px';
+        el.style.height = nH + 'px';
+        el.style.pointerEvents = 'none';
+        el.style.filter = 'drop-shadow(2px 3px 4px rgba(0,0,0,0.25))';
+        el.style.willChange = 'transform, left, top';
+        el.style.transformOrigin = 'center center';
+        var img = document.createElement('img');
+        img.src = 'assets/media/images/usc.png';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.display = 'block';
+        el.appendChild(img);
+        container.appendChild(el);
+
+        var posX = screenW * (isMobile ? 0.75 : 0.88);
+        var posY = screenH * (isMobile ? 0.82 : 0.75);
+
+        var body = Bodies.rectangle(posX, posY, nW, nH, {
+            restitution: 0.2,
+            friction: 0.8,
+            frictionAir: 0.25,
+            density: 0.001,
+            angle: (seededRandom() - 0.5) * 0.2
+        });
+        Body.setInertia(body, (nW * nH * body.mass) / 12);
+        World.add(world, body);
+        magnets.push({ element: el, body: body, width: nW, height: nH });
+    })();
+
     // Seattle souvenir magnet
     (function() {
         var nW = isMobile ? 100 : 150;
