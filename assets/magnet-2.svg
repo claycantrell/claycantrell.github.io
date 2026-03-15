@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="68" viewBox="0 0 44 68" fill="none">
+  <!-- Tall/rectangular fridge magnet — narrower, taller proportion -->
+  <defs>
+    <linearGradient id="face2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <radialGradient id="shine2" cx="38%" cy="25%" r="65%">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow2" x="-20%" y="-8%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <!-- Shadow + body -->
+  <rect x="4" y="4" width="36" height="58" rx="8" fill="url(#face2)" filter="url(#shadow2)"/>
+  <!-- Rim highlight -->
+  <rect x="5.5" y="5.5" width="33" height="55" rx="6.5" fill="none" stroke="#60a5fa" stroke-width="1.2" opacity="0.5"/>
+  <!-- Glossy shine -->
+  <rect x="4" y="4" width="36" height="58" rx="8" fill="url(#shine2)"/>
+  <!-- Top dome highlight -->
+  <ellipse cx="19" cy="18" rx="12" ry="10" fill="#fff" opacity="0.15"/>
+</svg>

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clay Cantrell — Software Engineer</title>
+    <meta name="description" content="Clay Cantrell — Software Engineer in Los Angeles. Full-cycle product builder, systems integrator, and AI product designer.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/matter-js@0.17.1/build/matter.js"></script>
+    <style>
+        :root {
+            --slate: #1e293b;
+            --slate-light: #334155;
+            --cream: #fdf8f0;
+            --cream-dark: #f7edde;
+            --sand: #faf5ec;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --accent: #3b82f6;
+            --accent-dark: #2563eb;
+            --white: #ffffff;
+            --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-display: 'Crimson Text', Georgia, serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--text);
+            background: var(--white);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            background: transparent;
+            border-bottom: none;
+            padding: 0 1.5rem;
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        nav.nav-scrolled {
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-inner {
+            max-width: 1080px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+        }
+
+        .nav-name {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #222;
+            text-decoration: none;
+            background-color: #fdfdfd;
+            padding: 0.3rem 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            box-shadow: 2px 3px 5px rgba(0,0,0,0.2);
+            transition: background 0.3s ease, box-shadow 0.3s ease, border 0.3s ease, padding 0.3s ease;
+        }
+
+        nav.nav-scrolled .nav-name {
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            color: var(--text);
+            padding: 0.3rem 0;
+        }
+
+        .nav-links { display: flex; gap: 8px; }
+
+        .nav-links a {
+            color: #222;
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.875rem;
+            padding: 0.3rem 0.75rem;
+            background-color: #fdfdfd;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            box-shadow: 2px 3px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        nav.nav-scrolled .nav-links a {
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            font-family: var(--font-body);
+            font-weight: 500;
+            color: var(--text-light);
+            padding: 6px 14px;
+            border-radius: 8px;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+            background: var(--cream);
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            min-height: 600px;
+            background-color: #8c8c8c;
+            background-image: url('assets/Stainless-Steel-shutterstock_661808035-1-700x560.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 40vh;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 120px;
+            background: linear-gradient(transparent, var(--white));
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 20;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 2px 30px rgba(0,0,0,0.4);
+            line-height: 1.1;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero .subtitle {
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            font-weight: 500;
+            color: rgba(255,255,255,0.85);
+            text-shadow: 0 1px 15px rgba(0,0,0,0.4);
+            letter-spacing: 1px;
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); }
+            50% { opacity: 1; transform: translateX(-50%) translateY(4px); }
+        }
+
+        /* ===== MAGNETS ===== */
+        #magnet-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .magnet {
+            position: absolute;
+            background-color: #fdfdfd;
+            color: #222;
+            padding: 0.5rem 1rem;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.5rem;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            box-shadow: 2px 3px 5px rgba(0,0,0,0.2);
+            cursor: default;
+            user-select: none;
+            pointer-events: none;
+            will-change: transform, left, top;
+            transform-origin: center center;
+        }
+
+        .magnet-photo {
+            position: absolute;
+            background: #fff;
+            border-radius: 3px;
+            box-shadow: 2px 3px 8px rgba(0,0,0,0.25);
+            cursor: default;
+            user-select: none;
+            pointer-events: none;
+            will-change: transform, left, top;
+            transform-origin: center center;
+            overflow: hidden;
+            padding: 5px;
+        }
+
+        .magnet-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 2px;
+            display: block;
+        }
+
+        /* ===== PHOTO LIGHTBOX ===== */
+        .photo-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            cursor: pointer;
+        }
+
+        .photo-lightbox.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .photo-lightbox-inner {
+            max-width: 90vw;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .photo-lightbox-inner img {
+            max-width: 100%;
+            max-height: 75vh;
+            border-radius: 6px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+        }
+
+        .photo-lightbox-caption {
+            margin-top: 1rem;
+            color: rgba(255,255,255,0.85);
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            padding: 5rem 1.5rem;
+        }
+
+        .section-inner {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            max-width: 600px;
+            margin: 0 auto 3.5rem;
+            text-align: center;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-display);
+            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            color: var(--text-light);
+        }
+
+        .section-cream { background: #f5f3ef; }
+        .section-sand { background: var(--sand); }
+
+        /* ===== SKILLS GRID ===== */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: #e8e4dd;
+            border: 1px solid #e8e4dd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .skill-card {
+            background: #fff;
+            padding: 2rem 1.75rem;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .skill-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px;
+            height: 0;
+            background: #1e293b;
+            transition: height 0.3s ease;
+        }
+
+        .skill-card:hover {
+            background: #faf8f5;
+        }
+
+        .skill-card:hover::before {
+            height: 100%;
+        }
+
+        .skill-card h3 {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace, var(--font-body);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .skill-card h3::before {
+            content: '> ';
+            opacity: 0.5;
+        }
+
+        .skill-card p {
+            font-size: 0.925rem;
+            line-height: 1.7;
+            color: var(--text-light);
+        }
+
+        .skill-card a {
+            color: #1e293b;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .skill-card a:hover {
+            color: #000;
+        }
+
+        /* ===== GAME CTA ===== */
+        .game-section {
+            background: linear-gradient(135deg, var(--slate) 0%, var(--slate-light) 100%);
+            color: var(--white);
+            text-align: center;
+            padding: 5rem 1.5rem;
+        }
+
+        .game-section .section-header h2 { color: var(--white); font-family: 'Press Start 2P', cursive; font-size: clamp(1.25rem, 2.5vw, 1.75rem); }
+        .game-section .section-header p { color: rgba(255,255,255,0.65); }
+
+        .game-btn {
+            display: inline-block;
+            background: var(--white);
+            color: var(--slate);
+            font-family: var(--font-body);
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 0.875rem 2.25rem;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .game-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255,255,255,0.2);
+        }
+
+        /* ===== PUBLICATION ===== */
+        .publication {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem 2rem;
+            line-height: 1.7;
+            max-width: 700px;
+            margin: 0 auto;
+            transition: all 0.2s ease;
+        }
+
+        .publication:hover {
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+        }
+
+        .publication a {
+            color: var(--text);
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .publication a:hover { color: var(--accent); }
+
+        .publication em { color: var(--text-light); }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background: var(--slate);
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            padding: 3rem 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links a {
+            color: rgba(255,255,255,0.65);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        .footer-links a:hover { color: var(--white); }
+
+        footer .email {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.8);
+        }
+
+        footer .email a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+        }
+
+        footer .email a:hover { color: var(--white); }
+
+        /* ===== MOBILE ===== */
+        @media (max-width: 768px) {
+            .nav-links a { font-size: 0.8rem; padding: 6px 10px; }
+            .magnet { font-size: 0.85rem; padding: 0.25rem 0.5rem; }
+            .skills-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .section { padding: 3.5rem 1.25rem; }
+            .section-header { margin-bottom: 2rem; }
+            .skill-card { padding: 1.5rem 1.25rem; }
+            .footer-links { gap: 1.25rem; flex-wrap: wrap; }
+        }
+
+        @media (max-width: 480px) {
+            .nav-links { gap: 4px; }
+            .nav-links a { font-size: 0.75rem; padding: 5px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="nav-name">Clay Cantrell</a>
+        <div class="nav-links">
+            <a href="assets/documents/Clay_Cantrell_Resume.html" target="_blank">Resume</a>
+            <a href="https://www.linkedin.com/in/clay-cantrell-808676202/" target="_blank">LinkedIn</a>
+            <a href="https://github.com/claycantrell" target="_blank">GitHub</a>
+            <a href="https://www.youtube.com/watch?v=CJ8ynwcnMAU&t" target="_blank">YouTube</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero with Fridge Magnets -->
+<div class="hero">
+    <div id="magnet-container"></div>
+    <div class="hero-content">
+        <h1>Clay Cantrell</h1>
+        <p class="subtitle">Software Engineer &middot; Los Angeles</p>
+    </div>
+    <div class="scroll-hint">&darr; scroll &darr;</div>
+</div>
+
+<!-- Skills -->
+<div class="section section-cream">
+    <div class="section-inner">
+        <div class="section-header">
+            <h2>What I Do</h2>
+            <p>I build products end-to-end, from customer discovery to production systems at scale.</p>
+        </div>
+        <div class="skills-grid">
+            <div class="skill-card">
+                <h3>0 → 1 Product</h3>
+                <p>I took a <a href="https://rolloffamigo.com" target="_blank">dumpster dispatch, inventory management, driver tracking, and automated invoicing app</a> from customer interviews to the App Store in one week and had paying customers within two, including the marketing site that brought them in.</p>
+            </div>
+            <div class="skill-card">
+                <h3>End-to-End Automation</h3>
+                <p>I built a billing pipeline where Android scanners log bin pickups, a warehouse kiosk reads the pickup locations and logs the tonnage, and QuickBooks sends invoices automatically at month end based on custom billing formulas.</p>
+            </div>
+            <div class="skill-card">
+                <h3>AI-Native Products</h3>
+                <p>I designed a waste bill analyzer that uses LLMs to extract line items from invoices and benchmark rates across regions, turning a manual audit into a one-click comparison.</p>
+            </div>
+            <div class="skill-card">
+                <h3>Developer Automation</h3>
+                <p>I built a pipeline where bug reports flow into Linear, get triaged for complexity, and coding agents automatically branch, fix, and open PRs for human review.</p>
+            </div>
+            <div class="skill-card">
+                <h3>Operations at Scale</h3>
+                <p>I built the routing and scheduling system that coordinates fleet operations processing over 1,000,000 lbs of food waste per month across the greater Los Angeles area.</p>
+            </div>
+            <div class="skill-card">
+                <h3>Domain Fluency</h3>
+                <p>Scope 3 emissions compliance, waste diversion metrics, psychometric measurement, qualitative research. I learn the domain well enough to ship for it.</p>
+            </div>
+            <div class="skill-card">
+                <h3>Hardware + Software</h3>
+                <p>Industrial barcode scanners, Zebra printers, industrial scales, Ubuntu kiosk terminals, fleet GPS. I build where physical operations meet software.</p>
+            </div>
+            <div class="skill-card">
+                <h3>Research &amp; Writing</h3>
+                <p>I published a paper on human capacity-building as AI governance strategy, and I built and manage <a href="https://dyrt.co" target="_blank">Dyrt's marketing site</a> including all technical SEO and content strategy.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Game -->
+<div class="game-section">
+    <div class="section-inner">
+        <div class="section-header">
+            <h2>Graceful World</h2>
+            <p>A browser-based 3D sandbox I built with Three.js. Procedural terrain, block building, terraforming, wildlife AI, NPC chat powered by GPT, and multiplayer. Talk to the Wandering Scribe. He knows things.</p>
+        </div>
+        <a href="/game/" target="_blank" class="game-btn">Play Graceful World &rarr;</a>
+    </div>
+</div>
+
+<!-- Publication -->
+<div class="section section-sand">
+    <div class="section-inner">
+        <div class="section-header">
+            <h2>Publication</h2>
+        </div>
+        <div class="publication">
+            Cantrell, C. (2026). <a href="https://philarchive.org/rec/CANHCA-4" target="_blank">Human Capacity-Building as AI Governance Strategy: Agency, Dependency, and the Stewardship Bottleneck.</a> <em>PhilArchive.</em>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-links">
+        <a href="https://www.linkedin.com/in/clay-cantrell-808676202/" target="_blank">LinkedIn</a>
+        <a href="https://github.com/claycantrell" target="_blank">GitHub</a>
+        <a href="assets/documents/Clay_Cantrell_Resume.html" target="_blank">Resume</a>
+    </div>
+    <p class="email"><a href="mailto:clay.cantrell@me.com">clay.cantrell@me.com</a></p>
+</footer>
+
+<!-- Nav scroll transition -->
+<script>
+(function() {
+    var nav = document.querySelector('nav');
+    var hero = document.querySelector('.hero');
+    function onScroll() {
+        var threshold = hero ? hero.offsetHeight - 80 : 400;
+        if (window.scrollY > threshold) {
+            nav.classList.add('nav-scrolled');
+        } else {
+            nav.classList.remove('nav-scrolled');
+        }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+})();
+</script>
+
+<!-- Fridge Magnets Script -->
+<script src="assets/js/magnets.js"></script>
+
+</body>
+</html>

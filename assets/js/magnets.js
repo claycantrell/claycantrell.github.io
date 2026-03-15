@@ -3,60 +3,75 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
 
     const words = [
-        "Hi,", "I'm", "Clay!",
-        "Musician,", "Developer,",
-        "Designer,", "Artist,",
-        "Analyst,", "and",
-        "Life", "Enthusiast."
+        "I", "turn", "messy",
+        "real", "world", "problems",
+        "into", "software", "that",
+        "ships", "fast", "and",
+        "runs", "at", "scale"
     ];
 
-    const initialLayout = [
-        // Desktop Layout (Spread out)
-        { x: 100, y: 150 }, { x: 200, y: 150 }, { x: 300, y: 150 },
-        { x: 100, y: 250 }, { x: 250, y: 250 }, { x: 400, y: 250 },
-        { x: 100, y: 350 }, { x: 250, y: 350 }, { x: 400, y: 350 },
-        { x: 100, y: 450 }, { x: 300, y: 450 }
-    ];
+    // Lay out magnets as a readable sentence with hand-placed feel
+    // Words flow left to right, wrapping to new lines, with slight jitter
+    const isMobile = window.innerWidth <= 768;
+    const initialLayout = [];
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
 
-    // Mobile Column Layout Overrides
-    const isMobile = window.innerWidth <= 768; // Standard tablet/mobile breakpoint
+    // Seed for consistent jitter
+    let seed = 42;
+    function seededRandom() {
+        seed = (seed * 16807 + 0) % 2147483647;
+        return (seed - 1) / 2147483646;
+    }
+
+    const lineHeight = isMobile ? 48 : 60;
+    const wordGap = isMobile ? 10 : 16;
+    const jitterX = isMobile ? 5 : 10;
+    const jitterY = isMobile ? 6 : 12;
+    const charWidth = isMobile ? 8 : 14;
+    const padWidth = isMobile ? 16 : 32;
+
+    // First pass: calculate line widths for centering
+    const lines = [[]];
+    const lineWidths = [0];
+    const maxLineWidth = isMobile ? screenW - 60 : screenW * 0.5;
+
+    for (let i = 0; i < words.length; i++) {
+        const estWidth = words[i].length * charWidth + padWidth;
+        const currentLine = lines.length - 1;
+
+        if (lineWidths[currentLine] + estWidth + (lines[currentLine].length > 0 ? wordGap : 0) > maxLineWidth && lines[currentLine].length > 0) {
+            lines.push([]);
+            lineWidths.push(0);
+        }
+
+        const ln = lines.length - 1;
+        const gap = lines[ln].length > 0 ? wordGap : 0;
+        lines[ln].push({ word: words[i], width: estWidth });
+        lineWidths[ln] += estWidth + gap;
+    }
+
+    // Position centered below hero title (roughly 58% down the hero)
+    const startY = isMobile ? screenH * 0.55 : screenH * 0.58;
+    let wordIndex = 0;
+
+    for (let row = 0; row < lines.length; row++) {
+        const lineW = lineWidths[row];
+        let cursorX = (screenW - lineW) / 2;
+        const cursorY = startY + row * lineHeight;
+
+        for (let col = 0; col < lines[row].length; col++) {
+            const w = lines[row][col].width;
+            initialLayout.push({
+                x: cursorX + (seededRandom() - 0.5) * jitterX,
+                y: cursorY + (seededRandom() - 0.5) * jitterY
+            });
+            cursorX += w + wordGap;
+            wordIndex++;
+        }
+    }
+
     if (isMobile) {
-        // Create a staggered grid layout with some rows having 2 magnets
-        const leftOffset = 60; // Distance from left edge
-        const startY = 160; // Moved down even more (was 120)
-        const gapY = 40; // Vertical spacing
-        const gapX = 120; // Horizontal spacing for side-by-side magnets
-
-        // Custom layout: mix single and double rows
-        const mobileLayout = [
-            // Row 1: Single
-            { x: leftOffset, y: startY },
-            // Row 2: Two side by side
-            { x: leftOffset, y: startY + gapY },
-            { x: leftOffset + gapX, y: startY + gapY },
-            // Row 3: Single
-            { x: leftOffset, y: startY + (gapY * 2) },
-            // Row 4: Two side by side
-            { x: leftOffset, y: startY + (gapY * 3) },
-            { x: leftOffset + gapX, y: startY + (gapY * 3) },
-            // Row 5: Single
-            { x: leftOffset, y: startY + (gapY * 4) },
-            // Row 6: Two side by side
-            { x: leftOffset, y: startY + (gapY * 5) },
-            { x: leftOffset + gapX, y: startY + (gapY * 5) },
-            // Row 7: Single
-            { x: leftOffset, y: startY + (gapY * 6) },
-            // Row 8: Two side by side
-            { x: leftOffset, y: startY + (gapY * 7) },
-            { x: leftOffset + gapX, y: startY + (gapY * 7) }
-        ];
-
-        // Apply the custom mobile layout
-        words.forEach((_, i) => {
-            if (mobileLayout[i]) {
-                initialLayout[i] = mobileLayout[i];
-            }
-        });
     }
 
     // Matter.js aliases
@@ -98,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const magnets = [];
 
-    // Create Magnets
+    // Create Word Magnets
     words.forEach((word, index) => {
         const magnet = document.createElement('div');
         magnet.textContent = word;
@@ -107,23 +122,86 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const width = magnet.offsetWidth;
         const height = magnet.offsetHeight;
-        
+
         const startX = (initialLayout[index]?.x || 100);
         const startY = (initialLayout[index]?.y || 100);
 
         const body = Bodies.rectangle(startX, startY, width, height, {
-            restitution: 0.2, 
-            friction: 0.5,    
-            frictionAir: 0.15, // Higher air friction to stop quickly (simulates table friction)
-            density: 0.001,    // Light density
-            angle: (Math.random() * 0.2) - 0.1
+            restitution: 0.2,
+            friction: 0.5,
+            frictionAir: 0.15,
+            density: 0.001,
+            angle: (Math.random() * 0.15) - 0.075
         });
 
-        // Ensure rotation is easy
-        Body.setInertia(body, (width * height * body.mass) / 12); 
+        Body.setInertia(body, (width * height * body.mass) / 12);
 
         World.add(world, body);
         magnets.push({ element: magnet, body: body, width, height });
+    });
+
+    // Create Photo Magnets — two different proportions, static but collidable
+    const photoMagnets = [
+        { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 110 : 180, h: isMobile ? 145 : 235, caption: 'My planted aquarium & Cheese the mystery snail' },
+        { src: 'assets/media/images/zoo.jpg', w: isMobile ? 120 : 195, h: isMobile ? 150 : 250, caption: 'w/ Zoë and wallabies at the Santa Barbara Zoo' },
+    ];
+
+    // Lightbox overlay (created once, reused)
+    const lightbox = document.createElement('div');
+    lightbox.className = 'photo-lightbox';
+    lightbox.innerHTML = '<div class="photo-lightbox-inner"><img src="" alt=""><p class="photo-lightbox-caption"></p></div>';
+    document.body.appendChild(lightbox);
+
+    const lbImg = lightbox.querySelector('img');
+    const lbCaption = lightbox.querySelector('.photo-lightbox-caption');
+
+    function openLightbox(src, caption) {
+        lbImg.src = src;
+        lbCaption.textContent = caption;
+        lightbox.classList.add('active');
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+    }
+
+    lightbox.addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+    photoMagnets.forEach((photo, i) => {
+        const el = document.createElement('div');
+        el.className = 'magnet-photo';
+        el.style.width = photo.w + 'px';
+        el.style.height = photo.h + 'px';
+        el.style.pointerEvents = 'auto';
+        el.style.cursor = 'pointer';
+        const img = document.createElement('img');
+        img.src = photo.src;
+        img.alt = photo.caption;
+        el.appendChild(img);
+        container.appendChild(el);
+
+        el.addEventListener('click', () => openLightbox(photo.src, photo.caption));
+
+        const outerW = photo.w;
+        const outerH = photo.h;
+
+        // Place them on either side of the word magnets
+        const offsetX = i === 0
+            ? screenW * (isMobile ? 0.12 : 0.18)
+            : screenW * (isMobile ? 0.88 : 0.82);
+        const offsetY = screenH * (isMobile ? 0.25 : 0.30);
+
+        // Static so cursor doesn't push them, but word magnets still bounce off
+        const body = Bodies.rectangle(offsetX, offsetY, outerW, outerH, {
+            isStatic: true,
+            restitution: 0.4,
+            friction: 0.5,
+            angle: (seededRandom() - 0.5) * 0.3
+        });
+
+        World.add(world, body);
+        magnets.push({ element: el, body: body, width: outerW, height: outerH });
     });
 
     // --- PHYSICAL CURSOR (Dynamic Body + Constraint) ---
@@ -192,10 +270,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: false });
 
     // Boundary Enforcement (Fallback if they tunnel through walls)
+    // Use hero height, not full page height
+    function getHeroHeight() {
+        const hero = document.querySelector('.hero');
+        return hero ? hero.offsetHeight : window.innerHeight;
+    }
+
     Events.on(engine, 'beforeUpdate', function() {
         const margin = 20;
         const w = window.innerWidth;
-        const h = window.innerHeight;
+        const h = getHeroHeight();
 
         magnets.forEach(m => {
             const b = m.body;
@@ -226,28 +310,24 @@ document.addEventListener('DOMContentLoaded', () => {
     Render.run(render);
     updateDOM();
 
-    // Create walls for the screen edges
-    const wallThickness = 100; // Invisible thick walls outside view
+    // Create walls for the hero section edges
+    const wallThickness = 100;
+    const heroH = getHeroHeight();
     const walls = [
-        Bodies.rectangle(window.innerWidth / 2, -wallThickness / 2, window.innerWidth * 2, wallThickness, { isStatic: true, render: { visible: false } }), // Top
-        Bodies.rectangle(window.innerWidth / 2, window.innerHeight + wallThickness / 2, window.innerWidth * 2, wallThickness, { isStatic: true, render: { visible: false } }), // Bottom
-        Bodies.rectangle(window.innerWidth + wallThickness / 2, window.innerHeight / 2, wallThickness, window.innerHeight * 2, { isStatic: true, render: { visible: false } }), // Right
-        Bodies.rectangle(-wallThickness / 2, window.innerHeight / 2, wallThickness, window.innerHeight * 2, { isStatic: true, render: { visible: false } }) // Left
+        Bodies.rectangle(window.innerWidth / 2, -wallThickness / 2, window.innerWidth * 2, wallThickness, { isStatic: true, render: { visible: false } }),
+        Bodies.rectangle(window.innerWidth / 2, heroH + wallThickness / 2, window.innerWidth * 2, wallThickness, { isStatic: true, render: { visible: false } }),
+        Bodies.rectangle(window.innerWidth + wallThickness / 2, heroH / 2, wallThickness, heroH * 2, { isStatic: true, render: { visible: false } }),
+        Bodies.rectangle(-wallThickness / 2, heroH / 2, wallThickness, heroH * 2, { isStatic: true, render: { visible: false } })
     ];
     World.add(world, walls);
 
-    // Keep walls updated on resize
     window.addEventListener('resize', () => {
         render.canvas.width = window.innerWidth;
         render.canvas.height = window.innerHeight;
-        
-        // Remove old walls
         World.remove(world, walls);
-        walls.length = 0; // Clear array
-        
-        // Add new walls
+        walls.length = 0;
         const w = window.innerWidth;
-        const h = window.innerHeight;
+        const h = getHeroHeight();
         walls.push(
             Bodies.rectangle(w / 2, -wallThickness / 2, w * 2, wallThickness, { isStatic: true, render: { visible: false } }),
             Bodies.rectangle(w / 2, h + wallThickness / 2, w * 2, wallThickness, { isStatic: true, render: { visible: false } }),
