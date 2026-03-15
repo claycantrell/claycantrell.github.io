@@ -146,6 +146,38 @@ document.addEventListener('DOMContentLoaded', () => {
         magnets.push({ element: magnet, body: body, width, height });
     });
 
+    // Space Needle cutout magnet
+    (function() {
+        var nW = isMobile ? 30 : 45;
+        var nH = isMobile ? 75 : 112;
+        var el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.width = nW + 'px';
+        el.style.height = nH + 'px';
+        el.style.pointerEvents = 'none';
+        el.style.filter = 'drop-shadow(2px 3px 4px rgba(0,0,0,0.3))';
+        el.style.willChange = 'transform, left, top';
+        el.style.transformOrigin = 'center center';
+        var img = document.createElement('img');
+        img.src = 'assets/media/images/space-needle.svg';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        el.appendChild(img);
+        container.appendChild(el);
+
+        var posX = screenW * (isMobile ? 0.5 : 0.12);
+        var posY = screenH * (isMobile ? 0.15 : 0.45);
+
+        var body = Bodies.rectangle(posX, posY, nW, nH, {
+            isStatic: true,
+            restitution: 0.4,
+            friction: 0.5,
+            angle: (seededRandom() - 0.5) * 0.15
+        });
+        World.add(world, body);
+        magnets.push({ element: el, body: body, width: nW, height: nH });
+    })();
+
     // Create Photo Magnets — two different proportions, static but collidable
     const photoMagnets = [
         { src: 'assets/media/images/aquarium.jpg', w: isMobile ? 110 : 180, h: isMobile ? 145 : 235, caption: 'My planted aquarium & Cheese the mystery snail', tape: 'tape-top' },
