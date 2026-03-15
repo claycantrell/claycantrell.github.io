@@ -148,8 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // USC magnet
     (function() {
-        var nW = isMobile ? 45 : 70;
-        var nH = isMobile ? 55 : 85;
+        var nW = isMobile ? 55 : 90;
+        var nH = isMobile ? 68 : 110;
         var el = document.createElement('div');
         el.style.position = 'absolute';
         el.style.width = nW + 'px';
