@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : screenW * (isMobile ? 0.75 : 0.82);
         var offsetY = i === 0
             ? screenH * (isMobile ? 0.82 : 0.78)
-            : screenH * (isMobile ? 0.25 : 0.22);
+            : screenH * (isMobile ? 0.25 : 0.30);
         const offsetX = Math.max(outerW / 2 + 10, Math.min(screenW - outerW / 2 - 10, rawX));
 
         // Static so cursor doesn't push them, but word magnets still bounce off
