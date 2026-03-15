@@ -512,6 +512,55 @@
             transform: none;
         }
 
+        /* ===== MIDI GLOVE ===== */
+        .midi-section {
+            background: linear-gradient(160deg, #1a1025 0%, #0d0d1a 40%, #1a0a1e 100%);
+            color: var(--white);
+            text-align: center;
+            padding: 5rem 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .midi-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 30% 60%, rgba(168,85,247,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .midi-section .section-inner { position: relative; z-index: 1; }
+
+        .midi-section .section-header h2 {
+            font-family: var(--font-display);
+            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+            color: #e2c4f5;
+            text-shadow: 0 0 30px rgba(168,85,247,0.3);
+        }
+
+        .midi-section .section-header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 1.1rem;
+        }
+
+        .midi-video {
+            max-width: 720px;
+            margin: 0 auto;
+            aspect-ratio: 16 / 9;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(168,85,247,0.25);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 0 25px rgba(168,85,247,0.1);
+        }
+
+        .midi-video iframe {
+            width: 100%;
+            height: 100%;
+        }
+
         .game-screenshot {
             display: block;
             max-width: 720px;
@@ -702,13 +751,13 @@
 </div>
 
 <!-- MIDI Glove -->
-<div class="section">
+<div class="midi-section">
     <div class="section-inner">
         <div class="section-header">
             <h2>MIDI Glove</h2>
             <p>A motion-controlled MIDI controller glove built with microcontrollers, potentiometers, and distance sensors.</p>
         </div>
-        <div class="game-video">
+        <div class="midi-video">
             <iframe src="https://www.youtube.com/embed/CJ8ynwcnMAU" title="MIDI Glove" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
     </div>
