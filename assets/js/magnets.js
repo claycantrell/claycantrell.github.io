@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const wordGap = isMobile ? 10 : 16;
     const jitterX = isMobile ? 5 : 10;
     const jitterY = isMobile ? 6 : 12;
-    const charWidth = isMobile ? 10 : 14;
+    const charWidth = isMobile ? 12 : 14;
     const padWidth = isMobile ? 16 : 32;
 
     // First pass: calculate line widths for centering
