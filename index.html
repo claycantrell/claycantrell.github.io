@@ -410,6 +410,22 @@
             box-shadow: 0 8px 24px rgba(255,255,255,0.2);
         }
 
+        .game-video {
+            margin-top: 2.5rem;
+            max-width: 720px;
+            margin-left: auto;
+            margin-right: auto;
+            aspect-ratio: 16 / 9;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+
+        .game-video iframe {
+            width: 100%;
+            height: 100%;
+        }
+
         /* ===== PUBLICATION ===== */
         .publication {
             background: var(--white);
@@ -502,7 +518,6 @@
             <a href="assets/documents/Clay_Cantrell_Resume.html" target="_blank">Resume</a>
             <a href="https://www.linkedin.com/in/clay-cantrell-808676202/" target="_blank">LinkedIn</a>
             <a href="https://github.com/claycantrell" target="_blank">GitHub</a>
-            <a href="https://www.youtube.com/watch?v=CJ8ynwcnMAU&t" target="_blank">YouTube</a>
         </div>
     </div>
 </nav>
@@ -569,6 +584,9 @@
             <p>A browser-based 3D sandbox I built with Three.js. Procedural terrain, block building, terraforming, wildlife AI, NPC chat powered by GPT, and multiplayer. Talk to the Wandering Scribe. He knows things.</p>
         </div>
         <a href="https://graceful-world.onrender.com/dist/index.html" target="_blank" class="game-btn">Play Graceful World &rarr;</a>
+        <div class="game-video">
+            <iframe src="https://www.youtube.com/embed/CJ8ynwcnMAU" title="Graceful World" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
     </div>
 </div>
 
