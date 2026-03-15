@@ -146,22 +146,26 @@ document.addEventListener('DOMContentLoaded', () => {
         magnets.push({ element: magnet, body: body, width, height });
     });
 
-    // Space Needle cutout magnet
+    // Seattle souvenir magnet
     (function() {
-        var nW = isMobile ? 30 : 45;
+        var nW = isMobile ? 100 : 150;
         var nH = isMobile ? 75 : 112;
         var el = document.createElement('div');
         el.style.position = 'absolute';
         el.style.width = nW + 'px';
         el.style.height = nH + 'px';
         el.style.pointerEvents = 'none';
-        el.style.filter = 'drop-shadow(2px 3px 4px rgba(0,0,0,0.3))';
+        el.style.borderRadius = '8px';
+        el.style.overflow = 'hidden';
+        el.style.boxShadow = '2px 3px 8px rgba(0,0,0,0.3)';
         el.style.willChange = 'transform, left, top';
         el.style.transformOrigin = 'center center';
         var img = document.createElement('img');
-        img.src = 'assets/media/images/space-needle.svg';
+        img.src = 'assets/media/images/seattle-magnet.webp';
         img.style.width = '100%';
         img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.display = 'block';
         el.appendChild(img);
         container.appendChild(el);
 
