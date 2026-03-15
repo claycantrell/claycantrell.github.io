@@ -505,6 +505,37 @@
             color: #000;
         }
 
+        /* ===== PROJECTS DIVIDER ===== */
+        .projects-divider {
+            background: #0a0a0a;
+            padding: 3rem 1.5rem 0;
+            text-align: center;
+        }
+
+        .projects-divider span {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace, var(--font-body);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            position: relative;
+            padding: 0 1.5rem;
+        }
+
+        .projects-divider span::before,
+        .projects-divider span::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 60px;
+            height: 1px;
+            background: rgba(255,255,255,0.12);
+        }
+
+        .projects-divider span::before { right: 100%; }
+        .projects-divider span::after { left: 100%; }
+
         /* ===== GAME CTA ===== */
         .game-section {
             background: #0a0a0a;
@@ -803,6 +834,11 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Personal Projects -->
+<div class="projects-divider">
+    <span>Personal Projects</span>
 </div>
 
 <!-- Game -->
