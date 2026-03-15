@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? screenW * (isMobile ? 0.15 : 0.18)
             : screenW * (isMobile ? 0.85 : 0.82);
         const offsetX = Math.max(outerW / 2 + 10, Math.min(screenW - outerW / 2 - 10, rawX));
-        const offsetY = screenH * (isMobile ? 0.18 : 0.30);
+        const offsetY = screenH * (isMobile ? 0.32 : 0.30);
 
         // Static so cursor doesn't push them, but word magnets still bounce off
         const body = Bodies.rectangle(offsetX, offsetY, outerW, outerH, {
