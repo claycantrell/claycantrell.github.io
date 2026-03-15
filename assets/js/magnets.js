@@ -169,8 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
         el.appendChild(img);
         container.appendChild(el);
 
-        var posX = screenW * (isMobile ? 0.5 : 0.12);
-        var posY = screenH * (isMobile ? 0.15 : 0.45);
+        var posX = screenW * (isMobile ? 0.25 : 0.12);
+        var posY = screenH * (isMobile ? 0.25 : 0.45);
 
         var body = Bodies.rectangle(posX, posY, nW, nH, {
             restitution: 0.2,
