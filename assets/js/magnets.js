@@ -173,11 +173,13 @@ document.addEventListener('DOMContentLoaded', () => {
         var posY = screenH * (isMobile ? 0.15 : 0.45);
 
         var body = Bodies.rectangle(posX, posY, nW, nH, {
-            isStatic: true,
-            restitution: 0.4,
+            restitution: 0.2,
             friction: 0.5,
+            frictionAir: 0.15,
+            density: 0.001,
             angle: (seededRandom() - 0.5) * 0.15
         });
+        Body.setInertia(body, (nW * nH * body.mass) / 12);
         World.add(world, body);
         magnets.push({ element: el, body: body, width: nW, height: nH });
     })();
