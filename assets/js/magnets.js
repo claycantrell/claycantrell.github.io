@@ -174,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         var body = Bodies.rectangle(posX, posY, nW, nH, {
             restitution: 0.2,
-            friction: 0.5,
-            frictionAir: 0.15,
+            friction: 0.8,
+            frictionAir: 0.25,
             density: 0.001,
             angle: (seededRandom() - 0.5) * 0.15
         });
