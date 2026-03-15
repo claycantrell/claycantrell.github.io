@@ -193,11 +193,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const outerH = photo.h;
 
         // Place them on either side of the word magnets, clamped to stay on screen
-        var rawX = i === 0
-            ? screenW * (isMobile ? 0.15 : 0.18)
-            : screenW * (isMobile ? 0.85 : 0.82);
+        var rawX, offsetY;
+        if (isMobile) {
+            rawX = i === 0
+                ? screenW * 0.25
+                : screenW * 0.75;
+            offsetY = i === 0
+                ? screenH * 0.82
+                : screenH * 0.25;
+        } else {
+            rawX = i === 0
+                ? screenW * 0.18
+                : screenW * 0.82;
+            offsetY = screenH * 0.30;
+        }
         const offsetX = Math.max(outerW / 2 + 10, Math.min(screenW - outerW / 2 - 10, rawX));
-        const offsetY = screenH * (isMobile ? 0.32 : 0.30);
 
         // Static so cursor doesn't push them, but word magnets still bounce off
         const body = Bodies.rectangle(offsetX, offsetY, outerW, outerH, {
