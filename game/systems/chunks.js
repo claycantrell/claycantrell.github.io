@@ -337,6 +337,9 @@ function loadChunk(cx, cz) {
     if (typeof addChunkShrubs === 'function') {
         addChunkShrubs(cx, cz, chunkData);
     }
+    if (typeof addChunkAnimals === 'function') {
+        addChunkAnimals(cx, cz, chunkData);
+    }
 }
 
 // Unload a chunk
@@ -361,6 +364,9 @@ function unloadChunk(key) {
     }
     if (typeof removeChunkShrubs === 'function') {
         removeChunkShrubs(key);
+    }
+    if (typeof removeChunkAnimals === 'function') {
+        removeChunkAnimals(key);
     }
 
     // Remove from map

@@ -407,20 +407,22 @@ function isWaterPosition(x, z) {
 }
 
 // --- Minecraft-style animal spawning ---
-// Clients pick biome-valid spots near their player and request spawns (the server
-// doesn't know biomes). The server enforces caps and distance rules, runs the
-// animals, and despawns them once no player is near. Everyone on a map sees the
-// same animals.
+// Clients work out where animals spawn (the server doesn't know biomes) using
+// Minecraft's rules: seeded world-generation packs per chunk plus periodic
+// top-ups under the mob cap. They hand deer/cows/bunnies/birds to the server,
+// which runs them so every player on a map sees the same animals. Like
+// Minecraft's passive mobs they never despawn; world-gen packs carry an id so
+// each pack is created once no matter how many players walk past.
 const ANIMAL_RULES = {
-    minPlayerDistance: 24,        // Never spawn this close to any player
-    maxSpawnDistance: 160,        // Requested spot must be within this of the requester
-    countRadius: 180,             // Animals this close to the requester count toward its cap
-    despawnDistance: 180,         // Removed instantly when no player on the map is this close
-    gradualDespawnDistance: 120,  // Random despawn chance beyond this
-    viewDistance: 250,            // Animals sent to each player in worldState
-    caps: { deer: 12, cows: 10, bunnies: 15, birds: 20 }
+    kinds: ['deer', 'cows', 'bunnies', 'birds'],
+    maxRequestDistance: 600,      // Requested spots must be within this of the requester
+    minPlayerDistance: 60,        // Periodic spawns: never within 24 blocks of a player
+    maxPackSize: 8,
+    viewDistance: 300,            // Animals sent to each player in worldState
+    maxAnimals: 4000              // Memory bound: drop the animals farthest from any player beyond this
 };
 let nextAnimalId = 0;
+const spawnedPacks = new Set();
 
 function createServerAnimal(kind, x, z, mapId) {
     const base = { id: `${kind}_${nextAnimalId++}`, mapId, x, z, timer: Math.random() * 5 };
@@ -446,34 +448,35 @@ function distToNearestPlayer(x, z, mapId) {
 function handleSpawnRequest(playerId, data) {
     const player = players.get(playerId);
     const list = ENTITIES[data.kind];
-    const cap = ANIMAL_RULES.caps[data.kind];
-    if (!player || !list || !cap || !Array.isArray(data.positions)) return;
+    if (!player || !list || !ANIMAL_RULES.kinds.includes(data.kind) || !Array.isArray(data.positions)) return;
 
     const { mapId, position } = player;
-    let nearby = list.filter(a => a.mapId === mapId &&
-        Math.hypot(a.x - position.x, a.z - position.z) <= ANIMAL_RULES.countRadius).length;
+    const packKey = typeof data.packId === 'string' ? `${mapId}:${data.packId}` : null;
+    if (packKey) {
+        if (spawnedPacks.has(packKey)) return; // World-gen pack already exists
+        spawnedPacks.add(packKey);
+    }
 
-    for (const pos of data.positions.slice(0, 8)) {
-        if (nearby >= cap) break;
+    for (const pos of data.positions.slice(0, ANIMAL_RULES.maxPackSize)) {
         if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) continue;
-        if (Math.hypot(pos.x - position.x, pos.z - position.z) > ANIMAL_RULES.maxSpawnDistance) continue;
-        if (distToNearestPlayer(pos.x, pos.z, mapId) < ANIMAL_RULES.minPlayerDistance) continue;
+        if (Math.hypot(pos.x - position.x, pos.z - position.z) > ANIMAL_RULES.maxRequestDistance) continue;
+        // World-gen packs ignore player distance (they exist before anyone arrives)
+        if (!packKey && distToNearestPlayer(pos.x, pos.z, mapId) < ANIMAL_RULES.minPlayerDistance) continue;
         list.push(createServerAnimal(data.kind, pos.x, pos.z, mapId));
-        nearby++;
     }
 }
 
-// Despawn check (1s) - like Minecraft, animals far from every player go away
+// Memory bound (every 30 s): passive animals persist, but if the world fills up
+// drop the ones farthest from every player
 setInterval(() => {
-    for (const kind of Object.keys(ANIMAL_RULES.caps)) {
-        ENTITIES[kind] = ENTITIES[kind].filter(a => {
-            const d = distToNearestPlayer(a.x, a.z, a.mapId);
-            if (d > ANIMAL_RULES.despawnDistance) return false;
-            if (d > ANIMAL_RULES.gradualDespawnDistance && Math.random() < 0.0025) return false;
-            return true;
-        });
-    }
-}, 1000);
+    const all = [];
+    for (const kind of ANIMAL_RULES.kinds) for (const a of ENTITIES[kind]) all.push({ kind, a });
+    if (all.length <= ANIMAL_RULES.maxAnimals) return;
+    all.forEach(e => { e.d = distToNearestPlayer(e.a.x, e.a.z, e.a.mapId); });
+    all.sort((x, y) => x.d - y.d);
+    const keep = new Set(all.slice(0, ANIMAL_RULES.maxAnimals).map(e => e.a));
+    for (const kind of ANIMAL_RULES.kinds) ENTITIES[kind] = ENTITIES[kind].filter(a => keep.has(a));
+}, 30000);
 
 // Server Game Loop (20 TPS)
 setInterval(() => {
