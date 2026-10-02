@@ -97,24 +97,32 @@ function getSpawnPosition() {
     return { x, y, z };
 }
 
-// Check if spawn position is valid for given animal type
-function isValidSpawnPosition(x, z, animalType) {
-    if (typeof getChunkBiomeAt !== 'function') return true;
+// Animals that only live at the water's edge
+const SHORE_ANIMALS = new Set(['frogs', 'crabs']);
 
+// How likely this animal is here (0 = never): the biome's own rate, adjusted
+// for habitat - frogs and crabs need water nearby, and frogs live by any
+// temperate or tropical lake or river even outside wetland biomes
+function getHabitatRate(animalType, x, z, groundY) {
+    if (typeof getChunkBiomeAt !== 'function') return 1;
     const biome = getChunkBiomeAt(x, z);
-    if (!biome) return true;
+    if (!biome) return 1;
 
-    // Never spawn in ocean
-    if (biome.id === 'ocean') return false;
-
-    // Check if biome supports this animal type
-    if (biome.entities && typeof biome.entities === 'object') {
-        const spawnRate = biome.entities[animalType];
-        // If spawn rate is undefined or 0, don't spawn this animal here
-        if (spawnRate === undefined || spawnRate === 0) return false;
+    let rate = (biome.entities && biome.entities[animalType]) || 0;
+    if (SHORE_ANIMALS.has(animalType) && typeof isShoreHeight === 'function') {
+        if (!isShoreHeight(groundY, 4)) return 0;
+        if (animalType === 'frogs') {
+            const climate = typeof getClimateAt === 'function' ? getClimateAt(x, z) : null;
+            const shore = getShoreClass(climate, groundY);
+            if (shore === 'temperate' || shore === 'tropical') rate = Math.max(rate, 1.2);
+        }
     }
+    return rate;
+}
 
-    return true;
+// Check if spawn position is valid for given animal type
+function isValidSpawnPosition(x, z, animalType, groundY) {
+    return getHabitatRate(animalType, x, z, groundY) > 0;
 }
 
 // Spawn animals of a type
@@ -191,19 +199,12 @@ function trySpawnAnimals(type) {
     // Get spawn position
     const pos = getSpawnPosition();
     if (!pos) return;
-    if (!isValidSpawnPosition(pos.x, pos.z, type)) return;
+    if (!isValidSpawnPosition(pos.x, pos.z, type, pos.y)) return;
     // No spawning in lakes, rivers or the sea
     if (typeof getWaterConfig === 'function' && pos.y < getWaterConfig().seaLevel + 0.5) return;
 
-    // Adjust spawn chance based on biome spawn rate
-    let adjustedChance = chance;
-    if (typeof getChunkBiomeAt === 'function') {
-        const biome = getChunkBiomeAt(pos.x, pos.z);
-        if (biome && biome.entities && biome.entities[type] !== undefined) {
-            // Multiply base chance by biome spawn rate (e.g., 2.0 doubles the chance)
-            adjustedChance = chance * biome.entities[type];
-        }
-    }
+    // Adjust spawn chance by habitat (e.g., 2.0 doubles the chance)
+    const adjustedChance = chance * getHabitatRate(type, pos.x, pos.z, pos.y);
 
     // Random chance to spawn (with biome-adjusted rate)
     if (Math.random() > Math.min(adjustedChance, 1.0)) return;

@@ -62,21 +62,13 @@ function getRiverShape(x, z) {
     };
 }
 
-// Oceans, lakes and ponds: lower the land into basins below sea level.
+// Lakes and ponds: lower lowland into basins below sea level (oceans come
+// from the continent shape in calculateTerrainHeight).
 // Applied before rivers so rivers can run into them.
 function applyWaterBodies(x, z, height, climate) {
     if (!lakeNoise) return height;
     const sea = WATER_CONFIG.seaLevel;
     let h = height;
-
-    // Oceans where the land is far from the continent core (low continentalness)
-    const cont = climate ? climate.continentalness : 0;
-    const ocean = waterSmoothstep(WATER_CONFIG.oceanStart, WATER_CONFIG.oceanFull, cont);
-    if (ocean > 0) {
-        const floor = sea - 4 - 16 * waterSmoothstep(WATER_CONFIG.oceanFull, WATER_CONFIG.oceanDeep, cont) +
-            lakeNoise.noise2D(x * 0.01, z * 0.01) * 1.5;
-        h = h + (Math.min(h, floor) - h) * ocean;
-    }
 
     // Lakes and ponds in lowlands, away from spawn
     const lowland = 1 - waterSmoothstep(WATER_CONFIG.lakeMaxLand * 0.6, WATER_CONFIG.lakeMaxLand, height);
@@ -143,6 +135,25 @@ function getWaterSurfaceAt(x, z, groundHeight) {
         : (typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0);
     return h < WATER_CONFIG.seaLevel ? WATER_CONFIG.seaLevel : null;
 }
+
+// Low land just above the water line (lake shores, river banks, coasts)
+function isShoreHeight(height, band = 2.5) {
+    return height >= WATER_CONFIG.seaLevel && height < WATER_CONFIG.seaLevel + band;
+}
+
+// What grows and lives at the water's edge here: 'cold', 'arid' (oasis),
+// 'tropical' or 'temperate'
+function getShoreClass(climate, height) {
+    if (!climate) return 'temperate';
+    const t = typeof getEffectiveTemperature === 'function' ? getEffectiveTemperature(climate, height) : climate.temperature;
+    if (t < -0.3) return 'cold';
+    if (t > 0.5 && climate.humidity > 0.2) return 'tropical';
+    if (climate.humidity < -0.25 && t > 0.1) return 'arid';
+    return 'temperate';
+}
+
+// Biomes that are already shore biomes keep their own planting
+const SHORE_BIOMES = new Set(['beach', 'stonyShore', 'mangroveSwamp', 'swamp']);
 
 // Water depth at a point (0 on land)
 function getWaterDepthAt(x, z) {
@@ -323,6 +334,9 @@ window.applyRiverCarving = applyRiverCarving;
 window.getWaterColor = getWaterColor;
 window.getWaterSurfaceAt = getWaterSurfaceAt;
 window.getWaterDepthAt = getWaterDepthAt;
+window.isShoreHeight = isShoreHeight;
+window.getShoreClass = getShoreClass;
+window.SHORE_BIOMES = SHORE_BIOMES;
 window.createChunkWaterMesh = createChunkWaterMesh;
 window.createChunkWaterPlane = createChunkWaterPlane;
 window.updateWaterInBounds = updateWaterInBounds;
