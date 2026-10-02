@@ -109,11 +109,11 @@ function applyDunes(baseHeight, x, z) {
 // Mountains: Cliffs, crags, and rocky outcrops
 function applyCliffs(baseHeight, x, z, climate) {
     // High-frequency noise for rocky crags
-    const cragScale = 0.05;
+    const cragScale = 0.02;
     const cragNoise = simplex.noise2D(x * cragScale + 500, z * cragScale + 500);
 
     // Create sharp ridges using absolute value (ridged noise)
-    const ridgeScale = 0.008;
+    const ridgeScale = 0.004;
     const ridgeNoise = Math.abs(simplex.noise2D(x * ridgeScale, z * ridgeScale));
 
     // Cliff bands - horizontal ledges at certain elevations
@@ -162,7 +162,7 @@ function applyPermafrost(baseHeight, x, z) {
     const flattenedHeight = baseHeight;
 
     // Polygonal ground pattern (characteristic of permafrost)
-    const polyScale = 0.02;
+    const polyScale = 0.008;
     const polyNoise = simplex.noise2D(x * polyScale, z * polyScale);
     const polygon = Math.abs(polyNoise) * 3;
 
@@ -184,7 +184,7 @@ function applyBoggyTerrain(baseHeight, x, z) {
     const softenedHeight = baseHeight;
 
     // Many small depressions for wetland pools
-    const poolScale = 0.025;
+    const poolScale = 0.01;
     const poolNoise = simplex.noise2D(x * poolScale, z * poolScale);
     const pool = poolNoise < -0.2 ? (poolNoise + 0.2) * 8 : 0;
 
@@ -211,7 +211,7 @@ function applyRavines(baseHeight, x, z) {
 
     // Terraced hillsides (like rice paddies or erosion patterns)
     const terraceHeight = 15;
-    const terraceNoise = simplex.noise2D(x * 0.03, z * 0.03) * 5;
+    const terraceNoise = simplex.noise2D(x * 0.01, z * 0.01) * 5;
     const rawTerrace = amplifiedHeight + ravine + terraceNoise;
     const terraced = Math.floor(rawTerrace / terraceHeight) * terraceHeight;
     const terraceBlend = smoothstep(0, 4, Math.abs(rawTerrace - terraced));
@@ -227,7 +227,7 @@ function applyRavines(baseHeight, x, z) {
 // Snowy Peaks: Craggy alpine with cirques and sharp ridges
 function applyCraggyAlpine(baseHeight, x, z) {
     // Sharp, jagged peaks using ridged noise
-    const jaggedScale = 0.02;
+    const jaggedScale = 0.008;
     const jaggedNoise = 1 - Math.abs(simplex.noise2D(x * jaggedScale, z * jaggedScale));
     const jagged = jaggedNoise * jaggedNoise * 20; // Square for sharper peaks
 
@@ -251,12 +251,12 @@ function applyCraggyAlpine(baseHeight, x, z) {
 // Forest: Gentle rolling hills with occasional small ravines
 function applyRollingHills(baseHeight, x, z) {
     // Gentle, rounded hill shapes
-    const hillScale = 0.008;
+    const hillScale = 0.003;
     const hillNoise = simplex.noise2D(x * hillScale, z * hillScale);
     const hills = hillNoise * hillNoise * Math.sign(hillNoise) * 10; // Softer peaks
 
     // Occasional small ravines (streams)
-    const ravineScale = 0.015;
+    const ravineScale = 0.005;
     const ravineNoise = Math.abs(simplex.noise2D(x * ravineScale + 800, z * ravineScale + 800));
     const smallRavine = ravineNoise < 0.08 ? -8 * (1 - ravineNoise / 0.08) : 0;
 
@@ -270,7 +270,7 @@ function applyGentleUndulations(baseHeight, x, z) {
     const undulation = simplex.noise2D(x * undulateScale, z * undulateScale) * 5;
 
     // Occasional small hillocks
-    const hillockScale = 0.015;
+    const hillockScale = 0.005;
     const hillockNoise = simplex.noise2D(x * hillockScale + 900, z * hillockScale + 900);
     const hillock = hillockNoise > 0.6 ? (hillockNoise - 0.6) * 12 : 0;
 
@@ -310,7 +310,7 @@ function applyKopjes(baseHeight, x, z) {
 // Highlands: Elevated rolling terrain with rocky areas
 function applyHighlands(baseHeight, x, z) {
     // Moderate rolling terrain
-    const rollScale = 0.01;
+    const rollScale = 0.004;
     const roll = simplex.noise2D(x * rollScale, z * rollScale) * 8;
 
     // Rocky patches
@@ -531,7 +531,9 @@ function calculateTerrainHeight(x, z) {
         height = terrainSpline(CONTINENT_SPLINE, c);
 
         // 2. Hills: bigger where the land is rugged, nearly flat where it is eroded
-        height += (calculateBaseHeight(x, z) / Math.max(1, elev.hillHeight || 25)) * (4 + 46 * rugged) * inland;
+        // Hills: wide and rolling (sampled at 1/4 frequency: ~500/250/125-unit
+        // wavelengths), bigger where the land is rugged, nearly flat where eroded
+        height += (calculateBaseHeight(x * 0.25, z * 0.25) / Math.max(1, elev.hillHeight || 25)) * (4 + 46 * rugged) * inland;
 
         // 3. Mountain ranges: long ridges, only inland where erosion is low
         if (!ridgeSimplex) ridgeSimplex = new SimplexNoise((cfg.seed || 'seed') + '_ridges');
