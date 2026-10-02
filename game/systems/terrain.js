@@ -139,7 +139,7 @@ function applyMesas(baseHeight, x, z) {
     // Canyon carving - deep valleys
     const canyonScale = 0.006;
     const canyonNoise = Math.abs(simplex.noise2D(x * canyonScale + 200, z * canyonScale + 200));
-    const canyon = canyonNoise < 0.15 ? -20 * (1 - canyonNoise / 0.15) : 0;
+    const canyon = canyonNoise < 0.15 ? -14 * (1 - canyonNoise / 0.15) : 0;
 
     // Mesa plateaus - quantized heights for flat-topped mesas
     const mesaHeight = baseHeight + canyon;
@@ -159,8 +159,7 @@ function applyMesas(baseHeight, x, z) {
 
 // Tundra: Flat permafrost with thermokarst pools and polygonal ground
 function applyPermafrost(baseHeight, x, z) {
-    // Flatten the terrain significantly
-    const flattenedHeight = baseHeight * 0.3;
+    const flattenedHeight = baseHeight;
 
     // Polygonal ground pattern (characteristic of permafrost)
     const polyScale = 0.02;
@@ -182,8 +181,7 @@ function applyPermafrost(baseHeight, x, z) {
 
 // Taiga: Boggy lowlands with wetland pools and hummocks
 function applyBoggyTerrain(baseHeight, x, z) {
-    // Reduce overall terrain variation for wet, low-lying areas
-    const softenedHeight = baseHeight * 0.5;
+    const softenedHeight = baseHeight;
 
     // Many small depressions for wetland pools
     const poolScale = 0.025;
@@ -204,13 +202,12 @@ function applyBoggyTerrain(baseHeight, x, z) {
 
 // Jungle: Steep ravines and terraced hillsides
 function applyRavines(baseHeight, x, z) {
-    // Amplify terrain variation for dramatic topography
-    const amplifiedHeight = baseHeight * 1.4;
+    const amplifiedHeight = baseHeight;
 
     // Deep ravine carving using inverted ridge noise
     const ravineScale = 0.007;
     const ravineNoise = Math.abs(simplex.noise2D(x * ravineScale, z * ravineScale));
-    const ravine = ravineNoise < 0.12 ? -25 * (1 - ravineNoise / 0.12) : 0;
+    const ravine = ravineNoise < 0.12 ? -12 * (1 - ravineNoise / 0.12) : 0;
 
     // Terraced hillsides (like rice paddies or erosion patterns)
     const terraceHeight = 15;
@@ -277,32 +274,29 @@ function applyGentleUndulations(baseHeight, x, z) {
     const hillockNoise = simplex.noise2D(x * hillockScale + 900, z * hillockScale + 900);
     const hillock = hillockNoise > 0.6 ? (hillockNoise - 0.6) * 12 : 0;
 
-    // Flatten the base significantly
-    const flattenedHeight = baseHeight * 0.4;
-
-    return flattenedHeight + undulation + hillock;
+    return baseHeight + undulation * 0.6 + hillock;
 }
 
 // Beach: Nearly flat with gentle slope and minor ripples
 function applyBeachTerrain(baseHeight, x, z) {
-    // Very flat
-    const flatHeight = baseHeight * 0.15;
+    // Flatten toward a gentle strand just above the water
+    const strand = -3.5;
+    const flatHeight = strand + (baseHeight - strand) * 0.5;
 
     // Minor sand ripples near water
     const rippleScale = 0.1;
-    const ripples = simplex.noise2D(x * rippleScale, z * rippleScale) * 0.5;
+    const ripples = simplex.noise2D(x * rippleScale, z * rippleScale) * 0.3;
 
     return flatHeight + ripples;
 }
 
 // Savanna: Mostly flat with occasional kopjes (isolated rock outcrops)
 function applyKopjes(baseHeight, x, z) {
-    // Flatten base terrain
-    const flatHeight = baseHeight * 0.35;
+    const flatHeight = baseHeight;
 
     // Gentle rolling savanna
     const rollScale = 0.006;
-    const roll = simplex.noise2D(x * rollScale, z * rollScale) * 4;
+    const roll = simplex.noise2D(x * rollScale, z * rollScale) * 2;
 
     // Kopjes - isolated granite outcrops
     const kopjeScale = 0.003;
@@ -377,7 +371,7 @@ function applyBiomeFeatures(baseHeight, x, z, biome, climate) {
         case 'beach':
             return applyBeachTerrain(baseHeight, x, z);
         case 'stonyShore':
-            return applyCliffs(baseHeight, x, z, climate) * 0.5; // Smaller cliffs
+            return baseHeight + (applyCliffs(baseHeight, x, z, climate) - baseHeight) * 0.35; // Smaller cliffs
 
         default:
             return baseHeight;
@@ -480,87 +474,100 @@ function calculateBaseHeight(x, z) {
 }
 
 // Calculate terrain height with climate influence
+// Piecewise-linear spline: points are [input, output] sorted by input
+function terrainSpline(points, v) {
+    if (v <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+        if (v <= points[i][0]) {
+            const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+            const t = (v - x0) / (x1 - x0);
+            return y0 + (y1 - y0) * t * t * (3 - 2 * t);
+        }
+    }
+    return points[points.length - 1][1];
+}
+
+// Base land height from continentalness: deep ocean -> shelf -> coast -> lowlands -> interior uplands
+// (sea level is -5)
+const CONTINENT_SPLINE = [
+    [-1.0, -42], [-0.45, -30], [-0.3, -16], [-0.2, -7], [-0.13, -3],
+    [-0.05, 2], [0.1, 8], [0.3, 20], [0.55, 36], [1.0, 52]
+];
+
+let ridgeSimplex = null;
+
+// Calculate terrain height with climate influence. Terrain shape comes from
+// climate (continentalness = how far inland, erosion = how rugged, weirdness =
+// peaks and valleys); the biome is then chosen from climate AND the resulting
+// elevation, so mountains are cold and rocky, coasts sandy, lowlands green.
 function calculateTerrainHeight(x, z) {
     const cfg = terrainConfig || {};
     const elev = cfg.elevation || {};
 
-    // Get base height from noise
-    let height = calculateBaseHeight(x, z);
-
-    // Get climate data at this position
     let climate = null;
     let biome = null;
     let blendBiome = null;
     let blendWeight = 0;
+    let height = 0;
+
+    const distanceToCenter = Math.sqrt(x * x + z * z);
 
     if (typeof getClimateAt === 'function') {
-        climate = getClimateAt(x, z);
+        climate = { ...getClimateAt(x, z) };
 
-        // Apply climate-based height modifiers
-        if (typeof getHeightModifier === 'function') {
-            const modifier = getHeightModifier(climate);
-            height *= modifier;
+        // Keep spawn on gentle dry land
+        const spawnLand = 1 - smoothstep(300, 900, distanceToCenter);
+        climate.continentalness = Math.min(1, climate.continentalness + 0.35 * spawnLand);
+
+        const c = climate.continentalness, e = climate.erosion, w = climate.weirdness || 0;
+        const rugged = 1 - smoothstep(-0.4, 0.6, e);     // 1 = rugged, 0 = flat
+        const inland = smoothstep(-0.2, 0.05, c);
+
+        // 1. Continental base
+        height = terrainSpline(CONTINENT_SPLINE, c);
+
+        // 2. Hills: bigger where the land is rugged, nearly flat where it is eroded
+        height += (calculateBaseHeight(x, z) / Math.max(1, elev.hillHeight || 25)) * (3 + 23 * rugged) * inland;
+
+        // 3. Mountain ranges: long ridges, only inland where erosion is low
+        if (!ridgeSimplex) ridgeSimplex = new SimplexNoise((cfg.seed || 'seed') + '_ridges');
+        const mountainous = smoothstep(0.2, -0.4, e) * smoothstep(-0.1, 0.25, c) * (1 - spawnLand);
+        if (mountainous > 0) {
+            const r1 = 1 - Math.abs(ridgeSimplex.noise2D(x * 0.0007, z * 0.0007));
+            const r2 = 1 - Math.abs(ridgeSimplex.noise2D(x * 0.0021 + 300, z * 0.0021 + 300));
+            const ridge = Math.pow(r1, 1.8);
+            const peaks = ridge * 0.8 + ridge * r2 * r2 * 0.35;
+            height += peaks * (elev.mountainHeight || 280) * mountainous;
         }
 
-        // Apply base height offset (ocean basins, elevated inland)
-        if (typeof getBaseHeightOffset === 'function') {
-            height += getBaseHeightOffset(climate);
-        }
+        // 4. Peaks and valleys (Minecraft's folded weirdness) for upland variety
+        const pv = 1 - Math.abs(3 * Math.abs(w) - 2);
+        height += pv * 10 * inland * rugged;
 
-        // Get biome for this climate, plus the neighbor biome to blend toward
+        // Biome from climate + elevation, plus the neighbor biome to blend toward
         if (typeof getBiomeBlendAt === 'function') {
-            ({ biome, blendBiome, blendWeight } = getBiomeBlendAt(climate));
+            ({ biome, blendBiome, blendWeight } = getBiomeBlendAt(climate, height));
         } else if (typeof getBiomeAt === 'function') {
-            biome = getBiomeAt(climate);
+            biome = getBiomeAt(climate, height);
         }
 
-        // Apply biome-specific terrain features (dunes, cliffs, mesas, etc.),
-        // fading into the neighbor's features near borders instead of a step
+        // Biome surface detail (dunes, mesas, crags...), blended at borders
         const ownHeight = applyBiomeFeatures(height, x, z, biome, climate);
         height = blendWeight > 0.001
             ? ownHeight + (applyBiomeFeatures(height, x, z, blendBiome, climate) - ownHeight) * blendWeight
             : ownHeight;
+    } else {
+        height = calculateBaseHeight(x, z);
     }
 
-    // Apply plateau at center (spawn area)
+    // Flatten the spawn plateau
     const plateauRadius = elev.plateauRadius || 30;
-    const distanceToCenter = Math.sqrt(x * x + z * z);
-
     if (distanceToCenter < plateauRadius) {
         const blendFactor = smoothstep(0, 1, distanceToCenter / plateauRadius);
-        height *= blendFactor;
+        height = 2 + (height - 2) * blendFactor;
     }
 
-    // Mountain generation for distant terrain (smooth, not bumpy)
-    const mountainStartRadius = elev.mountainStartRadius || 300;
-    if (distanceToCenter > mountainStartRadius) {
-        // Only add mountains if erosion is low (mountainous)
-        const erosionAllows = !climate || climate.erosion < 0.3;
-
-        if (erosionAllows) {
-            // Use very low frequency noise for smooth mountain shapes
-            const mountainScale = 0.0015; // Very smooth - large mountain shapes
-            const mountainNoise = simplex.noise2D(x * mountainScale + 1000, z * mountainScale + 1000);
-
-            // Smooth transition from terrain to mountains using cubic ease
-            const rawTransition = Math.min(1, Math.max(0, (distanceToCenter - mountainStartRadius) / 200));
-            const transition = rawTransition * rawTransition * (3 - 2 * rawTransition); // Smoothstep
-
-            // Scale mountain height by inverse erosion (low erosion = tall mountains)
-            let mountainMultiplier = 1.0;
-            if (climate) {
-                const erosionFactor = (1 - climate.erosion) / 2; // 0 to 1, higher when erosion is low
-                mountainMultiplier = 0.3 + erosionFactor * erosionFactor * 0.7; // Smooth curve
-            }
-
-            // Use absolute noise value for ridge-like mountains (not valleys)
-            const ridgeNoise = Math.abs(mountainNoise);
-            const mountainHeight = ridgeNoise * (elev.mountainHeight || 250) * transition * mountainMultiplier;
-            height += mountainHeight;
-        }
-    }
-
-    // Oceans, lakes and ponds, then river valleys, last so they cut through everything
+    // Lakes and ponds, then river valleys, last so they cut through everything
     if (typeof applyWaterBodies === 'function') {
         height = applyWaterBodies(x, z, height, climate);
     }

@@ -454,9 +454,8 @@ function getChunkBiomeAt(x, z) {
 
     if (!chunkData) {
         // Calculate directly if chunk not loaded
-        if (typeof getClimateAt === 'function' && typeof getBiomeAt === 'function') {
-            const climate = getClimateAt(x, z);
-            return getBiomeAt(climate);
+        if (typeof calculateTerrainHeight === 'function') {
+            return calculateTerrainHeight(x, z).biome;
         }
         return null;
     }

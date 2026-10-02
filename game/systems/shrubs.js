@@ -499,6 +499,14 @@ const BIOME_SHRUBS = {
 
 const ALPINE_SHRUBS = { density: 0.35, types: [['snowRock', 3], ['frostGrass', 2], ['lichen', 1.5], ['snowyBush', 1]] };
 
+// Water's edge planting (lake shores, river banks) by shore climate
+const SHORE_SHRUBS = {
+    temperate: { density: 1.0, types: [['cattails', 3], ['reeds', 3], ['sedge', 3], ['bluebells', 1], ['mossyRock', 0.6], ['fallenLog', 0.3], ['swampShrub', 0.5]] },
+    cold: { density: 0.6, types: [['sedge', 3], ['frostGrass', 2], ['pebbles', 2], ['mossyRock', 1.5], ['lichen', 1], ['snowRock', 0.5]] },
+    arid: { density: 0.9, types: [['reeds', 3], ['palmetto', 2.5], ['beachGrass', 2], ['desertBloom', 1], ['tallGrass', 1]] },
+    tropical: { density: 1.0, types: [['reeds', 2], ['tropicalLeaves', 2], ['bromeliad', 1.5], ['mangroveRoots', 1], ['sedge', 2], ['orchids', 0.5]] }
+};
+
 // Small ground-cover sprites are planted densely, but only in chunks near the
 // player (detail layer); everything else is planted in every loaded chunk
 const DETAIL_SPRITES = new Set(['grassTuft', 'tallGrass', 'dryGrass', 'frostGrass', 'beachGrass', 'ashGrass',
@@ -506,7 +514,7 @@ const DETAIL_SPRITES = new Set(['grassTuft', 'tallGrass', 'dryGrass', 'frostGras
     'tundraBloom', 'desertBloom', 'moss', 'lichen', 'pebbles', 'shells', 'brownMushrooms', 'seaweed']);
 
 // Split each planting table into its feature and detail halves
-for (const table of [...Object.values(BIOME_SHRUBS), ALPINE_SHRUBS]) {
+for (const table of [...Object.values(BIOME_SHRUBS), ALPINE_SHRUBS, ...Object.values(SHORE_SHRUBS)]) {
     table.feature = table.types.filter(t => !DETAIL_SPRITES.has(t[0]));
     table.detail = table.types.filter(t => DETAIL_SPRITES.has(t[0]));
 }
@@ -694,7 +702,11 @@ function buildShrubLayer(cx, cz, chunkData, layerName) {
         // Near borders, plant from the neighbor biome too so vegetation mixes
         let biome = data.biome;
         if (data.blendBiome && blendRoll < data.blendWeight) biome = data.blendBiome;
-        const table = (data.snow || 0) > 0.5 ? ALPINE_SHRUBS : (BIOME_SHRUBS[biome.id] || BIOME_SHRUBS.plains);
+        const ground = chunkSurfaceHeight(chunkData, x, z);
+        let table;
+        if ((data.snow || 0) > 0.5) table = ALPINE_SHRUBS;
+        else if (typeof isShoreHeight === 'function' && isShoreHeight(ground) && !SHORE_BIOMES.has(biome.id)) table = SHORE_SHRUBS[getShoreClass(data.climate, ground)];
+        else table = BIOME_SHRUBS[biome.id] || BIOME_SHRUBS.plains;
         const types = table[layerName];
         if (types.length === 0 || roll > table.density) continue;
 

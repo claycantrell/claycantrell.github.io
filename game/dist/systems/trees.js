@@ -588,6 +588,15 @@ const BIOME_TREES = {
     mangroveSwamp: { density: 0.65, types: [['mangrove', 0.9], ['swampTree', 0.1]] }
 };
 
+// Water's edge trees (lake shores, river banks) by shore climate: willows by
+// temperate water, palm oases in deserts, mangroves and palms in the tropics
+const SHORE_TREES = {
+    temperate: { density: 0.3, types: [['willow', 0.55], ['birch', 0.3], ['swampTree', 0.15]] },
+    cold: { density: 0.2, types: [['birch', 0.5], ['spruce', 0.5]] },
+    arid: { density: 0.35, types: [['palm', 0.85], ['acacia', 0.15]] },
+    tropical: { density: 0.4, types: [['palm', 0.4], ['mangrove', 0.3], ['banyan', 0.3]] }
+};
+
 const TREE_CONFIG = {
     modelVariants: 3,
     candidatesPerChunk: 130,
@@ -937,8 +946,15 @@ function addChunkTrees(cx, cz, chunkData) {
 
         let biome = data.biome;
         if (data.blendBiome && blendRoll < data.blendWeight) biome = data.blendBiome;
-        const table = BIOME_TREES[biome.id] || BIOME_TREES.plains;
-        if (!table.types.length || roll > table.density) continue;
+        const ground = chunkSurfaceHeight(chunkData, x, z);
+        const table = typeof isShoreHeight === 'function' && isShoreHeight(ground, 3) && !SHORE_BIOMES.has(biome.id)
+            ? SHORE_TREES[getShoreClass(data.climate, ground)]
+            : (BIOME_TREES[biome.id] || BIOME_TREES.plains);
+
+        // Treeline: forests thin out and stop with altitude (higher where it is warmer)
+        const treeline = 140 + (data.climate ? data.climate.temperature : 0) * 50;
+        const altitude = 1 - smoothstep(treeline - 30, treeline, ground);
+        if (!table.types.length || roll > table.density * altitude) continue;
 
         // Dry land only
         const seaLevel = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
