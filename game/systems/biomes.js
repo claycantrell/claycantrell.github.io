@@ -22,7 +22,7 @@ const BIOMES = {
         id: 'snowyPeaks',
         name: 'Snowy Peaks',
         params: { temp: -0.45, humid: 0, cont: 0.4, erosion: -0.45, weird: 0 },
-        elevation: [170, 999], // Height band (sea level -5)
+        elevation: [330, 999], // Height band (sea level -5)
         color: 0xF2F5F8,
         colorAlt: 0xD5DEE8, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
@@ -33,7 +33,7 @@ const BIOMES = {
         id: 'iceSpikes',
         name: 'Ice Spikes',
         params: { temp: -0.55, humid: -0.1, cont: 0.3, erosion: 0.2, weird: 0.65 },
-        elevation: [-4, 60], // Height band (sea level -5)
+        elevation: [-4, 90], // Height band (sea level -5)
         color: 0xCFE6EF,
         colorAlt: 0xA4CCDD, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
@@ -44,7 +44,7 @@ const BIOMES = {
         id: 'snowySlopes',
         name: 'Snowy Slopes',
         params: { temp: -0.4, humid: 0.1, cont: 0.3, erosion: -0.3, weird: 0 },
-        elevation: [110, 260], // Height band (sea level -5)
+        elevation: [220, 480], // Height band (sea level -5)
         color: 0xE4E9EE,
         colorAlt: 0xBCC5CD, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
@@ -55,7 +55,7 @@ const BIOMES = {
         id: 'tundra',
         name: 'Tundra',
         params: { temp: -0.5, humid: -0.3, cont: 0.1, erosion: 0.3, weird: 0 },
-        elevation: [-4, 70], // Height band (sea level -5)
+        elevation: [-4, 110], // Height band (sea level -5)
         color: 0x8C9886,
         colorAlt: 0xB9BEB2, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
@@ -66,7 +66,7 @@ const BIOMES = {
         id: 'taiga',
         name: 'Taiga',
         params: { temp: -0.45, humid: 0.25, cont: 0.15, erosion: 0.1, weird: 0 },
-        elevation: [-4, 110], // Height band (sea level -5)
+        elevation: [-4, 180], // Height band (sea level -5)
         color: 0x3D5A47,
         colorAlt: 0x66775A, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
@@ -79,7 +79,7 @@ const BIOMES = {
         id: 'coldForest',
         name: 'Cold Forest',
         params: { temp: -0.2, humid: 0.25, cont: 0.15, erosion: 0.0, weird: 0 },
-        elevation: [-2, 100], // Height band (sea level -5)
+        elevation: [-2, 160], // Height band (sea level -5)
         color: 0x3E6543,
         colorAlt: 0x587349, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -90,7 +90,7 @@ const BIOMES = {
         id: 'coldPlains',
         name: 'Cold Plains',
         params: { temp: -0.2, humid: -0.25, cont: 0.1, erosion: 0.35, weird: 0 },
-        elevation: [-3, 60], // Height band (sea level -5)
+        elevation: [-3, 80], // Height band (sea level -5)
         color: 0x6D8158,
         colorAlt: 0x8E9469, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -103,7 +103,7 @@ const BIOMES = {
         id: 'mountains',
         name: 'Mountains',
         params: { temp: -0.1, humid: 0, cont: 0.5, erosion: -0.5, weird: 0 },
-        elevation: [85, 220], // Height band (sea level -5)
+        elevation: [150, 400], // Height band (sea level -5)
         color: 0x77736B,
         colorAlt: 0x5B5852, // Patch color, mixed in by low-frequency noise
         textureType: 'rock',
@@ -114,7 +114,7 @@ const BIOMES = {
         id: 'highlands',
         name: 'Highlands',
         params: { temp: 0, humid: 0, cont: 0.4, erosion: -0.25, weird: 0 },
-        elevation: [35, 130], // Height band (sea level -5)
+        elevation: [45, 220], // Height band (sea level -5)
         color: 0x667C4B,
         colorAlt: 0x8A8758, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -125,7 +125,7 @@ const BIOMES = {
         id: 'forest',
         name: 'Forest',
         params: { temp: 0.05, humid: 0.35, cont: 0.15, erosion: 0.05, weird: 0 },
-        elevation: [-2, 90], // Height band (sea level -5)
+        elevation: [-2, 140], // Height band (sea level -5)
         color: 0x2E6A2A,
         colorAlt: 0x4A7530, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -136,7 +136,7 @@ const BIOMES = {
         id: 'plains',
         name: 'Plains',
         params: { temp: 0.05, humid: -0.1, cont: 0.1, erosion: 0.4, weird: 0 },
-        elevation: [-3, 45], // Height band (sea level -5)
+        elevation: [-3, 60], // Height band (sea level -5)
         color: 0x7EA745,
         colorAlt: 0xA6AF58, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -147,7 +147,7 @@ const BIOMES = {
         id: 'meadow',
         name: 'Meadow',
         params: { temp: 0.05, humid: 0.15, cont: 0.2, erosion: 0.2, weird: 0 },
-        elevation: [10, 110], // Height band (sea level -5)
+        elevation: [15, 180], // Height band (sea level -5)
         color: 0x78B25C,
         colorAlt: 0xA2C46C, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -158,7 +158,7 @@ const BIOMES = {
         id: 'cherryGrove',
         name: 'Cherry Grove',
         params: { temp: 0.1, humid: 0.3, cont: 0.25, erosion: 0.0, weird: 0.6 },
-        elevation: [20, 110], // Height band (sea level -5)
+        elevation: [25, 180], // Height band (sea level -5)
         color: 0x86B06A,
         colorAlt: 0xE6B3C6, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -182,7 +182,7 @@ const BIOMES = {
         id: 'grassland',
         name: 'Grassland',
         params: { temp: 0.3, humid: -0.15, cont: 0.1, erosion: 0.35, weird: 0 },
-        elevation: [-3, 50], // Height band (sea level -5)
+        elevation: [-3, 70], // Height band (sea level -5)
         color: 0x97AF49,
         colorAlt: 0xBDB663, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -193,7 +193,7 @@ const BIOMES = {
         id: 'savanna',
         name: 'Savanna',
         params: { temp: 0.4, humid: -0.35, cont: 0.15, erosion: 0.25, weird: 0 },
-        elevation: [-3, 70], // Height band (sea level -5)
+        elevation: [-3, 110], // Height band (sea level -5)
         color: 0xB7A659,
         colorAlt: 0x9C8B47, // Patch color, mixed in by low-frequency noise
         textureType: 'dirt',
@@ -204,7 +204,7 @@ const BIOMES = {
         id: 'warmForest',
         name: 'Warm Forest',
         params: { temp: 0.3, humid: 0.3, cont: 0.15, erosion: 0.05, weird: 0 },
-        elevation: [-2, 80], // Height band (sea level -5)
+        elevation: [-2, 120], // Height band (sea level -5)
         color: 0x3C792D,
         colorAlt: 0x5A8935, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -217,7 +217,7 @@ const BIOMES = {
         id: 'desert',
         name: 'Desert',
         params: { temp: 0.5, humid: -0.5, cont: 0.2, erosion: 0.3, weird: 0 },
-        elevation: [-3, 70], // Height band (sea level -5)
+        elevation: [-3, 110], // Height band (sea level -5)
         color: 0xD8C28E,
         colorAlt: 0xC6A26B, // Patch color, mixed in by low-frequency noise
         textureType: 'sand',
@@ -228,7 +228,7 @@ const BIOMES = {
         id: 'badlands',
         name: 'Badlands',
         params: { temp: 0.45, humid: -0.4, cont: 0.3, erosion: -0.3, weird: 0 },
-        elevation: [15, 140], // Height band (sea level -5)
+        elevation: [15, 220], // Height band (sea level -5)
         color: 0xB4643A,
         colorAlt: 0xD38E5C, // Patch color, mixed in by low-frequency noise
         textureType: 'dirt',
@@ -239,7 +239,7 @@ const BIOMES = {
         id: 'jungle',
         name: 'Jungle',
         params: { temp: 0.5, humid: 0.45, cont: 0.15, erosion: 0.05, weird: 0 },
-        elevation: [-3, 90], // Height band (sea level -5)
+        elevation: [-3, 140], // Height band (sea level -5)
         color: 0x1E6A24,
         colorAlt: 0x307C1D, // Patch color, mixed in by low-frequency noise
         textureType: 'mud',
@@ -250,7 +250,7 @@ const BIOMES = {
         id: 'bambooJungle',
         name: 'Bamboo Jungle',
         params: { temp: 0.45, humid: 0.45, cont: 0.15, erosion: 0.1, weird: 0.6 },
-        elevation: [-2, 80], // Height band (sea level -5)
+        elevation: [-2, 120], // Height band (sea level -5)
         color: 0x3D892D,
         colorAlt: 0x5E9A3A, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
@@ -283,7 +283,7 @@ const BIOMES = {
         id: 'volcanicPeaks',
         name: 'Volcanic Peaks',
         params: { temp: 0.4, humid: -0.3, cont: 0.6, erosion: -0.5, weird: 0.65 },
-        elevation: [80, 999], // Height band (sea level -5)
+        elevation: [150, 999], // Height band (sea level -5)
         color: 0x3A3133,
         colorAlt: 0x7A2C1B, // Patch color, mixed in by low-frequency noise
         textureType: 'rock',
@@ -318,7 +318,7 @@ const BIOMES = {
 
 // Temperature falls with altitude (~ a real lapse rate): high ground is colder
 function getEffectiveTemperature(climate, height) {
-    return climate.temperature - Math.max(0, height - 25) * 0.0055;
+    return climate.temperature - Math.max(0, height - 30) * 0.003;
 }
 
 // Squared distance in climate space plus a penalty for being outside the

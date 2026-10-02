@@ -487,11 +487,15 @@ function terrainSpline(points, v) {
     return points[points.length - 1][1];
 }
 
+// Scale: the player is 4.5 units tall (Minecraft's 1.8 blocks), so 1 block ~ 2.5 units.
+// Minecraft sea level is Y=62 with plains ~0-15 blocks above it, interior
+// uplands ~40-60, and mountain peaks ~100-190 blocks up (Y=160-256).
+
 // Base land height from continentalness: deep ocean -> shelf -> coast -> lowlands -> interior uplands
 // (sea level is -5)
 const CONTINENT_SPLINE = [
-    [-1.0, -42], [-0.45, -30], [-0.3, -16], [-0.2, -7], [-0.13, -3],
-    [-0.05, 2], [0.1, 8], [0.3, 20], [0.55, 36], [1.0, 52]
+    [-1.0, -60], [-0.45, -40], [-0.3, -20], [-0.2, -8], [-0.13, -3],
+    [-0.05, 2], [0.1, 10], [0.3, 30], [0.55, 60], [1.0, 110]
 ];
 
 let ridgeSimplex = null;
@@ -527,7 +531,7 @@ function calculateTerrainHeight(x, z) {
         height = terrainSpline(CONTINENT_SPLINE, c);
 
         // 2. Hills: bigger where the land is rugged, nearly flat where it is eroded
-        height += (calculateBaseHeight(x, z) / Math.max(1, elev.hillHeight || 25)) * (3 + 23 * rugged) * inland;
+        height += (calculateBaseHeight(x, z) / Math.max(1, elev.hillHeight || 25)) * (4 + 46 * rugged) * inland;
 
         // 3. Mountain ranges: long ridges, only inland where erosion is low
         if (!ridgeSimplex) ridgeSimplex = new SimplexNoise((cfg.seed || 'seed') + '_ridges');
@@ -537,12 +541,12 @@ function calculateTerrainHeight(x, z) {
             const r2 = 1 - Math.abs(ridgeSimplex.noise2D(x * 0.0021 + 300, z * 0.0021 + 300));
             const ridge = Math.pow(r1, 1.8);
             const peaks = ridge * 0.8 + ridge * r2 * r2 * 0.35;
-            height += peaks * (elev.mountainHeight || 280) * mountainous;
+            height += peaks * (elev.mountainHeight || 480) * mountainous;
         }
 
         // 4. Peaks and valleys (Minecraft's folded weirdness) for upland variety
         const pv = 1 - Math.abs(3 * Math.abs(w) - 2);
-        height += pv * 10 * inland * rugged;
+        height += pv * 20 * inland * rugged;
 
         // Biome from climate + elevation, plus the neighbor biome to blend toward
         if (typeof getBiomeBlendAt === 'function') {

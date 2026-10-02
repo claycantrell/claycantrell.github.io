@@ -275,11 +275,13 @@ function init() {
     GAME.scene.autoUpdate = true; // Keep true for now, but can optimize further
 
     // Camera setup
+    // Far plane well past the sky dome (drawn first, no depth) so distant
+    // mountain ranges show on the horizon instead of being clipped at 1000
     GAME.camera = new THREE.PerspectiveCamera(
         75,
         window.innerWidth / window.innerHeight,
         1,
-        1000
+        2500
     );
 
     // Add ambient light for general illumination (config-driven)

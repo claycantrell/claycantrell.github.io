@@ -952,7 +952,7 @@ function addChunkTrees(cx, cz, chunkData) {
             : (BIOME_TREES[biome.id] || BIOME_TREES.plains);
 
         // Treeline: forests thin out and stop with altitude (higher where it is warmer)
-        const treeline = 140 + (data.climate ? data.climate.temperature : 0) * 50;
+        const treeline = 240 + (data.climate ? data.climate.temperature : 0) * 100;
         const altitude = 1 - smoothstep(treeline - 30, treeline, ground);
         if (!table.types.length || roll > table.density * altitude) continue;
 

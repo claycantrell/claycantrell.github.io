@@ -24,7 +24,7 @@
       "hillHeight": 20,
       "plateauRadius": 60,
       "mountainStartRadius": 500,
-      "mountainHeight": 150
+      "mountainHeight": 360
     },
     "climate": {
       "temperatureOffset": 0.4,
