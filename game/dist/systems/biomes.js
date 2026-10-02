@@ -22,7 +22,8 @@ const BIOMES = {
         id: 'snowyPeaks',
         name: 'Snowy Peaks',
         params: { temp: -0.7, humid: 0, cont: 0.4, erosion: -0.9, weird: 0 },
-        color: 0xE8E8E8,
+        color: 0xF2F5F8,
+        colorAlt: 0xD5DEE8, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.3 }
@@ -31,7 +32,8 @@ const BIOMES = {
         id: 'iceSpikes',
         name: 'Ice Spikes',
         params: { temp: -0.8, humid: -0.3, cont: 0.3, erosion: -0.6, weird: 0.5 },
-        color: 0xB0E0E6,
+        color: 0xCFE6EF,
+        colorAlt: 0xA4CCDD, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
         vegetation: { density: 0.0, types: {} },
         entities: { penguin: 0.8, bird: 0.2 }
@@ -40,7 +42,8 @@ const BIOMES = {
         id: 'snowySlopes',
         name: 'Snowy Slopes',
         params: { temp: -0.7, humid: 0, cont: 0.3, erosion: -0.5, weird: 0 },
-        color: 0xDCDCDC,
+        color: 0xE4E9EE,
+        colorAlt: 0xBCC5CD, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
         vegetation: { density: 0.05, types: { pine: 1.0 } },
         entities: { deer: 0.2, bunny: 0.1, bird: 0.3 }
@@ -49,7 +52,8 @@ const BIOMES = {
         id: 'tundra',
         name: 'Tundra',
         params: { temp: -0.7, humid: -0.5, cont: 0.1, erosion: 0.3, weird: 0 },
-        color: 0x708090,
+        color: 0x8C9886,
+        colorAlt: 0xB9BEB2, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
         vegetation: { density: 0.02, types: { pine: 1.0 } },
         entities: { deer: 0.3, bunny: 0.1, bird: 0.1 }
@@ -58,7 +62,8 @@ const BIOMES = {
         id: 'taiga',
         name: 'Taiga',
         params: { temp: -0.7, humid: 0.5, cont: 0.15, erosion: 0.2, weird: 0 },
-        color: 0x2F4F4F,
+        color: 0x3D5A47,
+        colorAlt: 0x66775A, // Patch color, mixed in by low-frequency noise
         textureType: 'snow',
         vegetation: { density: 0.65, types: { pine: 1.0 } },
         entities: { deer: 0.8, bunny: 0.3, bird: 0.4 }
@@ -69,7 +74,8 @@ const BIOMES = {
         id: 'coldForest',
         name: 'Cold Forest',
         params: { temp: -0.3, humid: 0.4, cont: 0.15, erosion: 0.1, weird: 0 },
-        color: 0x355E3B,
+        color: 0x3E6543,
+        colorAlt: 0x587349, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.7, types: { pine: 0.8, oak: 0.2 } },
         entities: { deer: 1.0, bunny: 0.5, bird: 0.6 }
@@ -78,7 +84,8 @@ const BIOMES = {
         id: 'coldPlains',
         name: 'Cold Plains',
         params: { temp: -0.3, humid: -0.2, cont: 0.1, erosion: 0.5, weird: 0 },
-        color: 0x5D7052,
+        color: 0x6D8158,
+        colorAlt: 0x8E9469, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.15, types: { pine: 0.7, oak: 0.3 } },
         entities: { deer: 0.8, bunny: 0.6, bird: 0.5 }
@@ -89,7 +96,8 @@ const BIOMES = {
         id: 'mountains',
         name: 'Mountains',
         params: { temp: 0, humid: 0, cont: 0.5, erosion: -0.85, weird: 0 },
-        color: 0x696969,
+        color: 0x77736B,
+        colorAlt: 0x5B5852, // Patch color, mixed in by low-frequency noise
         textureType: 'rock',
         vegetation: { density: 0.08, types: { pine: 1.0 } },
         entities: { deer: 0.2, bunny: 0.1, bird: 0.8 }
@@ -98,7 +106,8 @@ const BIOMES = {
         id: 'highlands',
         name: 'Highlands',
         params: { temp: 0, humid: 0, cont: 0.4, erosion: -0.5, weird: 0 },
-        color: 0x5A6E4A,
+        color: 0x667C4B,
+        colorAlt: 0x8A8758, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.2, types: { pine: 0.6, oak: 0.4 } },
         entities: { deer: 0.6, bunny: 0.4, bird: 0.7 }
@@ -107,7 +116,8 @@ const BIOMES = {
         id: 'forest',
         name: 'Forest',
         params: { temp: 0, humid: 0.6, cont: 0.15, erosion: 0.15, weird: 0 },
-        color: 0x1A5C1A,
+        color: 0x2E6A2A,
+        colorAlt: 0x4A7530, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.85, types: { oak: 0.6, pine: 0.4 } },
         entities: { deer: 1.5, bunny: 0.8, bird: 1.2 }
@@ -116,7 +126,8 @@ const BIOMES = {
         id: 'plains',
         name: 'Plains',
         params: { temp: 0, humid: 0, cont: 0.1, erosion: 0.5, weird: 0 },
-        color: 0x7CBA3D,
+        color: 0x7EA745,
+        colorAlt: 0xA6AF58, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.12, types: { oak: 0.5, pine: 0.5 } },
         entities: { deer: 1.0, cow: 1.2, bunny: 1.0, bird: 0.8 }
@@ -125,7 +136,8 @@ const BIOMES = {
         id: 'meadow',
         name: 'Meadow',
         params: { temp: 0, humid: 0.2, cont: 0.2, erosion: 0.3, weird: 0 },
-        color: 0x7DB37D,
+        color: 0x78B25C,
+        colorAlt: 0xA2C46C, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.08, types: { oak: 0.8, pine: 0.2 } },
         entities: { deer: 0.8, cow: 1.5, bunny: 1.2, bird: 1.0 }
@@ -134,7 +146,8 @@ const BIOMES = {
         id: 'cherryGrove',
         name: 'Cherry Grove',
         params: { temp: 0.1, humid: 0.4, cont: 0.25, erosion: 0.2, weird: 0.3 },
-        color: 0xFFB7D5,
+        color: 0x86B06A,
+        colorAlt: 0xE6B3C6, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.75, types: { oak: 0.1, pine: 0 } },
         entities: { butterfly: 2.0, bird: 1.5, bunny: 0.8 }
@@ -143,7 +156,8 @@ const BIOMES = {
         id: 'mushroomFields',
         name: 'Mushroom Fields',
         params: { temp: 0, humid: 0.5, cont: 0.4, erosion: 0.4, weird: 0.8 },
-        color: 0x9370DB,
+        color: 0x8B7D8E,
+        colorAlt: 0x6C5B77, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.4, types: {} },
         entities: { bunny: 0.3, bird: 0.4 }
@@ -154,7 +168,8 @@ const BIOMES = {
         id: 'grassland',
         name: 'Grassland',
         params: { temp: 0.4, humid: -0.2, cont: 0.1, erosion: 0.6, weird: 0 },
-        color: 0x9ACD32,
+        color: 0x97AF49,
+        colorAlt: 0xBDB663, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.1, types: { oak: 0.7, pine: 0.3 } },
         entities: { deer: 1.0, cow: 1.5, bunny: 1.0, bird: 0.8 }
@@ -163,7 +178,8 @@ const BIOMES = {
         id: 'savanna',
         name: 'Savanna',
         params: { temp: 0.4, humid: -0.5, cont: 0.15, erosion: 0.4, weird: 0 },
-        color: 0xBDB76B,
+        color: 0xB7A659,
+        colorAlt: 0x9C8B47, // Patch color, mixed in by low-frequency noise
         textureType: 'dirt',
         vegetation: { density: 0.15, types: { oak: 1.0 } },
         entities: { deer: 0.6, bunny: 0.4, bird: 0.6 }
@@ -172,7 +188,8 @@ const BIOMES = {
         id: 'warmForest',
         name: 'Warm Forest',
         params: { temp: 0.4, humid: 0.5, cont: 0.15, erosion: 0.2, weird: 0 },
-        color: 0x2E7D32,
+        color: 0x3C792D,
+        colorAlt: 0x5A8935, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.75, types: { oak: 0.9, pine: 0.1 } },
         entities: { deer: 1.2, bunny: 0.6, bird: 1.0 }
@@ -183,7 +200,8 @@ const BIOMES = {
         id: 'desert',
         name: 'Desert',
         params: { temp: 0.8, humid: -0.7, cont: 0.2, erosion: 0.5, weird: 0 },
-        color: 0xC2B280,
+        color: 0xD8C28E,
+        colorAlt: 0xC6A26B, // Patch color, mixed in by low-frequency noise
         textureType: 'sand',
         vegetation: { density: 0.03, types: { oak: 1.0 } },
         entities: { deer: 0, bunny: 0.2, bird: 0.3 }
@@ -192,7 +210,8 @@ const BIOMES = {
         id: 'badlands',
         name: 'Badlands',
         params: { temp: 0.8, humid: -0.6, cont: 0.3, erosion: 0.1, weird: 0 },
-        color: 0xCD853F,
+        color: 0xB4643A,
+        colorAlt: 0xD38E5C, // Patch color, mixed in by low-frequency noise
         textureType: 'dirt',
         vegetation: { density: 0.01, types: {} },
         entities: { deer: 0, bunny: 0.1, bird: 0.2 }
@@ -201,7 +220,8 @@ const BIOMES = {
         id: 'jungle',
         name: 'Jungle',
         params: { temp: 0.8, humid: 0.7, cont: 0.15, erosion: 0.3, weird: 0 },
-        color: 0x006400,
+        color: 0x1E6A24,
+        colorAlt: 0x307C1D, // Patch color, mixed in by low-frequency noise
         textureType: 'mud',
         vegetation: { density: 0.95, types: { oak: 1.0 } },
         entities: { deer: 0.3, bunny: 0.2, bird: 2.0 }
@@ -210,7 +230,8 @@ const BIOMES = {
         id: 'bambooJungle',
         name: 'Bamboo Jungle',
         params: { temp: 0.75, humid: 0.8, cont: 0.15, erosion: 0.25, weird: 0.4 },
-        color: 0x228B22,
+        color: 0x3D892D,
+        colorAlt: 0x5E9A3A, // Patch color, mixed in by low-frequency noise
         textureType: 'grass',
         vegetation: { density: 0.85, types: { oak: 0.2 } },
         entities: { panda: 1.2, bird: 1.5 }
@@ -219,7 +240,8 @@ const BIOMES = {
         id: 'swamp',
         name: 'Swamp',
         params: { temp: 0.5, humid: 0.9, cont: -0.05, erosion: 0.6, weird: 0 },
-        color: 0x4A5D23,
+        color: 0x4A5A2C,
+        colorAlt: 0x37472E, // Patch color, mixed in by low-frequency noise
         textureType: 'mud',
         vegetation: { density: 0.6, types: { oak: 0.7 } },
         entities: { frog: 2.0, bird: 1.0 }
@@ -228,7 +250,8 @@ const BIOMES = {
         id: 'mangroveSwamp',
         name: 'Mangrove Swamp',
         params: { temp: 0.8, humid: 0.9, cont: -0.2, erosion: 0.5, weird: 0 },
-        color: 0x3A4D1A,
+        color: 0x3F4A26,
+        colorAlt: 0x5B5A3A, // Patch color, mixed in by low-frequency noise
         textureType: 'mud',
         vegetation: { density: 0.7, types: { oak: 0.1 } },
         entities: { crab: 1.5, bird: 1.2 }
@@ -237,7 +260,8 @@ const BIOMES = {
         id: 'volcanicPeaks',
         name: 'Volcanic Peaks',
         params: { temp: 0.9, humid: -0.4, cont: 0.6, erosion: -0.95, weird: 0.6 },
-        color: 0x8B0000,
+        color: 0x3A3133,
+        colorAlt: 0x7A2C1B, // Patch color, mixed in by low-frequency noise
         textureType: 'rock',
         vegetation: { density: 0.05, types: {} },
         entities: { salamander: 0.6, bird: 0.3 }
@@ -248,7 +272,8 @@ const BIOMES = {
         id: 'beach',
         name: 'Beach',
         params: { temp: 0.3, humid: 0, cont: -0.15, erosion: 0.6, weird: 0 },
-        color: 0xF4D03F,
+        color: 0xE2D2A0,
+        colorAlt: 0xCDB884, // Patch color, mixed in by low-frequency noise
         textureType: 'sand',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.5 }
@@ -257,7 +282,8 @@ const BIOMES = {
         id: 'stonyShore',
         name: 'Stony Shore',
         params: { temp: 0, humid: 0, cont: -0.15, erosion: -0.3, weird: 0 },
-        color: 0x808080,
+        color: 0x7C7C77,
+        colorAlt: 0x9A968C, // Patch color, mixed in by low-frequency noise
         textureType: 'rock',
         vegetation: { density: 0.0, types: {} },
         entities: { deer: 0, bunny: 0, bird: 0.4 }
@@ -296,6 +322,29 @@ function getBiomeAt(climate) {
     }
 
     return bestBiome;
+}
+
+// Get the two closest biomes and how much of the second to blend in.
+// weight is 0 deep inside a biome and 0.5 exactly on the border.
+const BIOME_BLEND_WIDTH = 0.25;
+function getBiomeBlendAt(climate) {
+    let best = BIOMES.plains, second = BIOMES.plains;
+    let bestDist = Infinity, secondDist = Infinity;
+
+    for (const biome of Object.values(BIOMES)) {
+        const distance = calculateParameterDistance(climate, biome.params);
+        if (distance < bestDist) {
+            second = best; secondDist = bestDist;
+            best = biome; bestDist = distance;
+        } else if (distance < secondDist) {
+            second = biome; secondDist = distance;
+        }
+    }
+
+    const t = (secondDist - bestDist) / (secondDist + bestDist + 1e-6);
+    const x = Math.min(1, t / BIOME_BLEND_WIDTH);
+    const weight = 0.5 * (1 - x * x * (3 - 2 * x));
+    return { biome: best, blendBiome: second, blendWeight: weight };
 }
 
 // Get biome by ID
@@ -355,4 +404,5 @@ function getParameterLevel(paramName, value) {
 
 // Make available globally
 window.getBiomeAt = getBiomeAt;
+window.getBiomeBlendAt = getBiomeBlendAt;
 window.BIOMES = BIOMES;

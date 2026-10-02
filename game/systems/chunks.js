@@ -112,6 +112,8 @@ function generateChunkData(cx, cz) {
                 height: height,
                 climate: data.climate,
                 biome: data.biome,
+                blendBiome: data.blendBiome,
+                blendWeight: data.blendWeight || 0,
                 isWater: isWaterPoint,
                 waterType: waterType
             };
@@ -122,6 +124,47 @@ function generateChunkData(cx, cz) {
 }
 
 // Create mesh for a chunk
+// --- Ground look ---
+// Biomes fade into their neighbor near borders, break up into noise patches of
+// a second color, badlands get terracotta strata, and high ground gets a
+// temperature-dependent snowline.
+const HOT_BIOMES = new Set(['desert', 'badlands', 'savanna', 'jungle', 'bambooJungle',
+    'volcanicPeaks', 'mangroveSwamp', 'beach']);
+const _altColor = new THREE.Color();
+const _blendColor = new THREE.Color();
+const _snowColor = new THREE.Color(0xF4F7FA);
+
+function biomeGroundColor(biome, worldX, worldZ, height, out) {
+    out.setHex(biome.color);
+    if (biome.colorAlt !== undefined) {
+        const n = simplex.noise2D(worldX * 0.012 + 300, worldZ * 0.012 + 300) * 0.65 +
+                  simplex.noise2D(worldX * 0.05 + 700, worldZ * 0.05 + 700) * 0.35;
+        out.lerp(_altColor.setHex(biome.colorAlt), smoothstep(-0.1, 0.5, n) * 0.75);
+    }
+    if (biome.id === 'badlands') {
+        const band = Math.sin(height * 0.35) * 0.06 + Math.sin(height * 0.9 + 1.3) * 0.03;
+        out.offsetHSL(0, 0, band);
+    }
+    return out;
+}
+
+function getSnowCover(data, worldX, worldZ) {
+    if (!data.climate || !data.biome || HOT_BIOMES.has(data.biome.id)) return 0;
+    const snowline = 120 + data.climate.temperature * 80;
+    const jitter = simplex.noise2D(worldX * 0.03 + 900, worldZ * 0.03 + 900) * 10;
+    return smoothstep(snowline, snowline + 25, data.height + jitter);
+}
+
+function getGroundColor(data, worldX, worldZ, snow, out) {
+    biomeGroundColor(data.biome, worldX, worldZ, data.height, out);
+    if (data.blendBiome && data.blendWeight > 0.001) {
+        out.lerp(biomeGroundColor(data.blendBiome, worldX, worldZ, data.height, _blendColor), data.blendWeight);
+    }
+    out.offsetHSL(0, 0, simplex.noise2D(worldX * 0.11 + 50, worldZ * 0.11 + 50) * 0.035);
+    if (snow > 0) out.lerp(_snowColor, snow);
+    return out;
+}
+
 function createChunkMesh(cx, cz, chunkData) {
     const size = CHUNK_CONFIG.size;
     const segments = CHUNK_CONFIG.segments;
@@ -176,7 +219,10 @@ function createChunkMesh(cx, cz, chunkData) {
                 }
             }
         } else if (data.biome) {
-            color = new THREE.Color(data.biome.color);
+            const worldX = bounds.minX + (x / segments) * size;
+            const worldZ = bounds.minZ + (z / segments) * size;
+            data.snow = getSnowCover(data, worldX, worldZ);
+            color = getGroundColor(data, worldX, worldZ, data.snow, new THREE.Color());
         } else {
             color = new THREE.Color(0x4a7c4e);
         }
@@ -206,7 +252,11 @@ function createChunkMesh(cx, cz, chunkData) {
     // Calculate slope per vertex and store as attribute for shader
     const normals = geometry.attributes.normal.array;
     const slopes = new Float32Array(vertexCount);
-    const biomeTexIndices = new Float32Array(vertexCount);
+    // Per-vertex texture weights (grass, dirt, sand | snow, rock, mud) so borders
+    // blend textures - interpolating a single texture index produced stripes of
+    // unrelated textures between biomes
+    const texWeightsA = new Float32Array(vertexCount * 3);
+    const texWeightsB = new Float32Array(vertexCount * 3);
     for (let i = 0; i < vertexCount; i++) {
         // Slope is based on how much the normal points up (y component after rotation)
         // Normal Y in plane geometry = Z after rotation
@@ -217,11 +267,19 @@ function createChunkMesh(cx, cz, chunkData) {
         const x = i % (segments + 1);
         const z = Math.floor(i / (segments + 1));
         const data = chunkData.biomeData[z][x];
-        const textureType = data.biome?.textureType || 'grass';
-        biomeTexIndices[i] = typeof getTextureIndex === 'function' ? getTextureIndex(textureType) : 0;
+        const weights = [0, 0, 0, 0, 0, 0];
+        const blend = data.blendBiome ? data.blendWeight : 0;
+        const snow = data.snow || 0;
+        const ownTex = getTextureIndex(data.biome?.textureType || 'grass');
+        weights[ownTex] += (1 - blend) * (1 - snow);
+        if (blend > 0) weights[getTextureIndex(data.blendBiome.textureType || 'grass')] += blend * (1 - snow);
+        weights[3] += snow;
+        texWeightsA.set(weights.slice(0, 3), i * 3);
+        texWeightsB.set(weights.slice(3, 6), i * 3);
     }
     geometry.setAttribute('slope', new THREE.BufferAttribute(slopes, 1));
-    geometry.setAttribute('biomeTexIndex', new THREE.BufferAttribute(biomeTexIndices, 1));
+    geometry.setAttribute('texWeightsA', new THREE.BufferAttribute(texWeightsA, 3));
+    geometry.setAttribute('texWeightsB', new THREE.BufferAttribute(texWeightsB, 3));
 
     // Create material - use textured if available, otherwise fallback to Lambert
     let material;

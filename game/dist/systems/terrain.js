@@ -490,6 +490,8 @@ function calculateTerrainHeight(x, z) {
     // Get climate data at this position
     let climate = null;
     let biome = null;
+    let blendBiome = null;
+    let blendWeight = 0;
 
     if (typeof getClimateAt === 'function') {
         climate = getClimateAt(x, z);
@@ -505,13 +507,19 @@ function calculateTerrainHeight(x, z) {
             height += getBaseHeightOffset(climate);
         }
 
-        // Get biome for this climate
-        if (typeof getBiomeAt === 'function') {
+        // Get biome for this climate, plus the neighbor biome to blend toward
+        if (typeof getBiomeBlendAt === 'function') {
+            ({ biome, blendBiome, blendWeight } = getBiomeBlendAt(climate));
+        } else if (typeof getBiomeAt === 'function') {
             biome = getBiomeAt(climate);
         }
 
-        // Apply biome-specific terrain features (dunes, cliffs, mesas, etc.)
-        height = applyBiomeFeatures(height, x, z, biome, climate);
+        // Apply biome-specific terrain features (dunes, cliffs, mesas, etc.),
+        // fading into the neighbor's features near borders instead of a step
+        const ownHeight = applyBiomeFeatures(height, x, z, biome, climate);
+        height = blendWeight > 0.001
+            ? ownHeight + (applyBiomeFeatures(height, x, z, blendBiome, climate) - ownHeight) * blendWeight
+            : ownHeight;
     }
 
     // Apply plateau at center (spawn area)
@@ -552,7 +560,7 @@ function calculateTerrainHeight(x, z) {
         }
     }
 
-    return { height, climate, biome };
+    return { height, climate, biome, blendBiome, blendWeight };
 }
 
 // Create terrain mesh with biome-colored vertices

@@ -391,9 +391,11 @@ function createTerrainShaderMaterial(atlasTexture) {
             '#include <common>',
             `#include <common>
             attribute float slope;
-            attribute float biomeTexIndex;
+            attribute vec3 texWeightsA;
+            attribute vec3 texWeightsB;
             varying float vSlope;
-            varying float vBiomeIndex;
+            varying vec3 vTexA;
+            varying vec3 vTexB;
             varying vec2 vWorldUv;`
         );
 
@@ -402,7 +404,8 @@ function createTerrainShaderMaterial(atlasTexture) {
             '#include <begin_vertex>',
             `#include <begin_vertex>
             vSlope = slope;
-            vBiomeIndex = biomeTexIndex;
+            vTexA = texWeightsA;
+            vTexB = texWeightsB;
             vWorldUv = uv;`
         );
 
@@ -414,7 +417,8 @@ function createTerrainShaderMaterial(atlasTexture) {
             uniform float tilesX;
             uniform float tilesY;
             varying float vSlope;
-            varying float vBiomeIndex;
+            varying vec3 vTexA;
+            varying vec3 vTexB;
             varying vec2 vWorldUv;
 
             vec2 getAtlasUV(float tileIndex, vec2 localUV) {
@@ -424,6 +428,10 @@ function createTerrainShaderMaterial(atlasTexture) {
                 float u = (x + wrappedUV.x) / tilesX;
                 float v = 1.0 - (y + wrappedUV.y) / tilesY;
                 return vec2(u, v);
+            }
+
+            vec4 sampleTile(float tileIndex) {
+                return texture2D(atlas, getAtlasUV(tileIndex, vWorldUv * 2.0));
             }`
         );
 
@@ -431,8 +439,14 @@ function createTerrainShaderMaterial(atlasTexture) {
         shader.fragmentShader = shader.fragmentShader.replace(
             'vec4 diffuseColor = vec4( diffuse, opacity );',
             `// Sample biome texture
-            vec2 biomeUV = getAtlasUV(vBiomeIndex, vWorldUv * 2.0);
-            vec4 biomeColor = texture2D(atlas, biomeUV);
+            vec4 biomeColor = vec4(0.0);
+            if (vTexA.x > 0.001) biomeColor += sampleTile(0.0) * vTexA.x;
+            if (vTexA.y > 0.001) biomeColor += sampleTile(1.0) * vTexA.y;
+            if (vTexA.z > 0.001) biomeColor += sampleTile(2.0) * vTexA.z;
+            if (vTexB.x > 0.001) biomeColor += sampleTile(3.0) * vTexB.x;
+            if (vTexB.y > 0.001) biomeColor += sampleTile(4.0) * vTexB.y;
+            if (vTexB.z > 0.001) biomeColor += sampleTile(5.0) * vTexB.z;
+            biomeColor /= max(dot(vTexA, vec3(1.0)) + dot(vTexB, vec3(1.0)), 0.001);
 
             // Sample rock texture (index 4)
             vec2 rockUV = getAtlasUV(4.0, vWorldUv * 2.0);
