@@ -1,19 +1,22 @@
 // Water system - oceans, lakes and rivers
-// Minecraft-style: all water sits at one global sea level. Oceans and lakes are
-// wherever terrain dips below it; rivers are meandering valleys carved into the
-// terrain (see getRiverCarve, applied in calculateTerrainHeight) whose channels
-// cut below sea level so they fill with water. Each chunk gets a water surface
-// mesh covering only its underwater cells, shaded by depth with shore foam.
+// The sea sits at one global level. Rivers and lakes sit on the land: their
+// water surface follows the land's large-scale height (the smooth continent
+// shape, without hills or ridges) and slopes gently down to the coast, so a
+// river only cuts a few units into its floodplain and an upland lake is a lake,
+// not a pit dug down to sea level. Every terrain point carries a waterLevel;
+// it is water there when the ground is below it. Each chunk gets a water
+// surface mesh covering only its underwater cells, shaded by depth with foam.
 
 // Water configuration
 const WATER_CONFIG = {
     seaLevel: -5,              // The water surface everywhere
     riverNoiseScale: 0.0011,   // Lower = longer, wider-spaced rivers
     riverWidth: 0.03,          // Channel half-width in noise units (~15-20 world units)
-    riverValley: 0.11,         // Valley half-width in noise units
+    riverValley: 0.16,         // Valley half-width in noise units (wide, gentle banks)
     riverDepth: 3.5,           // Channel bed depth below sea level
     bankHeight: 1.2,           // Valley floor height above sea level
-    riverMaxLand: 70,          // Rivers fade out where land is higher than this
+    riverSurfaceDrop: 2,       // River surface sits this far below the land's base level
+    lakeSurfaceDrop: 1.5,      // Lake surface likewise
     riverSpawnClear: 260,      // No rivers or lakes within this distance of spawn
     oceanStart: -0.2,          // Continentalness where the coast starts dropping
     oceanFull: -0.34,          // ...and where it is fully sea floor
@@ -22,7 +25,7 @@ const WATER_CONFIG = {
     lakeThreshold: 0.52,
     pondScale: 0.004,          // Small ponds
     pondThreshold: 0.72,
-    lakeMaxLand: 45,           // Lakes and ponds only form in lowlands
+    lakeMaxRelief: 30,         // Lakes and ponds form where the land is within this of their surface
     shallowColor: 0x4FB3BF,
     deepColor: 0x14506E,
     foamColor: 0xE8F4F2,
@@ -49,7 +52,7 @@ function waterSmoothstep(a, b, x) {
 
 // River shape at a point: valley (0-1) pulls land down to the banks, channel
 // (0-1) cuts below sea level. Warped ridged noise gives meandering lines.
-function getRiverShape(x, z) {
+function getRiverShape(x, z, relief = 0) {
     if (!riverNoise) return { valley: 0, channel: 0 };
     const s = WATER_CONFIG.riverNoiseScale;
     const wx = x + riverWarp.noise2D(x * s * 2, z * s * 2) * 120;
@@ -57,57 +60,66 @@ function getRiverShape(x, z) {
     const n = riverNoise.noise2D(wx * s, wz * s) + riverNoise2.noise2D(wx * s * 3 + 50, wz * s * 3 + 50) * 0.12;
     const d = Math.abs(n);
     return {
-        valley: 1 - waterSmoothstep(WATER_CONFIG.riverWidth, WATER_CONFIG.riverValley, d),
+        // Wider valley where it cuts through higher ground (banks stay ~1:3 or gentler)
+        valley: 1 - waterSmoothstep(WATER_CONFIG.riverWidth, WATER_CONFIG.riverValley + Math.min(0.3, relief * 0.005), d),
         channel: 1 - waterSmoothstep(WATER_CONFIG.riverWidth * 0.55, WATER_CONFIG.riverWidth, d)
     };
 }
 
-// Lakes and ponds: lower lowland into basins below sea level (oceans come
-// from the continent shape in calculateTerrainHeight).
-// Applied before rivers so rivers can run into them.
-function applyWaterBodies(x, z, height, climate) {
-    if (!lakeNoise) return height;
+// Lakes and ponds: lower the land into basins whose surface sits at the
+// land's base level. Returns { height, waterLevel }.
+function applyWaterBodies(x, z, height, baseLevel, mountainous) {
     const sea = WATER_CONFIG.seaLevel;
-    let h = height;
+    if (!lakeNoise) return { height, waterLevel: sea };
+    const surface = Math.max(sea, baseLevel - WATER_CONFIG.lakeSurfaceDrop);
 
-    // Lakes and ponds in lowlands, away from spawn
-    const lowland = 1 - waterSmoothstep(WATER_CONFIG.lakeMaxLand * 0.6, WATER_CONFIG.lakeMaxLand, height);
+    const lowland = 1 - waterSmoothstep(WATER_CONFIG.lakeMaxRelief * 0.6, WATER_CONFIG.lakeMaxRelief, height - surface);
+    const notMountain = 1 - waterSmoothstep(0.25, 0.5, mountainous || 0);
     const clear = waterSmoothstep(WATER_CONFIG.riverSpawnClear * 0.6, WATER_CONFIG.riverSpawnClear, Math.sqrt(x * x + z * z));
-    if (lowland > 0 && clear > 0) {
-        const lake = waterSmoothstep(WATER_CONFIG.lakeThreshold, WATER_CONFIG.lakeThreshold + 0.12,
-            lakeNoise.noise2D(x * WATER_CONFIG.lakeScale + 900, z * WATER_CONFIG.lakeScale + 900));
-        const pond = waterSmoothstep(WATER_CONFIG.pondThreshold, WATER_CONFIG.pondThreshold + 0.1,
-            lakeNoise.noise2D(x * WATER_CONFIG.pondScale - 300, z * WATER_CONFIG.pondScale - 300));
-        const basin = Math.max(lake, pond * 0.8) * lowland * clear;
-        if (basin > 0) {
-            const bed = sea - 1 - 7 * basin;
-            if (h > bed) h = h + (bed - h) * Math.min(1, basin * 1.6);
-        }
-    }
-    return h;
+    const allowed = lowland * notMountain * clear;
+    if (allowed <= 0) return { height, waterLevel: sea };
+
+    const lake = waterSmoothstep(WATER_CONFIG.lakeThreshold, WATER_CONFIG.lakeThreshold + 0.12,
+        lakeNoise.noise2D(x * WATER_CONFIG.lakeScale + 900, z * WATER_CONFIG.lakeScale + 900));
+    const pond = waterSmoothstep(WATER_CONFIG.pondThreshold, WATER_CONFIG.pondThreshold + 0.1,
+        lakeNoise.noise2D(x * WATER_CONFIG.pondScale - 300, z * WATER_CONFIG.pondScale - 300));
+    const basin = Math.max(lake, pond * 0.8) * allowed;
+    if (basin <= 0) return { height, waterLevel: sea };
+
+    const bed = surface - 1 - 6 * basin;
+    let h = height;
+    if (h > bed) h = h + (bed - h) * Math.min(1, basin * 1.6);
+    return { height: h, waterLevel: surface };
 }
 
-// Carve a river into a terrain height; returns { height, river } where river
-// is the channel strength (0 = no river)
-function getRiverCarve(x, z, height) {
-    const shape = getRiverShape(x, z);
-    if (shape.valley <= 0) return { height, river: 0 };
+// Carve a river into a terrain height. Returns { height, river, waterLevel }
+// where river is the channel strength (0 = no river).
+function getRiverCarve(x, z, height, baseLevel, mountainous, waterLevel) {
+    const riverSurface = Math.max(WATER_CONFIG.seaLevel, baseLevel - WATER_CONFIG.riverSurfaceDrop);
+    const shape = getRiverShape(x, z, Math.max(0, height - riverSurface));
+    if (shape.valley <= 0) return { height, river: 0, waterLevel };
 
-    // Fade rivers out in high mountains and around spawn
+    // Rivers run through lowland and upland valleys, not through mountain ranges,
+    // and stay clear of spawn
     const distFromSpawn = Math.sqrt(x * x + z * z);
-    const strength = (1 - waterSmoothstep(WATER_CONFIG.riverMaxLand * 0.6, WATER_CONFIG.riverMaxLand, height)) *
+    const strength = (1 - waterSmoothstep(0.25, 0.55, mountainous || 0)) *
         waterSmoothstep(WATER_CONFIG.riverSpawnClear * 0.6, WATER_CONFIG.riverSpawnClear, distFromSpawn);
-    if (strength <= 0) return { height, river: 0 };
+    if (strength <= 0) return { height, river: 0, waterLevel };
 
-    const sea = WATER_CONFIG.seaLevel;
-    const bank = sea + WATER_CONFIG.bankHeight;
-    const bed = sea - WATER_CONFIG.riverDepth;
+    const surface = Math.max(WATER_CONFIG.seaLevel, baseLevel - WATER_CONFIG.riverSurfaceDrop);
+    const bank = surface + WATER_CONFIG.bankHeight;
+    const bed = surface - WATER_CONFIG.riverDepth;
 
-    // Only ever lower the land
+    // Only ever lower the land: a wide floodplain down to the banks, then the channel
     let h = height;
     if (h > bank) h = h + (bank - h) * shape.valley * strength;
     if (h > bed) h = h + (bed - h) * shape.channel * strength;
-    return { height: h, river: shape.channel * strength };
+    return {
+        height: h,
+        river: shape.channel * strength,
+        // Inside the valley the water level is the river's
+        waterLevel: shape.valley * strength > 0.05 ? surface : waterLevel
+    };
 }
 
 // Compatibility: is this point inside a river channel
@@ -126,19 +138,34 @@ function applyRiverCarving(x, z, originalHeight) {
 }
 
 function isLake(x, z, terrainHeight) {
-    return terrainHeight < WATER_CONFIG.seaLevel;
+    return terrainHeight < getWaterLevelAt(x, z);
 }
 
 // Water surface height at a point, or null if the ground is above water
 function getWaterSurfaceAt(x, z, groundHeight) {
     const h = groundHeight !== undefined ? groundHeight
         : (typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0);
-    return h < WATER_CONFIG.seaLevel ? WATER_CONFIG.seaLevel : null;
+    const level = getWaterLevelAt(x, z);
+    return h < level ? level : null;
+}
+
+// Water level at a point: the rendered chunk's level grid when loaded,
+// otherwise computed from the terrain function
+function getWaterLevelAt(x, z) {
+    if (typeof getChunkWaterLevelAt === 'function') {
+        const level = getChunkWaterLevelAt(x, z);
+        if (level !== null) return level;
+    }
+    if (typeof calculateTerrainHeight === 'function') {
+        const level = calculateTerrainHeight(x, z).waterLevel;
+        if (level !== undefined) return level;
+    }
+    return WATER_CONFIG.seaLevel;
 }
 
 // Low land just above the water line (lake shores, river banks, coasts)
-function isShoreHeight(height, band = 2.5) {
-    return height >= WATER_CONFIG.seaLevel && height < WATER_CONFIG.seaLevel + band;
+function isShoreHeight(height, band = 2.5, waterLevel = WATER_CONFIG.seaLevel) {
+    return height >= waterLevel && height < waterLevel + band;
 }
 
 // What grows and lives at the water's edge here: 'cold', 'arid' (oasis),
@@ -158,11 +185,11 @@ const SHORE_BIOMES = new Set(['beach', 'stonyShore', 'mangroveSwamp', 'swamp']);
 // Water depth at a point (0 on land)
 function getWaterDepthAt(x, z) {
     const h = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
-    return Math.max(0, WATER_CONFIG.seaLevel - h);
+    return Math.max(0, getWaterLevelAt(x, z) - h);
 }
 
 function isWater(x, z, terrainHeight) {
-    if (terrainHeight < WATER_CONFIG.seaLevel) return { isWater: true, type: 'lake' };
+    if (terrainHeight < getWaterLevelAt(x, z)) return { isWater: true, type: 'lake' };
     return { isWater: false, type: null };
 }
 
@@ -242,17 +269,29 @@ function createChunkWaterMesh(cx, cz, chunkData) {
     const sea = WATER_CONFIG.seaLevel;
     const hm = chunkData.heightmap;
 
+    const bd = chunkData.biomeData;
+    const levelAt = (gx, gz) => (bd[gz][gx].waterLevel ?? sea);
     const positions = [];
     const depths = [];
+    let cellLevel = sea;
+    // Corners inside a river/lake keep their own level so the surface slopes
+    // smoothly along the river; corners outside it follow the cell
     const pushVertex = (gx, gz) => {
-        positions.push(b.minX + gx * step, sea, b.minZ + gz * step);
-        depths.push(sea - hm[gz][gx]);
+        const own = levelAt(gx, gz);
+        const y = Math.abs(own - cellLevel) < 3 ? own : cellLevel;
+        positions.push(b.minX + gx * step, y, b.minZ + gz * step);
+        depths.push(y - hm[gz][gx]);
     };
 
     for (let z = 0; z < segments; z++) {
         for (let x = 0; x < segments; x++) {
-            const minH = Math.min(hm[z][x], hm[z][x + 1], hm[z + 1][x], hm[z + 1][x + 1]);
-            if (minH >= sea) continue;
+            // Flat quad at the highest level among the cell's wet corners
+            cellLevel = -Infinity;
+            for (const [gx, gz] of [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]]) {
+                const level = levelAt(gx, gz);
+                if (hm[gz][gx] < level && level > cellLevel) cellLevel = level;
+            }
+            if (cellLevel === -Infinity) continue;
             // Two triangles, counter-clockwise seen from above
             pushVertex(x, z); pushVertex(x, z + 1); pushVertex(x + 1, z);
             pushVertex(x + 1, z); pushVertex(x, z + 1); pushVertex(x + 1, z + 1);
@@ -335,6 +374,7 @@ window.getWaterColor = getWaterColor;
 window.getWaterSurfaceAt = getWaterSurfaceAt;
 window.getWaterDepthAt = getWaterDepthAt;
 window.isShoreHeight = isShoreHeight;
+window.getWaterLevelAt = getWaterLevelAt;
 window.getShoreClass = getShoreClass;
 window.SHORE_BIOMES = SHORE_BIOMES;
 window.createChunkWaterMesh = createChunkWaterMesh;

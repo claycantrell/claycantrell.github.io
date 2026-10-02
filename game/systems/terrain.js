@@ -513,6 +513,8 @@ function calculateTerrainHeight(x, z) {
     let blendBiome = null;
     let blendWeight = 0;
     let height = 0;
+    let baseLevel = 0;      // Large-scale land height (continent shape only) - rivers and lakes sit on it
+    let mountainous = 0;
 
     const distanceToCenter = Math.sqrt(x * x + z * z);
 
@@ -528,7 +530,8 @@ function calculateTerrainHeight(x, z) {
         const inland = smoothstep(-0.2, 0.05, c);
 
         // 1. Continental base
-        height = terrainSpline(CONTINENT_SPLINE, c);
+        baseLevel = terrainSpline(CONTINENT_SPLINE, c);
+        height = baseLevel;
 
         // 2. Hills: bigger where the land is rugged, nearly flat where it is eroded
         // Hills: wide and rolling (sampled at 1/4 frequency: ~500/250/125-unit
@@ -537,7 +540,7 @@ function calculateTerrainHeight(x, z) {
 
         // 3. Mountain ranges: long ridges, only inland where erosion is low
         if (!ridgeSimplex) ridgeSimplex = new SimplexNoise((cfg.seed || 'seed') + '_ridges');
-        const mountainous = smoothstep(0.2, -0.4, e) * smoothstep(-0.1, 0.25, c) * (1 - spawnLand);
+        mountainous = smoothstep(0.2, -0.4, e) * smoothstep(-0.1, 0.25, c) * (1 - spawnLand);
         if (mountainous > 0) {
             const r1 = 1 - Math.abs(ridgeSimplex.noise2D(x * 0.0007, z * 0.0007));
             const r2 = 1 - Math.abs(ridgeSimplex.noise2D(x * 0.0021 + 300, z * 0.0021 + 300));
@@ -573,16 +576,18 @@ function calculateTerrainHeight(x, z) {
         height = 2 + (height - 2) * blendFactor;
     }
 
-    // Lakes and ponds, then river valleys, last so they cut through everything
+    // Lakes and ponds, then river valleys, last so they cut through everything.
+    // Both sit at the land's base level, not at sea level.
+    let waterLevel = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
     if (typeof applyWaterBodies === 'function') {
-        height = applyWaterBodies(x, z, height, climate);
+        ({ height, waterLevel } = applyWaterBodies(x, z, height, baseLevel, mountainous));
     }
     let river = 0;
     if (typeof getRiverCarve === 'function') {
-        ({ height, river } = getRiverCarve(x, z, height));
+        ({ height, river, waterLevel } = getRiverCarve(x, z, height, baseLevel, mountainous, waterLevel));
     }
 
-    return { height, climate, biome, blendBiome, blendWeight, river };
+    return { height, climate, biome, blendBiome, blendWeight, river, waterLevel };
 }
 
 // Create terrain mesh with biome-colored vertices

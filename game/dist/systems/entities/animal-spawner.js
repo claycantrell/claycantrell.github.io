@@ -135,8 +135,8 @@ function pickSpawnEntry(list, r) {
 function isSpawnableGround(x, z) {
     if (typeof getTerrainHeightAt !== 'function') return true;
     const h = getTerrainHeightAt(x, z);
-    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
-    if (h < sea + 0.5) return false;
+    const level = typeof getWaterLevelAt === 'function' ? getWaterLevelAt(x, z) : -5;
+    if (h < level + 0.5) return false;
     const dx = getTerrainHeightAt(x + 2, z) - getTerrainHeightAt(x - 2, z);
     const dz = getTerrainHeightAt(x, z + 2) - getTerrainHeightAt(x, z - 2);
     return Math.sqrt(dx * dx + dz * dz) / 4 < 1.2;

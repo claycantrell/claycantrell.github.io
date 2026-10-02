@@ -16,13 +16,14 @@ const CACHE_GRID_SIZE = 2; // Round positions to this grid for cache keys
 // Used by animals: in deep water this returns the swimming height (just below
 // the surface) instead of the lake/river bed, so animals swim across water
 function getTerrainHeight(x, z, useCache = true) {
-    return withSwimHeight(getTerrainHeightRaw(x, z, useCache));
+    return withSwimHeight(getTerrainHeightRaw(x, z, useCache), x, z);
 }
 
-function withSwimHeight(height) {
+function withSwimHeight(height, x, z) {
     if (typeof getWaterConfig !== 'function') return height;
     const cfg = getWaterConfig();
-    return Math.max(height, cfg.seaLevel - cfg.swimDepth);
+    const level = typeof getWaterLevelAt === 'function' ? getWaterLevelAt(x, z) : cfg.seaLevel;
+    return Math.max(height, level - cfg.swimDepth);
 }
 
 function getTerrainHeightRaw(x, z, useCache = true) {

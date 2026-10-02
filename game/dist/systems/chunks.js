@@ -87,7 +87,8 @@ function generateChunkData(cx, cz) {
             // Rivers are already carved into the height; anything below sea level is water
             const height = data.height;
             const waterConfig = typeof getWaterConfig === 'function' ? getWaterConfig() : { seaLevel: -5 };
-            const isWaterPoint = height < waterConfig.seaLevel;
+            const waterLevel = data.waterLevel ?? waterConfig.seaLevel;
+            const isWaterPoint = height < waterLevel;
             const waterType = isWaterPoint ? ((data.river || 0) > 0.3 ? 'river' : 'lake') : null;
             if (isWaterPoint) hasWater = true;
 
@@ -99,6 +100,7 @@ function generateChunkData(cx, cz) {
                 blendBiome: data.blendBiome,
                 blendWeight: data.blendWeight || 0,
                 isWater: isWaterPoint,
+                waterLevel: waterLevel,
                 waterType: waterType
             };
         }
@@ -140,15 +142,13 @@ function getSnowCover(data, worldX, worldZ) {
 }
 
 // Shore (0-1): sandy band just above the water line and on the bed below it
-function getShoreAmount(height) {
-    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
-    return smoothstep(sea + 1.8, sea + 0.3, height);
+function getShoreAmount(height, waterLevel) {
+    return smoothstep(waterLevel + 1.8, waterLevel + 0.3, height);
 }
 
 // Seabed darkness (0-1) with depth below the water line
-function getSeabedAmount(height) {
-    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
-    return smoothstep(sea, sea - 9, height);
+function getSeabedAmount(height, waterLevel) {
+    return smoothstep(waterLevel, waterLevel - 9, height);
 }
 
 const _sandColor = new THREE.Color(0xCDBA8C);
@@ -162,8 +162,9 @@ function getGroundColor(data, worldX, worldZ, snow, out) {
     out.offsetHSL(0, 0, simplex.noise2D(worldX * 0.11 + 50, worldZ * 0.11 + 50) * 0.035);
     if (snow > 0) out.lerp(_snowColor, snow);
     // Sandy shores and a seabed that darkens with depth (the water surface adds the blue)
-    out.lerp(_sandColor, getShoreAmount(data.height) * 0.75);
-    out.lerp(_seabedColor, getSeabedAmount(data.height) * 0.8);
+    const level = data.waterLevel ?? -5;
+    out.lerp(_sandColor, getShoreAmount(data.height, level) * 0.75);
+    out.lerp(_seabedColor, getSeabedAmount(data.height, level) * 0.8);
     return out;
 }
 
@@ -256,7 +257,8 @@ function createChunkMesh(cx, cz, chunkData) {
         if (blend > 0) weights[getTextureIndex(data.blendBiome.textureType || 'grass')] += blend * (1 - snow);
         weights[3] += snow;
         // Shores and lake beds turn to sand, deep beds to mud
-        const shore = getShoreAmount(data.height ?? 0), seabed = getSeabedAmount(data.height ?? 0);
+        const level = data.waterLevel ?? -5;
+        const shore = getShoreAmount(data.height ?? 0, level), seabed = getSeabedAmount(data.height ?? 0, level);
         if (shore > 0) {
             for (let w = 0; w < 6; w++) weights[w] *= 1 - shore;
             weights[2] += shore * (1 - seabed);
@@ -450,6 +452,19 @@ function getChunkTerrainHeightAt(x, z) {
     const h1 = h01 * (1 - dx) + h11 * dx;
 
     return h0 * (1 - dz) + h1 * dz;
+}
+
+// Water level at world position from a loaded chunk (bilinear), or null
+function getChunkWaterLevelAt(x, z) {
+    const chunk = worldToChunk(x, z);
+    const chunkData = loadedChunks.get(chunkKey(chunk.x, chunk.z));
+    if (!chunkData) return null;
+    const segments = CHUNK_CONFIG.segments, b = chunkData.data.bounds, bd = chunkData.data.biomeData;
+    const lx = Math.max(0, Math.min(segments - 1e-6, ((x - b.minX) / CHUNK_CONFIG.size) * segments));
+    const lz = Math.max(0, Math.min(segments - 1e-6, ((z - b.minZ) / CHUNK_CONFIG.size) * segments));
+    const x0 = Math.floor(lx), z0 = Math.floor(lz), dx = lx - x0, dz = lz - z0;
+    const l = (gx, gz) => bd[gz][gx].waterLevel ?? -5;
+    return (l(x0, z0) * (1 - dx) + l(x0 + 1, z0) * dx) * (1 - dz) + (l(x0, z0 + 1) * (1 - dx) + l(x0 + 1, z0 + 1) * dx) * dz;
 }
 
 // Get biome data at world position
