@@ -1,9 +1,10 @@
 // Tree system - procedural low-poly trees, planted per terrain chunk
 // Trees are generated per chunk from a seeded RNG (same trees on revisit and for
 // every player) and sit on the rendered ground surface. Each tree type has a few
-// procedurally built model variants at two detail levels; all trees of one model
-// share a single InstancedMesh, near chunks use the detailed models (and cast
-// shadows), far chunks the simple ones.
+// procedurally built model variants. Trees near the player are 3D (one shared
+// InstancedMesh per model, casting shadows); beyond the LOD distance they become
+// flat camera-facing sprites - a deliberate style - drawn from an atlas of the
+// same models rendered once at startup.
 // Uses Systems registry pattern for organized update loop
 
 const TreeSystem = {
@@ -591,10 +592,12 @@ const TREE_CONFIG = {
     modelVariants: 3,
     candidatesPerChunk: 130,
     minSpacing: 9,
-    nearChunkRadius: 1,     // Detailed models + shadows + landing in this block of chunks
+    lodDistance: 200,       // 3D within this distance, sprites beyond (PERFORMANCE.rendering.lodDistance wins)
+    rebuildMoveDistance: 20, // Re-split 3D/sprite trees after the player moves this far
     scaleMin: 0.85,
     scaleMax: 1.2,
-    trunkSink: 0.4
+    trunkSink: 0.4,
+    spriteTile: { w: 64, h: 128, cols: 16 }
 };
 
 // ============================================================================
@@ -602,24 +605,24 @@ const TREE_CONFIG = {
 // ============================================================================
 
 let treeMaterial = null;
-const treeModels = {};          // type -> [{ lod0, lod1, height }] per variant
-const treeMeshes = new Map();   // "type|variant|lod" -> InstancedMesh
+let treeSpriteMaterial = null;
+let treeSpriteMesh = null;
+const treeModels = {};          // type -> [{ geometry, height, sprite }] per variant
+const treeMeshes = new Map();   // "type|variant" -> InstancedMesh (3D trees)
 const chunkTrees = new Map();   // chunk key -> { cx, cz, trees: [...] }
 let treeLandingProxies = [];
 let treesDirty = false;
-let lastTreeCenter = null;
+let lastTreeCenter = null;      // Player position at the last rebuild
 
 function buildTreeModels() {
     for (const [type, def] of Object.entries(TREE_TYPES)) {
         treeModels[type] = [];
         for (let v = 0; v < TREE_CONFIG.modelVariants; v++) {
             const seed = [...type].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 11) + v * 7919;
-            const near = new TreeModel(makeRngTrees(seed));
-            def.build(near, 0);
-            const far = new TreeModel(makeRngTrees(seed));
-            def.build(far, 1);
-            const lod0 = near.merge(), lod1 = far.merge();
-            treeModels[type].push({ lod0, lod1, height: lod0.userData.height });
+            const model = new TreeModel(makeRngTrees(seed));
+            def.build(model, 0);
+            const geometry = model.merge();
+            treeModels[type].push({ geometry, height: geometry.userData.height, sprite: null });
         }
     }
 }
@@ -644,8 +647,129 @@ function buildTreeMaterial() {
     return material;
 }
 
-function getTreeMesh(type, variant, lod, capacity) {
-    const key = `${type}|${variant}|${lod}`;
+// Render every model once from the side into a pixel-art atlas used by the far sprites
+function bakeTreeSprites() {
+    const renderer = typeof GAME !== 'undefined' ? GAME.renderer : null;
+    if (!renderer) return null;
+
+    const { w: tw, h: th, cols } = TREE_CONFIG.spriteTile;
+    const models = [];
+    for (const type of Object.keys(treeModels)) treeModels[type].forEach(m => models.push(m));
+    const rows = Math.ceil(models.length / cols);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cols * tw;
+    canvas.height = rows * th;
+    const ctx = canvas.getContext('2d');
+
+    const bakeScene = new THREE.Scene();
+    bakeScene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+    sun.position.set(-0.5, 1, 1);
+    bakeScene.add(sun);
+    const bakeMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const target = new THREE.WebGLRenderTarget(tw, th);
+    target.texture.colorSpace = THREE.SRGBColorSpace;
+    const pixels = new Uint8Array(tw * th * 4);
+    const image = ctx.createImageData(tw, th);
+
+    const prevTarget = renderer.getRenderTarget();
+    const prevClear = renderer.getClearColor(new THREE.Color());
+    const prevAlpha = renderer.getClearAlpha();
+    renderer.setClearColor(0x000000, 0);
+
+    models.forEach((model, i) => {
+        model.geometry.computeBoundingBox();
+        const box = model.geometry.boundingBox;
+        const halfW = Math.max(Math.abs(box.min.x), box.max.x, Math.abs(box.min.z), box.max.z) + 0.5;
+        const bottom = box.min.y - 0.2;
+        // Fit the tile's 1:2 aspect around the model
+        let height = box.max.y - bottom + 0.5;
+        let width = height * (tw / th);
+        if (halfW * 2 > width) { width = halfW * 2; height = width * (th / tw); }
+
+        const cam = new THREE.OrthographicCamera(-width / 2, width / 2, bottom + height, bottom, -200, 200);
+        cam.position.set(0, 0, 50);
+        cam.lookAt(0, 0, 0);
+        const mesh = new THREE.Mesh(model.geometry, bakeMaterial);
+        bakeScene.add(mesh);
+        renderer.setRenderTarget(target);
+        renderer.clear();
+        renderer.render(bakeScene, cam);
+        renderer.readRenderTargetPixels(target, 0, 0, tw, th, pixels);
+        bakeScene.remove(mesh);
+
+        // Render target rows are bottom-up; canvas rows are top-down
+        for (let y = 0; y < th; y++) {
+            image.data.set(pixels.subarray((th - 1 - y) * tw * 4, (th - y) * tw * 4), y * tw * 4);
+        }
+        const col = i % cols, row = Math.floor(i / cols);
+        ctx.putImageData(image, col * tw, row * th);
+        model.sprite = { u: col / cols, v: 1 - (row + 1) / rows, width, height, bottom };
+    });
+
+    renderer.setRenderTarget(prevTarget);
+    renderer.setClearColor(prevClear, prevAlpha);
+    target.dispose();
+    bakeMaterial.dispose();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    texture.userData = { cols, rows };
+    return texture;
+}
+
+function buildTreeSpriteMaterial(atlas) {
+    const material = new THREE.MeshLambertMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide });
+    // Cylindrical billboarding and atlas tile lookup in the vertex shader
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.tileSize = { value: new THREE.Vector2(1 / atlas.userData.cols, 1 / atlas.userData.rows) };
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', `#include <common>
+            attribute vec2 spriteTile;
+            uniform vec2 tileSize;`)
+            .replace('#include <uv_vertex>', `#include <uv_vertex>
+            vMapUv = spriteTile + vMapUv * tileSize;`)
+            .replace('#include <begin_vertex>', `#include <begin_vertex>
+            vec3 instPos = instanceMatrix[3].xyz;
+            vec2 toCam = cameraPosition.xz - instPos.xz;
+            float ang = atan(toCam.x, toCam.y);
+            transformed = vec3(position.x * cos(ang), position.y, -position.x * sin(ang));`);
+    };
+    return material;
+}
+
+// One InstancedMesh for every distant tree; grows when needed
+function getTreeSpriteMesh(capacity) {
+    if (treeSpriteMesh && treeSpriteMesh.instanceMatrix.count >= capacity) return treeSpriteMesh;
+    if (treeSpriteMesh) {
+        scene.remove(treeSpriteMesh);
+        treeSpriteMesh.geometry.dispose();
+        treeSpriteMesh.dispose();
+    }
+    const size = Math.max(256, Math.ceil(capacity * 1.5));
+    // Unit quad anchored at its bottom center; normals up so sprites are lit like the ground
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    geometry.translate(0, 0.5, 0);
+    const normals = geometry.attributes.normal;
+    for (let i = 0; i < normals.count; i++) normals.setXYZ(i, 0, 1, 0);
+    geometry.setAttribute('spriteTile', new THREE.InstancedBufferAttribute(new Float32Array(size * 2), 2));
+
+    treeSpriteMesh = new THREE.InstancedMesh(geometry, treeSpriteMaterial, size);
+    treeSpriteMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    treeSpriteMesh.frustumCulled = false;
+    treeSpriteMesh.receiveShadow = true;
+    treeSpriteMesh.name = 'tree_sprites';
+    treeSpriteMesh.count = 0;
+    scene.add(treeSpriteMesh);
+    return treeSpriteMesh;
+}
+
+function getTreeMesh(type, variant, capacity) {
+    const key = `${type}|${variant}`;
     let mesh = treeMeshes.get(key);
     if (mesh && mesh.instanceMatrix.count >= capacity) return mesh;
 
@@ -655,10 +779,10 @@ function getTreeMesh(type, variant, lod, capacity) {
     }
     const model = treeModels[type][variant];
     const size = Math.max(16, Math.ceil(capacity * 1.5));
-    mesh = new THREE.InstancedMesh(lod === 0 ? model.lod0 : model.lod1, treeMaterial, size);
+    mesh = new THREE.InstancedMesh(model.geometry, treeMaterial, size);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.castShadow = lod === 0;
+    mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.name = `trees_${key}`;
     mesh.count = 0;
@@ -667,23 +791,35 @@ function getTreeMesh(type, variant, lod, capacity) {
     return mesh;
 }
 
-// Rebuild all instance buffers (after chunks load/unload or the player changes chunk)
+function getLodDistance() {
+    return (typeof PERFORMANCE !== 'undefined' && PERFORMANCE.rendering && PERFORMANCE.rendering.lodDistance) || TREE_CONFIG.lodDistance;
+}
+
+// Rebuild all instance buffers: 3D models near the player, sprites beyond
 function rebuildTreeInstances() {
     treesDirty = false;
     const player = typeof character !== 'undefined' && character ? character.position : null;
-    const pc = player && Number.isFinite(player.x) ? worldToChunk(player.x, player.z) : { x: 0, z: 0 };
-    lastTreeCenter = `${pc.x},${pc.z}`;
+    const px = player && Number.isFinite(player.x) ? player.x : 0;
+    const pz = player && Number.isFinite(player.z) ? player.z : 0;
+    lastTreeCenter = { x: px, z: pz };
+    const lod2 = getLodDistance() ** 2;
+    const useSprites = !!treeSpriteMaterial &&
+        (typeof PERFORMANCE === 'undefined' || !PERFORMANCE.rendering || PERFORMANCE.rendering.lodEnabled !== false);
 
-    const groups = new Map(); // key -> [tree]
+    const groups = new Map(); // "type|variant" -> [tree] (3D)
+    const sprites = [];
     const nearTrees = [];
     chunkTrees.forEach(chunk => {
-        const near = Math.abs(chunk.cx - pc.x) <= TREE_CONFIG.nearChunkRadius && Math.abs(chunk.cz - pc.z) <= TREE_CONFIG.nearChunkRadius;
-        const lod = near ? 0 : 1;
         for (const t of chunk.trees) {
-            const key = `${t.type}|${t.variant}|${lod}`;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key).push(t);
-            if (near) nearTrees.push(t);
+            const near = !useSprites || (t.position.x - px) ** 2 + (t.position.z - pz) ** 2 < lod2;
+            if (near) {
+                const key = `${t.type}|${t.variant}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(t);
+                nearTrees.push(t);
+            } else {
+                sprites.push(t);
+            }
         }
     });
 
@@ -692,10 +828,11 @@ function rebuildTreeInstances() {
     const matrix = new THREE.Matrix4();
     const quat = new THREE.Quaternion();
     const scale = new THREE.Vector3();
+    const offset = new THREE.Vector3();
     const color = new THREE.Color();
     groups.forEach((trees, key) => {
-        const [type, variant, lod] = key.split('|');
-        const mesh = getTreeMesh(type, +variant, +lod, trees.length);
+        const [type, variant] = key.split('|');
+        const mesh = getTreeMesh(type, +variant, trees.length);
         trees.forEach((t, i) => {
             quat.setFromAxisAngle(_up, t.yaw);
             scale.setScalar(t.scale);
@@ -707,6 +844,25 @@ function rebuildTreeInstances() {
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     });
+
+    if (useSprites) {
+        const mesh = getTreeSpriteMesh(sprites.length);
+        const tiles = mesh.geometry.attributes.spriteTile;
+        sprites.forEach((t, i) => {
+            const sp = treeModels[t.type][t.variant].sprite;
+            offset.set(t.position.x, t.position.y + sp.bottom * t.scale, t.position.z);
+            matrix.makeScale(sp.width * t.scale, sp.height * t.scale, sp.width * t.scale).setPosition(offset);
+            mesh.setMatrixAt(i, matrix);
+            mesh.setColorAt(i, color.setScalar(t.tint));
+            tiles.setXY(i, sp.u, sp.v);
+        });
+        mesh.count = sprites.length;
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+        tiles.needsUpdate = true;
+    } else if (treeSpriteMesh) {
+        treeSpriteMesh.count = 0;
+    }
 
     updateTreeLandingProxies(nearTrees);
 }
@@ -832,6 +988,8 @@ function createMoreComplexTrees() {
     if (!treeMaterial) {
         buildTreeModels();
         treeMaterial = buildTreeMaterial();
+        const atlas = bakeTreeSprites();
+        if (atlas) treeSpriteMaterial = buildTreeSpriteMaterial(atlas);
     }
     if (typeof loadedChunks !== 'undefined') {
         loadedChunks.forEach(chunk => addChunkTrees(chunk.cx, chunk.cz, chunk.data));
@@ -839,14 +997,14 @@ function createMoreComplexTrees() {
     rebuildTreeInstances();
 }
 
-// Called on a throttle from the game loop: rebuild when chunks changed or the
-// player moved into a different chunk (near/far detail follows the player)
+// Rebuild when chunks changed or the player moved far enough that trees
+// should switch between 3D and sprite
 function updateTreeLOD() {
     if (!treeMaterial) return;
     const player = typeof character !== 'undefined' && character ? character.position : null;
-    if (player && Number.isFinite(player.x)) {
-        const pc = worldToChunk(player.x, player.z);
-        if (`${pc.x},${pc.z}` !== lastTreeCenter) treesDirty = true;
+    if (player && Number.isFinite(player.x) && lastTreeCenter) {
+        const dx = player.x - lastTreeCenter.x, dz = player.z - lastTreeCenter.z;
+        if (dx * dx + dz * dz > TREE_CONFIG.rebuildMoveDistance ** 2) treesDirty = true;
     }
     if (treesDirty) rebuildTreeInstances();
 }
