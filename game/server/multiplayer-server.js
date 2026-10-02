@@ -385,16 +385,6 @@ const ENTITIES = {
     builtObjects: {} // Map of mapId -> Array of { id, type, x, y, z, rx, ry, rz, color }
 };
 
-// Seeded Random Helper
-let currentSeed = 12345;
-function seededRandom() {
-    const a = 1103515245;
-    const c = 12345;
-    const m = 2**31;
-    currentSeed = (a * currentSeed + c) % m;
-    return currentSeed / m;
-}
-
 // Simple water check - mirrors client-side logic
 // Water exists where continentalness is very low (coastal/ocean areas)
 const SEA_LEVEL = -5;
@@ -416,101 +406,74 @@ function isWaterPosition(x, z) {
     return false;
 }
 
-// Get valid land position (retries if in water)
-function getValidLandPosition(minDist, maxDist, maxAttempts = 10) {
-    for (let i = 0; i < maxAttempts; i++) {
-        const angle = seededRandom() * Math.PI * 2;
-        const dist = minDist + seededRandom() * (maxDist - minDist);
-        const x = Math.cos(angle) * dist;
-        const z = Math.sin(angle) * dist;
+// --- Minecraft-style animal spawning ---
+// Clients pick biome-valid spots near their player and request spawns (the server
+// doesn't know biomes). The server enforces caps and distance rules, runs the
+// animals, and despawns them once no player is near. Everyone on a map sees the
+// same animals.
+const ANIMAL_RULES = {
+    minPlayerDistance: 24,        // Never spawn this close to any player
+    maxSpawnDistance: 160,        // Requested spot must be within this of the requester
+    countRadius: 180,             // Animals this close to the requester count toward its cap
+    despawnDistance: 180,         // Removed instantly when no player on the map is this close
+    gradualDespawnDistance: 120,  // Random despawn chance beyond this
+    viewDistance: 250,            // Animals sent to each player in worldState
+    caps: { deer: 12, cows: 10, bunnies: 15, birds: 20 }
+};
+let nextAnimalId = 0;
 
-        if (!isWaterPosition(x, z)) {
-            return { x, z };
-        }
+function createServerAnimal(kind, x, z, mapId) {
+    const base = { id: `${kind}_${nextAnimalId++}`, mapId, x, z, timer: Math.random() * 5 };
+    if (kind === 'birds') {
+        return { ...base, y: 20, state: 'FLYING', homeX: x, homeZ: z,
+            targetPos: { x, y: 30, z }, speed: 8 + Math.random() * 4 };
     }
-    // Fallback to last position even if water
-    const angle = seededRandom() * Math.PI * 2;
-    const dist = minDist + seededRandom() * (maxDist - minDist);
-    return { x: Math.cos(angle) * dist, z: Math.sin(angle) * dist };
+    const animal = { ...base, state: 'IDLE', targetDir: { x: 0, z: 1 }, speed: 0 };
+    if (kind === 'bunnies') animal.hopVelocityY = 0;
+    return animal;
 }
 
-// Keep ground animals near the play area - without this they random-walk
-// thousands of units away over a long server uptime and vanish from the map
-const ROAM_RADIUS = 400;
-function leashToHome(animal) {
-    const dist = Math.sqrt(animal.x * animal.x + animal.z * animal.z);
-    if (dist > ROAM_RADIUS) {
-        animal.targetDir = { x: -animal.x / dist, z: -animal.z / dist };
+function distToNearestPlayer(x, z, mapId) {
+    let nearest = Infinity;
+    players.forEach(p => {
+        if (p.mapId !== mapId) return;
+        const d = Math.hypot(x - p.position.x, z - p.position.z);
+        if (d < nearest) nearest = d;
+    });
+    return nearest;
+}
+
+function handleSpawnRequest(playerId, data) {
+    const player = players.get(playerId);
+    const list = ENTITIES[data.kind];
+    const cap = ANIMAL_RULES.caps[data.kind];
+    if (!player || !list || !cap || !Array.isArray(data.positions)) return;
+
+    const { mapId, position } = player;
+    let nearby = list.filter(a => a.mapId === mapId &&
+        Math.hypot(a.x - position.x, a.z - position.z) <= ANIMAL_RULES.countRadius).length;
+
+    for (const pos of data.positions.slice(0, 8)) {
+        if (nearby >= cap) break;
+        if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) continue;
+        if (Math.hypot(pos.x - position.x, pos.z - position.z) > ANIMAL_RULES.maxSpawnDistance) continue;
+        if (distToNearestPlayer(pos.x, pos.z, mapId) < ANIMAL_RULES.minPlayerDistance) continue;
+        list.push(createServerAnimal(data.kind, pos.x, pos.z, mapId));
+        nearby++;
     }
 }
 
-// Initialize Entities
-function initServerEntities() {
-    console.log("Initializing server-side entities...");
-
-    // Deer - spawn on land only
-    for (let i = 0; i < 18; i++) {
-        const pos = getValidLandPosition(60, 360);
-        ENTITIES.deer.push({
-            id: `deer_${i}`,
-            x: pos.x,
-            z: pos.z,
-            state: 'IDLE',
-            timer: seededRandom() * 5,
-            targetDir: { x: 0, z: 1 },
-            speed: 0
+// Despawn check (1s) - like Minecraft, animals far from every player go away
+setInterval(() => {
+    for (const kind of Object.keys(ANIMAL_RULES.caps)) {
+        ENTITIES[kind] = ENTITIES[kind].filter(a => {
+            const d = distToNearestPlayer(a.x, a.z, a.mapId);
+            if (d > ANIMAL_RULES.despawnDistance) return false;
+            if (d > ANIMAL_RULES.gradualDespawnDistance && Math.random() < 0.0025) return false;
+            return true;
         });
     }
-
-    // Cows - spawn on land, prefer open areas (grassland)
-    for (let i = 0; i < 12; i++) {
-        const pos = getValidLandPosition(50, 350);
-        ENTITIES.cows.push({
-            id: `cow_${i}`,
-            x: pos.x,
-            z: pos.z,
-            state: 'IDLE',
-            timer: seededRandom() * 5,
-            targetDir: { x: 0, z: 1 },
-            speed: 0
-        });
-    }
-
-    // Bunnies - spawn on land only
-    for (let i = 0; i < 20; i++) {
-        const pos = getValidLandPosition(40, 340);
-        ENTITIES.bunnies.push({
-            id: `bunny_${i}`,
-            x: pos.x,
-            z: pos.z,
-            state: 'IDLE',
-            timer: seededRandom() * 5,
-            targetDir: { x: 0, z: 1 },
-            speed: 0,
-            hopVelocityY: 0
-        });
-    }
-
-    // Birds - can fly over water, no check needed
-    for (let i = 0; i < 30; i++) {
-        const angle = seededRandom() * Math.PI * 2;
-        const dist = seededRandom() * 300;
-        ENTITIES.birds.push({
-            id: `bird_${i}`,
-            x: Math.cos(angle) * dist,
-            z: Math.sin(angle) * dist,
-            y: 20,
-            state: 'FLYING',
-            timer: seededRandom() * 5,
-            targetPos: { x: 0, y: 30, z: 0 },
-            speed: 8 + seededRandom() * 4
-        });
-    }
-
-    console.log(`Initialized ${ENTITIES.deer.length} deer, ${ENTITIES.cows.length} cows, ${ENTITIES.bunnies.length} bunnies, ${ENTITIES.birds.length} birds.`);
-}
-
-initServerEntities();
+}, 1000);
 
 // Server Game Loop (20 TPS)
 setInterval(() => {
@@ -526,6 +489,7 @@ setInterval(() => {
         let nearestDist = Infinity;
 
         players.forEach(player => {
+            if (player.mapId !== deer.mapId) return;
             const dx = deer.x - player.position.x;
             const dz = deer.z - player.position.z;
             const dist = Math.sqrt(dx*dx + dz*dz);
@@ -619,6 +583,7 @@ setInterval(() => {
         let isThreat = false;
         let fleeSource = null;
         players.forEach(player => {
+            if (player.mapId !== cow.mapId) return;
             const dx = cow.x - player.position.x;
             const dz = cow.z - player.position.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
@@ -687,6 +652,7 @@ setInterval(() => {
         let isThreat = false;
         let fleeSource = null;
         players.forEach(player => {
+            if (player.mapId !== bunny.mapId) return;
             const dx = bunny.x - player.position.x;
             const dz = bunny.z - player.position.z;
             const dist = Math.sqrt(dx*dx + dz*dz);
@@ -741,10 +707,6 @@ setInterval(() => {
         }
     });
     
-    ENTITIES.deer.forEach(leashToHome);
-    ENTITIES.cows.forEach(leashToHome);
-    ENTITIES.bunnies.forEach(leashToHome);
-
     // Update Birds
     ENTITIES.birds.forEach(bird => {
         // ... (bird logic)
@@ -757,9 +719,9 @@ setInterval(() => {
             bird.z += (dz / dist) * speed;
         } else {
             const angle = Math.random() * Math.PI * 2;
-            const d = Math.random() * 300;
-            bird.targetPos.x = Math.cos(angle) * d;
-            bird.targetPos.z = Math.sin(angle) * d;
+            const d = Math.random() * 60;
+            bird.targetPos.x = bird.homeX + Math.cos(angle) * d;
+            bird.targetPos.z = bird.homeZ + Math.sin(angle) * d;
         }
     });
 
@@ -837,22 +799,28 @@ setInterval(() => {
         }
     }
 
-    // Broadcast Snapshot
-    const snapshot = {
-        type: 'worldState',
-        deer: ENTITIES.deer.map(d => ({ id: d.id, x: d.x, z: d.z, state: d.state, ry: Math.atan2(d.targetDir.x, d.targetDir.z) })),
-        cows: ENTITIES.cows.map(c => ({ id: c.id, x: c.x, z: c.z, state: c.state, ry: Math.atan2(c.targetDir.x, c.targetDir.z) })),
-        bunnies: ENTITIES.bunnies.map(b => ({ id: b.id, x: b.x, z: b.z, state: b.state })),
-        birds: ENTITIES.birds.map(b => ({ id: b.id, x: b.x, z: b.z, y: b.y, state: b.state })),
-        npc: { 
-            x: npc.x, 
-            z: npc.z, 
-            ry: npc.ry || 0, // Send rotation
-            state: npc.state === 'STARING' ? 'staring' : 'wandering' // Map back to client expected strings
-        } 
+    // Send each player the animals on their map within view
+    const npcState = {
+        x: npc.x,
+        z: npc.z,
+        ry: npc.ry || 0, // Send rotation
+        state: npc.state === 'STARING' ? 'staring' : 'wandering' // Map back to client expected strings
     };
-    
-    broadcastToAll(snapshot);
+    wss.clients.forEach(client => {
+        if (client.readyState !== WebSocket.OPEN) return;
+        const p = players.get(client.playerId);
+        if (!p) return;
+        const inView = a => a.mapId === p.mapId &&
+            Math.hypot(a.x - p.position.x, a.z - p.position.z) <= ANIMAL_RULES.viewDistance;
+        client.send(JSON.stringify({
+            type: 'worldState',
+            deer: ENTITIES.deer.filter(inView).map(d => ({ id: d.id, x: d.x, z: d.z, state: d.state, ry: Math.atan2(d.targetDir.x, d.targetDir.z) })),
+            cows: ENTITIES.cows.filter(inView).map(c => ({ id: c.id, x: c.x, z: c.z, state: c.state, ry: Math.atan2(c.targetDir.x, c.targetDir.z) })),
+            bunnies: ENTITIES.bunnies.filter(inView).map(b => ({ id: b.id, x: b.x, z: b.z, state: b.state })),
+            birds: ENTITIES.birds.filter(inView).map(b => ({ id: b.id, x: b.x, z: b.z, y: b.y, state: b.state })),
+            npc: npcState
+        }));
+    });
 
 }, 50); // 20 times per second
 
@@ -1029,6 +997,9 @@ wss.on('connection', (ws) => {
                 }
 
                 console.log(`Player ${playerId} joined map: ${newMapId}`);
+            }
+            else if (data.type === 'spawnAnimals') {
+                handleSpawnRequest(playerId, data);
             }
             else if (data.type === 'update') {
                 // ... existing update logic ...
