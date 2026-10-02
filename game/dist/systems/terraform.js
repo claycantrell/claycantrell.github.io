@@ -631,25 +631,8 @@ function updateVegetationInBounds(minX, maxX, minZ, maxZ) {
     }
 
     // Update shrubs
-    const shrubs = typeof getShrubData === 'function' ? getShrubData() : [];
-    if (shrubs && shrubs.length > 0) {
-        for (let i = 0; i < shrubs.length; i++) {
-            const shrub = shrubs[i];
-            const x = shrub.position.x;
-            const z = shrub.position.z;
-
-            if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-
-            const newY = typeof getTerrainHeightAt === 'function'
-                ? getTerrainHeightAt(x, z)
-                : shrub.position.y;
-
-            shrub.position.y = newY;
-
-            if (shrub.sprite) {
-                shrub.sprite.position.y = newY;
-            }
-        }
+    if (typeof updateShrubsInBounds === 'function') {
+        updateShrubsInBounds(minX, maxX, minZ, maxZ);
     }
 }
 

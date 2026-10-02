@@ -341,6 +341,11 @@ function loadChunk(cx, cz) {
         cz,
         lastAccess: Date.now()
     });
+
+    // Plant this chunk's ground vegetation
+    if (typeof addChunkShrubs === 'function') {
+        addChunkShrubs(cx, cz, chunkData);
+    }
 }
 
 // Unload a chunk
@@ -358,6 +363,11 @@ function unloadChunk(key) {
         scene.remove(chunk.waterMesh);
         chunk.waterMesh.geometry.dispose();
         chunk.waterMesh.material.dispose();
+    }
+
+    // Remove this chunk's ground vegetation
+    if (typeof removeChunkShrubs === 'function') {
+        removeChunkShrubs(key);
     }
 
     // Remove from map
