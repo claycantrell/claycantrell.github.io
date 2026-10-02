@@ -10,6 +10,7 @@ const Systems = {
         'character',
         'multiplayer',
         'chunks',
+        'water',
         'trees',
         'shrubs',
         'animalSpawner',

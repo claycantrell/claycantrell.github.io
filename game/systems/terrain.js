@@ -560,7 +560,16 @@ function calculateTerrainHeight(x, z) {
         }
     }
 
-    return { height, climate, biome, blendBiome, blendWeight };
+    // Oceans, lakes and ponds, then river valleys, last so they cut through everything
+    if (typeof applyWaterBodies === 'function') {
+        height = applyWaterBodies(x, z, height, climate);
+    }
+    let river = 0;
+    if (typeof getRiverCarve === 'function') {
+        ({ height, river } = getRiverCarve(x, z, height));
+    }
+
+    return { height, climate, biome, blendBiome, blendWeight, river };
 }
 
 // Create terrain mesh with biome-colored vertices

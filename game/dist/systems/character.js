@@ -145,13 +145,26 @@ function updateCharacterMovement(delta) {
     const flySpeed = charConfig.flySpeed;
     const gravity = charConfig.gravity;
 
+    // Water: deep enough to swim, or shallow wading
+    const waterCfg = typeof getWaterConfig === 'function' ? getWaterConfig() : null;
+    const groundHere = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(character.position.x, character.position.z) : 0;
+    const waterDepthHere = waterCfg ? Math.max(0, waterCfg.seaLevel - groundHere) : 0;
+    const isSwimming = !isFlying && waterDepthHere > waterCfg?.swimDepth && character.position.y < waterCfg.seaLevel + 1;
+    const isWading = !isFlying && !isSwimming && waterDepthHere > 0.3;
+
     // Flying mode - use increased speed (4x normal, ~2.7x sprint)
     if (isFlying) {
         moveSpeed = flySpeed;
     }
-    // Sprint multiplier (only when not flying)
+    // Swimming is slow and can't sprint; wading slows you down
+    else if (isSwimming) {
+        moveSpeed *= 0.5;
+    }
     else if (isSprinting) {
-        moveSpeed *= 1.5;
+        moveSpeed *= isWading ? 1.1 : 1.5;
+    }
+    else if (isWading) {
+        moveSpeed *= 0.75;
     }
 
     // Get camera yaw for movement direction (Minecraft-style)
@@ -319,6 +332,20 @@ function updateCharacterMovement(delta) {
             }
         }
 
+        // Swimming: float at the surface with a gentle bob
+        if (isSwimming && !onBlock && !onTree) {
+            const surfaceY = waterCfg.seaLevel - 1.6 + Math.sin(performance.now() * 0.003) * 0.12;
+            if (character.position.y > surfaceY + 0.05 && verticalVelocity !== 0) {
+                // Falling/jumping into water: gravity, damped
+                verticalVelocity = Math.max(verticalVelocity - gravity * delta, -6);
+                character.position.y = Math.max(surfaceY, character.position.y + verticalVelocity * delta);
+            } else {
+                character.position.y += (surfaceY - character.position.y) * Math.min(1, delta * 4);
+                verticalVelocity = 0;
+            }
+            isOnGround = true;
+        } else {
+
         // Target Y position (1 unit above ground/tree)
         const targetY = groundY + 1.0;
 
@@ -355,6 +382,7 @@ function updateCharacterMovement(delta) {
                 }
             }
         }
+        } // end not swimming
     }
 
     // Boundary check using config value

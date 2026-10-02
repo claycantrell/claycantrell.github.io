@@ -192,6 +192,8 @@ function trySpawnAnimals(type) {
     const pos = getSpawnPosition();
     if (!pos) return;
     if (!isValidSpawnPosition(pos.x, pos.z, type)) return;
+    // No spawning in lakes, rivers or the sea
+    if (typeof getWaterConfig === 'function' && pos.y < getWaterConfig().seaLevel + 0.5) return;
 
     // Adjust spawn chance based on biome spawn rate
     let adjustedChance = chance;
