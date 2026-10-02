@@ -321,13 +321,13 @@ function sendBuildToServer(buildData) {
 // Ask the server to spawn animals (Minecraft-style: server owns them so every
 // player sees the same ones). Returns false when offline or the kind is client-only.
 const SERVER_ANIMAL_KINDS = ['deer', 'cows', 'bunnies', 'birds'];
-function sendAnimalSpawnRequest(kind, positions) {
+function sendAnimalSpawnRequest(kind, positions, packId) {
     if (!isConnected || !socket || !playerId || !SERVER_ANIMAL_KINDS.includes(kind)) {
         return false;
     }
 
     try {
-        socket.send(JSON.stringify({ type: 'spawnAnimals', kind, positions }));
+        socket.send(JSON.stringify({ type: 'spawnAnimals', kind, positions, packId }));
         return true;
     } catch (error) {
         return false;
@@ -341,3 +341,4 @@ window.updateMultiplayer = updateMultiplayer;
 window.sendChatToServer = sendChatToServer;
 window.sendBuildToServer = sendBuildToServer;
 window.sendAnimalSpawnRequest = sendAnimalSpawnRequest;
+window.isMultiplayerConnected = () => isConnected && !!playerId;
