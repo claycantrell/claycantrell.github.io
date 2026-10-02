@@ -134,7 +134,7 @@ function biomeGroundColor(biome, worldX, worldZ, height, out) {
 
 function getSnowCover(data, worldX, worldZ) {
     if (!data.climate || !data.biome || HOT_BIOMES.has(data.biome.id)) return 0;
-    const snowline = 120 + data.climate.temperature * 80;
+    const snowline = 250 + data.climate.temperature * 150;
     const jitter = simplex.noise2D(worldX * 0.03 + 900, worldZ * 0.03 + 900) * 10;
     return smoothstep(snowline, snowline + 25, data.height + jitter);
 }
