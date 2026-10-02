@@ -342,7 +342,10 @@ function loadChunk(cx, cz) {
         lastAccess: Date.now()
     });
 
-    // Plant this chunk's ground vegetation
+    // Plant this chunk's trees and ground vegetation
+    if (typeof addChunkTrees === 'function') {
+        addChunkTrees(cx, cz, chunkData);
+    }
     if (typeof addChunkShrubs === 'function') {
         addChunkShrubs(cx, cz, chunkData);
     }
@@ -365,7 +368,10 @@ function unloadChunk(key) {
         chunk.waterMesh.material.dispose();
     }
 
-    // Remove this chunk's ground vegetation
+    // Remove this chunk's trees and ground vegetation
+    if (typeof removeChunkTrees === 'function') {
+        removeChunkTrees(key);
+    }
     if (typeof removeChunkShrubs === 'function') {
         removeChunkShrubs(key);
     }

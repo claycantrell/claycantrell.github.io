@@ -601,33 +601,9 @@ function updateVegetationInBounds(minX, maxX, minZ, maxZ) {
     minZ -= buffer;
     maxZ += buffer;
 
-    // Update trees - simple bounds check, no distance calc
-    const trees = typeof getTreeData === 'function' ? getTreeData() : [];
-    if (trees && trees.length > 0) {
-        for (let i = 0; i < trees.length; i++) {
-            const tree = trees[i];
-            const x = tree.position.x;
-            const z = tree.position.z;
-
-            // Fast bounds check - skip if outside affected area
-            if (x < minX || x > maxX || z < minZ || z > maxZ) continue;
-
-            const newY = typeof getTerrainHeightAt === 'function'
-                ? getTerrainHeightAt(x, z)
-                : tree.position.y;
-
-            tree.position.y = newY;
-
-            if (tree.group) {
-                tree.group.position.y = newY;
-                if (tree.group.userData && tree.group.userData.treeHeight) {
-                    tree.group.userData.absoluteTreeHeight = newY + tree.group.userData.treeHeight;
-                }
-            }
-            if (tree.sprite) {
-                tree.sprite.position.y = newY;
-            }
-        }
+    // Update trees
+    if (typeof updateTreesInBounds === 'function') {
+        updateTreesInBounds(minX, maxX, minZ, maxZ);
     }
 
     // Update shrubs
