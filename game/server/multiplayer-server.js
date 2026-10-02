@@ -434,6 +434,16 @@ function getValidLandPosition(minDist, maxDist, maxAttempts = 10) {
     return { x: Math.cos(angle) * dist, z: Math.sin(angle) * dist };
 }
 
+// Keep ground animals near the play area - without this they random-walk
+// thousands of units away over a long server uptime and vanish from the map
+const ROAM_RADIUS = 400;
+function leashToHome(animal) {
+    const dist = Math.sqrt(animal.x * animal.x + animal.z * animal.z);
+    if (dist > ROAM_RADIUS) {
+        animal.targetDir = { x: -animal.x / dist, z: -animal.z / dist };
+    }
+}
+
 // Initialize Entities
 function initServerEntities() {
     console.log("Initializing server-side entities...");
@@ -731,6 +741,10 @@ setInterval(() => {
         }
     });
     
+    ENTITIES.deer.forEach(leashToHome);
+    ENTITIES.cows.forEach(leashToHome);
+    ENTITIES.bunnies.forEach(leashToHome);
+
     // Update Birds
     ENTITIES.birds.forEach(bird => {
         // ... (bird logic)
