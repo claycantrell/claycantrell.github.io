@@ -13,7 +13,19 @@ const CACHE_GRID_SIZE = 2; // Round positions to this grid for cache keys
  * @param {boolean} useCache - Whether to use cache (default true)
  * @returns {number} Terrain height at position
  */
+// Used by animals: in deep water this returns the swimming height (just below
+// the surface) instead of the lake/river bed, so animals swim across water
 function getTerrainHeight(x, z, useCache = true) {
+    return withSwimHeight(getTerrainHeightRaw(x, z, useCache));
+}
+
+function withSwimHeight(height) {
+    if (typeof getWaterConfig !== 'function') return height;
+    const cfg = getWaterConfig();
+    return Math.max(height, cfg.seaLevel - cfg.swimDepth);
+}
+
+function getTerrainHeightRaw(x, z, useCache = true) {
     // Fall back to raw function if it doesn't exist
     if (typeof getTerrainHeightAt !== 'function') {
         return 0;

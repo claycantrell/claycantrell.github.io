@@ -84,28 +84,12 @@ function generateChunkData(cx, cz) {
             // Calculate terrain at this point (uses existing terrain system)
             const data = calculateTerrainHeight(worldX, worldZ);
 
-            // Check for rivers and apply carving
-            let height = data.height;
-            let isWaterPoint = false;
-            let waterType = null;
-
-            if (typeof isRiver === 'function' && isRiver(worldX, worldZ, data.climate)) {
-                // Carve river into terrain
-                if (typeof applyRiverCarving === 'function') {
-                    height = applyRiverCarving(worldX, worldZ, height);
-                }
-                isWaterPoint = true;
-                waterType = 'river';
-                hasWater = true;
-            }
-
-            // Check for lakes (low areas)
+            // Rivers are already carved into the height; anything below sea level is water
+            const height = data.height;
             const waterConfig = typeof getWaterConfig === 'function' ? getWaterConfig() : { seaLevel: -5 };
-            if (height < waterConfig.seaLevel) {
-                isWaterPoint = true;
-                waterType = 'lake';
-                hasWater = true;
-            }
+            const isWaterPoint = height < waterConfig.seaLevel;
+            const waterType = isWaterPoint ? ((data.river || 0) > 0.3 ? 'river' : 'lake') : null;
+            if (isWaterPoint) hasWater = true;
 
             heightmap[z][x] = height;
             biomeData[z][x] = {
@@ -155,6 +139,21 @@ function getSnowCover(data, worldX, worldZ) {
     return smoothstep(snowline, snowline + 25, data.height + jitter);
 }
 
+// Shore (0-1): sandy band just above the water line and on the bed below it
+function getShoreAmount(height) {
+    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
+    return smoothstep(sea + 1.8, sea + 0.3, height);
+}
+
+// Seabed darkness (0-1) with depth below the water line
+function getSeabedAmount(height) {
+    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
+    return smoothstep(sea, sea - 9, height);
+}
+
+const _sandColor = new THREE.Color(0xCDBA8C);
+const _seabedColor = new THREE.Color(0x4E4C3C);
+
 function getGroundColor(data, worldX, worldZ, snow, out) {
     biomeGroundColor(data.biome, worldX, worldZ, data.height, out);
     if (data.blendBiome && data.blendWeight > 0.001) {
@@ -162,6 +161,9 @@ function getGroundColor(data, worldX, worldZ, snow, out) {
     }
     out.offsetHSL(0, 0, simplex.noise2D(worldX * 0.11 + 50, worldZ * 0.11 + 50) * 0.035);
     if (snow > 0) out.lerp(_snowColor, snow);
+    // Sandy shores and a seabed that darkens with depth (the water surface adds the blue)
+    out.lerp(_sandColor, getShoreAmount(data.height) * 0.75);
+    out.lerp(_seabedColor, getSeabedAmount(data.height) * 0.8);
     return out;
 }
 
@@ -177,11 +179,6 @@ function createChunkMesh(cx, cz, chunkData) {
 
     // Create vertex colors
     const colors = new Float32Array(vertexCount * 3);
-
-    // Water colors
-    const riverColor = new THREE.Color(0x2980b9);
-    const lakeColor = new THREE.Color(0x1a5f7a);
-    const shallowColor = new THREE.Color(0x5dade2);
 
     // Cave colors
     const caveFloorColor = new THREE.Color(0x2a2a2a);
@@ -202,22 +199,6 @@ function createChunkMesh(cx, cz, chunkData) {
         // Cave entrance gets dark floor color
         if (data.isCaveEntrance) {
             color = caveFloorColor;
-        } else if (data.isWater) {
-            // Water coloring based on type and depth
-            if (data.waterType === 'river') {
-                color = riverColor;
-            } else {
-                // Lake - depth based color
-                const waterConfig = typeof getWaterConfig === 'function' ? getWaterConfig() : { seaLevel: -5 };
-                const depth = waterConfig.seaLevel - data.height;
-                if (depth < 2) {
-                    color = shallowColor;
-                } else if (depth < 6) {
-                    color = riverColor;
-                } else {
-                    color = lakeColor;
-                }
-            }
         } else if (data.biome) {
             const worldX = bounds.minX + (x / segments) * size;
             const worldZ = bounds.minZ + (z / segments) * size;
@@ -274,6 +255,13 @@ function createChunkMesh(cx, cz, chunkData) {
         weights[ownTex] += (1 - blend) * (1 - snow);
         if (blend > 0) weights[getTextureIndex(data.blendBiome.textureType || 'grass')] += blend * (1 - snow);
         weights[3] += snow;
+        // Shores and lake beds turn to sand, deep beds to mud
+        const shore = getShoreAmount(data.height ?? 0), seabed = getSeabedAmount(data.height ?? 0);
+        if (shore > 0) {
+            for (let w = 0; w < 6; w++) weights[w] *= 1 - shore;
+            weights[2] += shore * (1 - seabed);
+            weights[5] += shore * seabed;
+        }
         texWeightsA.set(weights.slice(0, 3), i * 3);
         texWeightsB.set(weights.slice(3, 6), i * 3);
     }
@@ -327,9 +315,9 @@ function loadChunk(cx, cz) {
 
     // Create water plane if chunk has water
     let waterMesh = null;
-    if (chunkData.hasWater && typeof createChunkWaterPlane === 'function') {
-        waterMesh = createChunkWaterPlane(cx, cz, CHUNK_CONFIG.size);
-        scene.add(waterMesh);
+    if (chunkData.hasWater && typeof createChunkWaterMesh === 'function') {
+        waterMesh = createChunkWaterMesh(cx, cz, chunkData);
+        if (waterMesh) scene.add(waterMesh);
     }
 
     // Store in map
@@ -364,8 +352,7 @@ function unloadChunk(key) {
     // Remove water mesh if exists
     if (chunk.waterMesh) {
         scene.remove(chunk.waterMesh);
-        chunk.waterMesh.geometry.dispose();
-        chunk.waterMesh.material.dispose();
+        chunk.waterMesh.geometry.dispose(); // Material is shared
     }
 
     // Remove this chunk's trees and ground vegetation

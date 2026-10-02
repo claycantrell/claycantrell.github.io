@@ -601,6 +601,11 @@ function updateVegetationInBounds(minX, maxX, minZ, maxZ) {
     minZ -= buffer;
     maxZ += buffer;
 
+    // Digging below sea level fills with water; raising land drains it
+    if (typeof updateWaterInBounds === 'function') {
+        updateWaterInBounds(minX, maxX, minZ, maxZ);
+    }
+
     // Update trees
     if (typeof updateTreesInBounds === 'function') {
         updateTreesInBounds(minX, maxX, minZ, maxZ);

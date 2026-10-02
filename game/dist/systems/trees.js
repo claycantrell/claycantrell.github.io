@@ -940,6 +940,10 @@ function addChunkTrees(cx, cz, chunkData) {
         const table = BIOME_TREES[biome.id] || BIOME_TREES.plains;
         if (!table.types.length || roll > table.density) continue;
 
+        // Dry land only
+        const seaLevel = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
+        if (chunkSurfaceHeight(chunkData, x, z) < seaLevel + 0.6) continue;
+
         // No trees on cliff faces
         const hx = chunkSurfaceHeight(chunkData, x + 1.5, z) - chunkSurfaceHeight(chunkData, x - 1.5, z);
         const hz = chunkSurfaceHeight(chunkData, x, z + 1.5) - chunkSurfaceHeight(chunkData, x, z - 1.5);

@@ -226,7 +226,7 @@ function findCaveEntrances(cx, cz, chunkSize, getTerrainHeight) {
                             seg.z >= chunkMinZ - seg.radius && seg.z < chunkMaxZ + seg.radius) {
 
                             // Get terrain height at this point
-                            const terrainY = getTerrainHeight(seg.x, seg.z);
+                            const terrainY = getTerrainHeightAt(seg.x, seg.z);
 
                             // Check if worm intersects or comes close to surface
                             // distToSurface > 0 means worm is below surface

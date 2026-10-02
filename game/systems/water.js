@@ -1,157 +1,312 @@
-// Water system - lakes and rivers
-// Lakes form in low-lying areas, rivers flow through the terrain
+// Water system - oceans, lakes and rivers
+// Minecraft-style: all water sits at one global sea level. Oceans and lakes are
+// wherever terrain dips below it; rivers are meandering valleys carved into the
+// terrain (see getRiverCarve, applied in calculateTerrainHeight) whose channels
+// cut below sea level so they fill with water. Each chunk gets a water surface
+// mesh covering only its underwater cells, shaded by depth with shore foam.
 
 // Water configuration
 const WATER_CONFIG = {
-    seaLevel: -5,              // Height below which water appears (lakes)
-    riverWidth: 8,             // Base width of rivers
-    riverDepth: 3,             // How deep rivers cut into terrain
-    riverNoiseScale: 0.002,    // Scale for river path noise
-    riverThreshold: 0.85,      // Higher = thinner rivers
-    lakeColor: 0x1a5f7a,       // Deep blue for lakes
-    riverColor: 0x2980b9,      // Lighter blue for rivers
-    shallowColor: 0x5dade2,    // Light blue for shallow water
-    waterOpacity: 0.85
+    seaLevel: -5,              // The water surface everywhere
+    riverNoiseScale: 0.0011,   // Lower = longer, wider-spaced rivers
+    riverWidth: 0.03,          // Channel half-width in noise units (~15-20 world units)
+    riverValley: 0.11,         // Valley half-width in noise units
+    riverDepth: 3.5,           // Channel bed depth below sea level
+    bankHeight: 1.2,           // Valley floor height above sea level
+    riverMaxLand: 70,          // Rivers fade out where land is higher than this
+    riverSpawnClear: 260,      // No rivers or lakes within this distance of spawn
+    oceanStart: -0.2,          // Continentalness where the coast starts dropping
+    oceanFull: -0.34,          // ...and where it is fully sea floor
+    oceanDeep: -0.6,           // Deepest ocean
+    lakeScale: 0.0007,         // Large inland lakes
+    lakeThreshold: 0.52,
+    pondScale: 0.004,          // Small ponds
+    pondThreshold: 0.72,
+    lakeMaxLand: 45,           // Lakes and ponds only form in lowlands
+    shallowColor: 0x4FB3BF,
+    deepColor: 0x14506E,
+    foamColor: 0xE8F4F2,
+    swimDepth: 2.2             // Deeper than this, characters/animals swim
 };
 
-// River noise generator
+// River noise generators
 let riverNoise = null;
-let riverNoise2 = null;  // Second layer for more complex patterns
+let riverNoise2 = null;
+let riverWarp = null;
+let lakeNoise = null;
 
-// Initialize water system
 function initWaterSystem(seed) {
     riverNoise = new SimplexNoise(seed + '_river');
     riverNoise2 = new SimplexNoise(seed + '_river2');
-    // Water system initialized
+    riverWarp = new SimplexNoise(seed + '_riverwarp');
+    lakeNoise = new SimplexNoise(seed + '_lake');
 }
 
-// Check if a point is in a river - DISABLED
-function isRiver(x, z, climate) {
-    return false; // Rivers disabled
+function waterSmoothstep(a, b, x) {
+    const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
 }
 
-// Get river influence at a point (0-1, higher = more river-like)
-function getRiverInfluence(x, z, climate) {
-    if (!riverNoise) return 0;
-
-    // Get climate if not provided
-    if (!climate && typeof getClimateAt === 'function') {
-        climate = getClimateAt(x, z);
-    }
-
-    // No rivers on mountains or highlands
-    if (climate && (climate.erosion < -0.2 || climate.continentalness > 0.5)) {
-        return 0;
-    }
-
-    const scale1 = WATER_CONFIG.riverNoiseScale;
-    const scale2 = WATER_CONFIG.riverNoiseScale * 2.5;
-
-    const noise1 = riverNoise.noise2D(x * scale1, z * scale1);
-    const noise2 = riverNoise2.noise2D(x * scale2 + 500, z * scale2 + 500) * 0.3;
-
-    const combined = Math.abs(noise1 + noise2);
-    const threshold = 1 - WATER_CONFIG.riverThreshold;
-
-    if (combined < threshold) {
-        // Inside river - return 1 at center, fade to edges
-        return 1 - (combined / threshold);
-    }
-
-    return 0;
+// River shape at a point: valley (0-1) pulls land down to the banks, channel
+// (0-1) cuts below sea level. Warped ridged noise gives meandering lines.
+function getRiverShape(x, z) {
+    if (!riverNoise) return { valley: 0, channel: 0 };
+    const s = WATER_CONFIG.riverNoiseScale;
+    const wx = x + riverWarp.noise2D(x * s * 2, z * s * 2) * 120;
+    const wz = z + riverWarp.noise2D(x * s * 2 + 400, z * s * 2 + 400) * 120;
+    const n = riverNoise.noise2D(wx * s, wz * s) + riverNoise2.noise2D(wx * s * 3 + 50, wz * s * 3 + 50) * 0.12;
+    const d = Math.abs(n);
+    return {
+        valley: 1 - waterSmoothstep(WATER_CONFIG.riverWidth, WATER_CONFIG.riverValley, d),
+        channel: 1 - waterSmoothstep(WATER_CONFIG.riverWidth * 0.55, WATER_CONFIG.riverWidth, d)
+    };
 }
 
-// Check if a point is a lake (below sea level and not too mountainous)
-function isLake(x, z, terrainHeight, climate) {
-    // Below sea level = lake
-    if (terrainHeight < WATER_CONFIG.seaLevel) {
-        return true;
+// Oceans, lakes and ponds: lower the land into basins below sea level.
+// Applied before rivers so rivers can run into them.
+function applyWaterBodies(x, z, height, climate) {
+    if (!lakeNoise) return height;
+    const sea = WATER_CONFIG.seaLevel;
+    let h = height;
+
+    // Oceans where the land is far from the continent core (low continentalness)
+    const cont = climate ? climate.continentalness : 0;
+    const ocean = waterSmoothstep(WATER_CONFIG.oceanStart, WATER_CONFIG.oceanFull, cont);
+    if (ocean > 0) {
+        const floor = sea - 4 - 16 * waterSmoothstep(WATER_CONFIG.oceanFull, WATER_CONFIG.oceanDeep, cont) +
+            lakeNoise.noise2D(x * 0.01, z * 0.01) * 1.5;
+        h = h + (Math.min(h, floor) - h) * ocean;
     }
 
-    // Also check for low continentalness (coastal/ocean areas)
-    if (climate && climate.continentalness < -0.6) {
-        return true;
+    // Lakes and ponds in lowlands, away from spawn
+    const lowland = 1 - waterSmoothstep(WATER_CONFIG.lakeMaxLand * 0.6, WATER_CONFIG.lakeMaxLand, height);
+    const clear = waterSmoothstep(WATER_CONFIG.riverSpawnClear * 0.6, WATER_CONFIG.riverSpawnClear, Math.sqrt(x * x + z * z));
+    if (lowland > 0 && clear > 0) {
+        const lake = waterSmoothstep(WATER_CONFIG.lakeThreshold, WATER_CONFIG.lakeThreshold + 0.12,
+            lakeNoise.noise2D(x * WATER_CONFIG.lakeScale + 900, z * WATER_CONFIG.lakeScale + 900));
+        const pond = waterSmoothstep(WATER_CONFIG.pondThreshold, WATER_CONFIG.pondThreshold + 0.1,
+            lakeNoise.noise2D(x * WATER_CONFIG.pondScale - 300, z * WATER_CONFIG.pondScale - 300));
+        const basin = Math.max(lake, pond * 0.8) * lowland * clear;
+        if (basin > 0) {
+            const bed = sea - 1 - 7 * basin;
+            if (h > bed) h = h + (bed - h) * Math.min(1, basin * 1.6);
+        }
     }
-
-    return false;
+    return h;
 }
 
-// Get water color based on depth and type
-function getWaterColor(terrainHeight, isRiverPoint) {
-    if (isRiverPoint) {
-        return WATER_CONFIG.riverColor;
-    }
+// Carve a river into a terrain height; returns { height, river } where river
+// is the channel strength (0 = no river)
+function getRiverCarve(x, z, height) {
+    const shape = getRiverShape(x, z);
+    if (shape.valley <= 0) return { height, river: 0 };
 
-    // Depth-based color for lakes
-    const depth = WATER_CONFIG.seaLevel - terrainHeight;
+    // Fade rivers out in high mountains and around spawn
+    const distFromSpawn = Math.sqrt(x * x + z * z);
+    const strength = (1 - waterSmoothstep(WATER_CONFIG.riverMaxLand * 0.6, WATER_CONFIG.riverMaxLand, height)) *
+        waterSmoothstep(WATER_CONFIG.riverSpawnClear * 0.6, WATER_CONFIG.riverSpawnClear, distFromSpawn);
+    if (strength <= 0) return { height, river: 0 };
 
-    if (depth < 2) {
-        return WATER_CONFIG.shallowColor;  // Shallow
-    } else if (depth < 8) {
-        return WATER_CONFIG.riverColor;    // Medium
-    } else {
-        return WATER_CONFIG.lakeColor;     // Deep
-    }
+    const sea = WATER_CONFIG.seaLevel;
+    const bank = sea + WATER_CONFIG.bankHeight;
+    const bed = sea - WATER_CONFIG.riverDepth;
+
+    // Only ever lower the land
+    let h = height;
+    if (h > bank) h = h + (bank - h) * shape.valley * strength;
+    if (h > bed) h = h + (bed - h) * shape.channel * strength;
+    return { height: h, river: shape.channel * strength };
 }
 
-// Modify terrain height for rivers (carve into terrain)
+// Compatibility: is this point inside a river channel
+function isRiver(x, z) {
+    if (typeof calculateTerrainHeight !== 'function') return false;
+    return (calculateTerrainHeight(x, z).river || 0) > 0.5;
+}
+
+function getRiverInfluence(x, z) {
+    return getRiverShape(x, z).channel;
+}
+
+// Rivers are carved in calculateTerrainHeight; kept for old callers
 function applyRiverCarving(x, z, originalHeight) {
-    const riverInfluence = getRiverInfluence(x, z);
-
-    if (riverInfluence > 0) {
-        // Carve river bed - deeper at center
-        const carveDepth = WATER_CONFIG.riverDepth * riverInfluence;
-        return originalHeight - carveDepth;
-    }
-
     return originalHeight;
 }
 
-// Check if point is water (lake or river)
-function isWater(x, z, terrainHeight, climate) {
-    // Check river first
-    if (isRiver(x, z)) {
-        return { isWater: true, type: 'river' };
-    }
+function isLake(x, z, terrainHeight) {
+    return terrainHeight < WATER_CONFIG.seaLevel;
+}
 
-    // Check lake
-    if (isLake(x, z, terrainHeight, climate)) {
-        return { isWater: true, type: 'lake' };
-    }
+// Water surface height at a point, or null if the ground is above water
+function getWaterSurfaceAt(x, z, groundHeight) {
+    const h = groundHeight !== undefined ? groundHeight
+        : (typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0);
+    return h < WATER_CONFIG.seaLevel ? WATER_CONFIG.seaLevel : null;
+}
 
+// Water depth at a point (0 on land)
+function getWaterDepthAt(x, z) {
+    const h = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(x, z) : 0;
+    return Math.max(0, WATER_CONFIG.seaLevel - h);
+}
+
+function isWater(x, z, terrainHeight) {
+    if (terrainHeight < WATER_CONFIG.seaLevel) return { isWater: true, type: 'lake' };
     return { isWater: false, type: null };
 }
 
-// Create water plane for a chunk (called by chunk system)
-function createChunkWaterPlane(cx, cz, chunkSize) {
-    const geometry = new THREE.PlaneGeometry(chunkSize, chunkSize, 1, 1);
-
-    const material = new THREE.MeshBasicMaterial({
-        color: WATER_CONFIG.lakeColor,
-        transparent: true,
-        opacity: WATER_CONFIG.waterOpacity,
-        side: THREE.DoubleSide
-    });
-
-    const waterPlane = new THREE.Mesh(geometry, material);
-    waterPlane.rotation.x = -Math.PI / 2;
-    waterPlane.position.y = WATER_CONFIG.seaLevel;
-
-    // Position at chunk center
-    const centerX = (cx + 0.5) * chunkSize;
-    const centerZ = (cz + 0.5) * chunkSize;
-    waterPlane.position.x = centerX;
-    waterPlane.position.z = centerZ;
-
-    return waterPlane;
+function getWaterColor() {
+    return WATER_CONFIG.deepColor;
 }
 
-// Get water config for external use
+// ============================================================================
+// Water surface rendering
+// ============================================================================
+
+let waterMaterial = null;
+
+function getWaterMaterial() {
+    if (waterMaterial) return waterMaterial;
+
+    waterMaterial = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        specular: 0x8899aa,
+        shininess: 80,
+        transparent: true,
+        depthWrite: false
+    });
+
+    // Depth-based color/opacity, shore foam and animated ripples
+    waterMaterial.onBeforeCompile = (shader) => {
+        shader.uniforms.time = { value: 0 };
+        shader.uniforms.shallowColor = { value: new THREE.Color(WATER_CONFIG.shallowColor) };
+        shader.uniforms.deepColor = { value: new THREE.Color(WATER_CONFIG.deepColor) };
+        shader.uniforms.foamColor = { value: new THREE.Color(WATER_CONFIG.foamColor) };
+
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', `#include <common>
+            attribute float waterDepth;
+            uniform float time;
+            varying float vWaterDepth;
+            varying vec2 vWaterPos;`)
+            .replace('#include <begin_vertex>', `#include <begin_vertex>
+            vWaterDepth = waterDepth;
+            vWaterPos = position.xz;
+            transformed.y += sin(time * 1.3 + position.x * 0.15) * cos(time * 1.1 + position.z * 0.12) * 0.12 * clamp(waterDepth, 0.0, 1.0);`);
+
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', `#include <common>
+            uniform float time;
+            uniform vec3 shallowColor;
+            uniform vec3 deepColor;
+            uniform vec3 foamColor;
+            varying float vWaterDepth;
+            varying vec2 vWaterPos;`)
+            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
+            float depthT = smoothstep(0.0, 7.0, vWaterDepth);
+            vec3 waterCol = mix(shallowColor, deepColor, depthT);
+            float ripple = sin(vWaterPos.x * 0.35 + time * 1.7) * sin(vWaterPos.y * 0.31 - time * 1.3);
+            float foamLine = 0.45 + 0.2 * sin(time * 1.5 + vWaterPos.x * 0.2 + vWaterPos.y * 0.17);
+            float foam = (1.0 - smoothstep(0.1, foamLine, vWaterDepth)) * (0.6 + 0.4 * ripple);
+            waterCol = mix(waterCol, foamColor, clamp(foam, 0.0, 1.0) * 0.8);
+            waterCol *= 1.0 + ripple * 0.05;
+            vec4 diffuseColor = vec4(waterCol, mix(0.6, 0.9, depthT) + foam * 0.2);`)
+            .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+            normal = normalize(normal + vec3(
+                sin(vWaterPos.x * 0.6 + time * 2.1) * 0.06 + sin(vWaterPos.y * 1.3 - time * 1.4) * 0.03,
+                0.0,
+                cos(vWaterPos.y * 0.55 - time * 1.8) * 0.06 + cos(vWaterPos.x * 1.1 + time * 1.6) * 0.03));`);
+
+        waterMaterial.userData.shader = shader;
+    };
+    return waterMaterial;
+}
+
+// Water surface for a chunk: one quad per underwater grid cell, in world space
+function createChunkWaterMesh(cx, cz, chunkData) {
+    const segments = CHUNK_CONFIG.segments;
+    const size = CHUNK_CONFIG.size;
+    const b = chunkData.bounds;
+    const step = size / segments;
+    const sea = WATER_CONFIG.seaLevel;
+    const hm = chunkData.heightmap;
+
+    const positions = [];
+    const depths = [];
+    const pushVertex = (gx, gz) => {
+        positions.push(b.minX + gx * step, sea, b.minZ + gz * step);
+        depths.push(sea - hm[gz][gx]);
+    };
+
+    for (let z = 0; z < segments; z++) {
+        for (let x = 0; x < segments; x++) {
+            const minH = Math.min(hm[z][x], hm[z][x + 1], hm[z + 1][x], hm[z + 1][x + 1]);
+            if (minH >= sea) continue;
+            // Two triangles, counter-clockwise seen from above
+            pushVertex(x, z); pushVertex(x, z + 1); pushVertex(x + 1, z);
+            pushVertex(x + 1, z); pushVertex(x, z + 1); pushVertex(x + 1, z + 1);
+        }
+    }
+    if (positions.length === 0) return null;
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('waterDepth', new THREE.Float32BufferAttribute(depths, 1));
+    const normals = new Float32Array(positions.length);
+    for (let i = 1; i < normals.length; i += 3) normals[i] = 1;
+    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.computeBoundingSphere();
+
+    const mesh = new THREE.Mesh(geometry, getWaterMaterial());
+    mesh.name = `water_${cx},${cz}`;
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 1;
+    return mesh;
+}
+
+// Old name kept for callers
+function createChunkWaterPlane(cx, cz, chunkSize, chunkData) {
+    return chunkData ? createChunkWaterMesh(cx, cz, chunkData) : null;
+}
+
+// Rebuild water for loaded chunks touching a world-space box (after terraforming)
+function updateWaterInBounds(minX, maxX, minZ, maxZ) {
+    if (typeof loadedChunks === 'undefined') return;
+    const size = CHUNK_CONFIG.size;
+    loadedChunks.forEach(chunk => {
+        const b = chunk.data.bounds;
+        if (b.maxX < minX || b.minX > maxX || b.maxZ < minZ || b.minZ > maxZ) return;
+        if (chunk.waterMesh) {
+            scene.remove(chunk.waterMesh);
+            chunk.waterMesh.geometry.dispose();
+            chunk.waterMesh = null;
+        }
+        const mesh = createChunkWaterMesh(chunk.cx, chunk.cz, chunk.data);
+        if (mesh) {
+            scene.add(mesh);
+            chunk.waterMesh = mesh;
+        }
+        chunk.data.hasWater = !!mesh;
+    });
+}
+
+// Animate water
+const WaterSystem = {
+    init() {},
+    update(delta) {
+        if (waterMaterial && waterMaterial.userData.shader) {
+            waterMaterial.userData.shader.uniforms.time.value += delta;
+        }
+    }
+};
+if (typeof Systems !== 'undefined') {
+    Systems.register('water', WaterSystem);
+}
+
 function getWaterConfig() {
     return WATER_CONFIG;
 }
 
-// Update water config
 function setWaterConfig(config) {
     Object.assign(WATER_CONFIG, config);
 }
@@ -162,8 +317,14 @@ window.isWater = isWater;
 window.isLake = isLake;
 window.isRiver = isRiver;
 window.getRiverInfluence = getRiverInfluence;
+window.getRiverCarve = getRiverCarve;
+window.applyWaterBodies = applyWaterBodies;
 window.applyRiverCarving = applyRiverCarving;
 window.getWaterColor = getWaterColor;
+window.getWaterSurfaceAt = getWaterSurfaceAt;
+window.getWaterDepthAt = getWaterDepthAt;
+window.createChunkWaterMesh = createChunkWaterMesh;
 window.createChunkWaterPlane = createChunkWaterPlane;
+window.updateWaterInBounds = updateWaterInBounds;
 window.getWaterConfig = getWaterConfig;
 window.setWaterConfig = setWaterConfig;

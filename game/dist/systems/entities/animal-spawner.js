@@ -137,6 +137,8 @@ function trySpawnAnimals(type) {
     const pos = getSpawnPosition();
     if (!pos) return;
     if (!isValidSpawnPosition(pos.x, pos.z)) return;
+    // No spawning in lakes, rivers or the sea
+    if (typeof getWaterConfig === 'function' && pos.y < getWaterConfig().seaLevel + 0.5) return;
 
     // Spawn a group
     const count = groupSize.min + Math.floor(Math.random() * (groupSize.max - groupSize.min + 1));
