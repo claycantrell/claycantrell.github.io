@@ -122,6 +122,11 @@ function trySpawnAnimals(type) {
             break;
     }
 
+    // Only count animals near the player - far-away server animals must not
+    // fill the cap and block spawning wherever the player is
+    currentCount = list.filter(e => e && e.group &&
+        distanceFromPlayer(e.group.position.x, e.group.position.z) <= SPAWN_CONFIG.despawnDistance).length;
+
     // Check cap
     if (currentCount >= cap) return;
 
