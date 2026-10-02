@@ -55,6 +55,22 @@ function handleServerStateUpdate(serverData, entityList, createFn, updateFn) {
             updateFn(entity, data);
         }
     });
+
+    // Remove server animals the server no longer sends (despawned or out of view)
+    const ids = new Set(serverData.map(data => data.id));
+    for (let i = entityList.length - 1; i >= 0; i--) {
+        const entity = entityList[i];
+        if (isLocalEntity(entity) || ids.has(entity.id)) continue;
+        if (entity.group) {
+            const sceneRef = (typeof GAME !== 'undefined' && GAME.scene) || (typeof scene !== 'undefined' ? scene : null);
+            if (sceneRef) sceneRef.remove(entity.group);
+            entity.group.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
+        }
+        entityList.splice(i, 1);
+    }
 }
 
 /**

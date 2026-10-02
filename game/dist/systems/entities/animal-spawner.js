@@ -142,17 +142,25 @@ function trySpawnAnimals(type) {
     const count = groupSize.min + Math.floor(Math.random() * (groupSize.max - groupSize.min + 1));
     const spawnCount = Math.min(count, cap - currentCount);
 
+    const positions = [];
     for (let i = 0; i < spawnCount; i++) {
         // Offset slightly for group
-        const offsetX = pos.x + (Math.random() - 0.5) * 10;
-        const offsetZ = pos.z + (Math.random() - 0.5) * 10;
-        const id = `spawned_${type}_${Date.now()}_${i}`;
+        positions.push({
+            x: pos.x + (Math.random() - 0.5) * 10,
+            z: pos.z + (Math.random() - 0.5) * 10
+        });
+    }
 
+    // In multiplayer the server owns these animals so every player sees the same ones
+    if (typeof sendAnimalSpawnRequest === 'function' && sendAnimalSpawnRequest(type, positions)) return;
+
+    positions.forEach((p, i) => {
+        const id = `spawned_${type}_${Date.now()}_${i}`;
         if (createFn) {
-            const entity = createFn(id, offsetX, offsetZ);
+            const entity = createFn(id, p.x, p.z);
             list.push(entity);
         }
-    }
+    });
 }
 
 // Despawn animals too far from player
