@@ -1,17 +1,22 @@
-// Tree system - 3D trees, 2D sprites, and LOD management
-// Biome-aware with multiple tree variants based on pine and oak
+// Tree system - procedural low-poly trees, planted per terrain chunk
+// Trees are generated per chunk from a seeded RNG (same trees on revisit and for
+// every player) and sit on the rendered ground surface. Each tree type has a few
+// procedurally built model variants at two detail levels; all trees of one model
+// share a single InstancedMesh, near chunks use the detailed models (and cast
+// shadows), far chunks the simple ones.
 // Uses Systems registry pattern for organized update loop
 
-// TreeSystem - manages tree creation, LOD, and billboard updates
 const TreeSystem = {
     init() {
-        // Trees are created after terrain is ready, called from core.js
+        // Trees are set up after terrain is ready, called from core.js
     },
 
     update(delta) {
-        // LOD updates are throttled in the game loop for performance
-        // This is called every frame for billboard rotation
-        updateSpriteBillboards();
+        if (treeMaterial && treeMaterial.userData.shader) {
+            treeMaterial.userData.shader.uniforms.time.value += delta;
+        }
+        // Cheap unless chunks changed or the player crossed into another chunk
+        updateTreeLOD();
     },
 
     // Throttled LOD update (called separately for performance)
@@ -25,985 +30,844 @@ if (typeof Systems !== 'undefined') {
     Systems.register('trees', TreeSystem);
 }
 
-// Tree variant definitions - all based on pine (conifer) or oak (deciduous) templates
-const TREE_VARIANTS = {
-    // === CONIFER TYPES (based on pine) ===
-    pine: {
-        base: 'pine',
-        trunkColor: 0x8B4513,
-        foliageColors: [0x006400, 0x008000, 0x228B22],
-        trunkHeight: [25, 35],      // min, max
-        trunkRadius: [1.0, 1.5],    // top, bottom
-        foliageLayers: 3,
-        foliageRadius: 6,
-        coneHeight: 9
-    },
-    spruce: {
-        base: 'pine',
-        trunkColor: 0x5D4037,
-        foliageColors: [0x1B4D3E, 0x2E5A4C, 0x3D6B5A],  // Darker, blue-green
-        trunkHeight: [30, 45],      // Taller
-        trunkRadius: [0.8, 1.3],    // Thinner
-        foliageLayers: 4,           // More layers
-        foliageRadius: 5,           // Narrower
-        coneHeight: 8
-    },
-    snowyPine: {
-        base: 'pine',
-        trunkColor: 0x6D5D4D,
-        foliageColors: [0x4A6B5A, 0x5A7B6A, 0x8BA89A],  // Frosted look
-        trunkHeight: [20, 30],      // Shorter, stunted
-        trunkRadius: [1.0, 1.4],
-        foliageLayers: 3,
-        foliageRadius: 5,
-        coneHeight: 7
-    },
-    deadwood: {
-        base: 'pine',
-        trunkColor: 0x4A4A4A,
-        foliageColors: [0x3D3D3D, 0x4A4A4A, 0x5A5A5A],  // Gray, dead
-        trunkHeight: [15, 25],
-        trunkRadius: [0.8, 1.2],
-        foliageLayers: 2,           // Sparse
-        foliageRadius: 4,
-        coneHeight: 6
-    },
+// ============================================================================
+// Geometry helpers - every part is non-indexed, flat-shaded, vertex-colored
+// ============================================================================
 
-    // === DECIDUOUS TYPES (based on oak) ===
-    oak: {
-        base: 'oak',
-        trunkColor: 0x4A3728,
-        foliageColors: [0x004D00, 0x006400, 0x2E8B57],
-        trunkHeight: [15, 20],
-        trunkRadius: [1.5, 2.0],
-        foliageRadius: 10,
-        foliageLayers: 2
-    },
-    birch: {
-        base: 'oak',
-        trunkColor: 0xD4C9B0,       // White bark
-        foliageColors: [0x6B8E23, 0x7BA428, 0x8FBC3F],  // Lighter green
-        trunkHeight: [18, 25],      // Taller, thinner
-        trunkRadius: [1.0, 1.3],
-        foliageRadius: 8,
-        foliageLayers: 2
-    },
-    acacia: {
-        base: 'oak',
-        trunkColor: 0x6B4423,
-        foliageColors: [0x556B2F, 0x6B8E23, 0x808000],  // Yellow-green
-        trunkHeight: [12, 18],
-        trunkRadius: [1.2, 1.8],
-        foliageRadius: 14,          // Wide, flat canopy
-        foliageLayers: 1,           // Single flat layer
-        flatTop: true
-    },
-    jungleTree: {
-        base: 'oak',
-        trunkColor: 0x3D2817,       // Dark bark
-        foliageColors: [0x006400, 0x228B22, 0x32CD32],  // Vibrant green
-        trunkHeight: [25, 35],      // Very tall
-        trunkRadius: [2.0, 3.0],    // Thick
-        foliageRadius: 12,
-        foliageLayers: 3            // Dense canopy
-    },
-    palm: {
-        base: 'palm',               // Special type
-        trunkColor: 0x8B7355,
-        foliageColors: [0x228B22, 0x2E8B57, 0x3CB371],
-        trunkHeight: [20, 30],
-        trunkRadius: [0.8, 1.0],
-        fronds: 12                  // Number of palm fronds (increased to match sprite fullness)
-    },
+const _up = new THREE.Vector3(0, 1, 0);
 
-    // === NEW BIOME VARIANTS ===
-    cherry: {
-        base: 'oak',
-        trunkColor: 0x3D2817,       // Dark brown bark
-        foliageColors: [0xFFB7C5, 0xFFC0CB, 0xFF69B4],  // Pink cherry blossoms
-        trunkHeight: [15, 22],
-        trunkRadius: [1.2, 1.8],
-        foliageRadius: 9,
-        foliageLayers: 3            // Full, rounded canopy
-    },
-    mangrove: {
-        base: 'mangrove',           // Special type with roots
-        trunkColor: 0x4A3C2A,       // Dark muddy brown
-        foliageColors: [0x2F4F2F, 0x3A5F3A, 0x556B2F],  // Dark green
-        trunkHeight: [12, 18],      // Shorter, stocky
-        trunkRadius: [1.0, 1.5],
-        foliageRadius: 8,
-        foliageLayers: 2,
-        rootHeight: 4               // Exposed roots above water/ground
-    },
-    bamboo: {
-        base: 'bamboo',             // Special type
-        trunkColor: 0x6B8E23,       // Green bamboo color
-        foliageColors: [0x228B22, 0x32CD32, 0x7CFC00],  // Bright green leaves
-        trunkHeight: [35, 50],      // Very tall
-        trunkRadius: [0.4, 0.5],    // Very thin
-        segments: 8,                // Bamboo segments
-        topFoliageRadius: 3         // Small leafy top
-    },
-    giantMushroom: {
-        base: 'mushroom',           // Special type
-        trunkColor: 0xE8D5C4,       // Cream/tan stem
-        foliageColors: [0x8B0000, 0xA52A2A, 0xB22222],  // Red mushroom cap
-        trunkHeight: [15, 25],
-        trunkRadius: [2.0, 2.5],    // Thick stem
-        capRadius: 12,              // Large cap
-        capHeight: 6
-    },
-    charred: {
-        base: 'pine',
-        trunkColor: 0x1C1C1C,       // Charred black
-        foliageColors: [0x2F2F2F, 0x3D3D3D, 0x4A4A4A],  // Dark ash gray
-        trunkHeight: [18, 28],
-        trunkRadius: [0.9, 1.3],
-        foliageLayers: 2,           // Sparse, dead branches
-        foliageRadius: 4,
-        coneHeight: 7
-    },
-    swampTree: {
-        base: 'oak',
-        trunkColor: 0x3D3D2A,       // Dark grayish-brown
-        foliageColors: [0x4F6F4F, 0x556B2F, 0x6B8E23],  // Mossy dark green
-        trunkHeight: [20, 30],      // Tall, drooping
-        trunkRadius: [1.8, 2.5],    // Thick, gnarled
-        foliageRadius: 11,
-        foliageLayers: 2
-    }
-};
-
-// Biome to tree type mapping
-const BIOME_TREES = {
-    // Frozen
-    snowyPeaks: { types: { snowyPine: 1.0 }, density: 0.0 },
-    snowySlopes: { types: { snowyPine: 0.7, spruce: 0.3 }, density: 0.05 },
-    tundra: { types: { deadwood: 0.6, snowyPine: 0.4 }, density: 0.02 },
-    taiga: { types: { spruce: 0.8, snowyPine: 0.2 }, density: 0.65 },
-    iceSpikes: { types: { snowyPine: 0.6, spruce: 0.4 }, density: 0.03 },
-
-    // Cold
-    coldForest: { types: { spruce: 0.5, birch: 0.3, pine: 0.2 }, density: 0.7 },
-    coldPlains: { types: { birch: 0.5, spruce: 0.3, pine: 0.2 }, density: 0.15 },
-
-    // Temperate
-    mountains: { types: { spruce: 0.7, pine: 0.3 }, density: 0.08 },
-    highlands: { types: { pine: 0.5, spruce: 0.3, oak: 0.2 }, density: 0.2 },
-    forest: { types: { oak: 0.5, birch: 0.3, pine: 0.2 }, density: 0.85 },
-    plains: { types: { oak: 0.6, birch: 0.4 }, density: 0.12 },
-    meadow: { types: { birch: 0.6, oak: 0.4 }, density: 0.08 },
-    cherryGrove: { types: { cherry: 0.9, birch: 0.1 }, density: 0.75 },
-
-    // Warm
-    grassland: { types: { oak: 0.5, acacia: 0.5 }, density: 0.1 },
-    savanna: { types: { acacia: 0.9, oak: 0.1 }, density: 0.15 },
-    warmForest: { types: { oak: 0.6, jungleTree: 0.4 }, density: 0.75 },
-
-    // Hot
-    desert: { types: { palm: 0.8, deadwood: 0.2 }, density: 0.03 },
-    badlands: { types: { deadwood: 1.0 }, density: 0.01 },
-    jungle: { types: { jungleTree: 0.7, palm: 0.3 }, density: 0.95 },
-    bambooJungle: { types: { bamboo: 0.8, jungleTree: 0.2 }, density: 0.85 },
-    volcanicPeaks: { types: { charred: 0.7, deadwood: 0.3 }, density: 0.05 },
-
-    // Coastal & Wetlands
-    beach: { types: { palm: 1.0 }, density: 0.0 },
-    stonyShore: { types: {}, density: 0.0 },
-    swamp: { types: { swampTree: 0.7, oak: 0.3 }, density: 0.6 },
-    mangroveSwamp: { types: { mangrove: 0.9, swampTree: 0.1 }, density: 0.7 },
-
-    // Special
-    mushroomFields: { types: { giantMushroom: 1.0 }, density: 0.4 }
-};
-
-// Get tree config values from map config, with fallbacks
-function getTreeSettings() {
-    const config = typeof getTreeConfig === 'function' ? getTreeConfig() : {};
-    return {
-        maxAttempts: config.maxAttempts || 3000,
-        targetCount: config.count || PERFORMANCE.treeCount || 800,
-        radius: config.radius || 400,
-        exclusionRadius: config.exclusionRadius || 35,
-        minSpacing: config.minSpacing || 12,
-        useBiomes: config.useBiomes !== false
+function makeRngTrees(seed) {
+    let a = seed >>> 0;
+    return () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
 }
 
-// Select tree type based on biome weights
-function selectBiomeTreeType(biomeId) {
-    const biomeConfig = BIOME_TREES[biomeId] || BIOME_TREES.plains;
-    const types = biomeConfig.types;
-
-    if (!types || Object.keys(types).length === 0) return null;
-
-    const entries = Object.entries(types);
-    const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
-    let random = Math.random() * totalWeight;
-
-    for (const [type, weight] of entries) {
-        random -= weight;
-        if (random <= 0) return type;
+// Deterministic per-position jitter so shared vertices of a solid move together
+function jitterGeometry(geometry, amount, seed) {
+    const pos = geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + seed) * 43758.5453;
+        const f = (h - Math.floor(h)) - 0.5;
+        const k = 1 + f * amount * 2;
+        pos.setXYZ(i, x * k, y * (1 + f * amount), z * k);
     }
-    return entries[0][0];
+    return geometry;
 }
 
-// Create a single 3D tree with variant support
-function create3DTree(x, z, detail, variantName = 'pine') {
-    const tree = new THREE.Group();
-    const variant = TREE_VARIANTS[variantName] || TREE_VARIANTS.pine;
-
-    // Create materials for this variant - use Lambert with flatShading for PS2-style visible polygons
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: variant.trunkColor, flatShading: true });
-    const foliageMaterials = variant.foliageColors.map(c => new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
-
-    // Calculate random height within variant range
-    const heightRange = variant.trunkHeight;
-    const trunkHeight = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
-    const radiusRange = variant.trunkRadius;
-
-    if (variant.base === 'palm') {
-        // Palm tree - trunk with fronds drooping from top
-        const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 8);
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.y = trunkHeight / 2;
-        tree.add(trunk);
-
-        // Add palm fronds - triangular leaves extending outward from top center
-        // Fronds are flat triangles that start from a central point and extend outward, drooping down
-        const frondCount = variant.fronds || 6;
-        for (let i = 0; i < frondCount; i++) {
-            const angle = (i / frondCount) * Math.PI * 2;
-            
-            // Create a flat triangular frond (triangle shape)
-            const frondLength = 8 + Math.random() * 4; // Varying lengths 8-12
-            const frondWidth = 1.5 + Math.random() * 0.5; // Varying widths 1.5-2
-            const frondShape = new THREE.Shape();
-            frondShape.moveTo(0, 0); // Start at center point
-            frondShape.lineTo(-frondWidth / 2, frondLength); // Left edge
-            frondShape.lineTo(frondWidth / 2, frondLength); // Right edge
-            frondShape.lineTo(0, 0); // Back to center
-            
-            const frondGeom = new THREE.ShapeGeometry(frondShape);
-            const frondMaterial = foliageMaterials[i % foliageMaterials.length].clone();
-            frondMaterial.side = THREE.DoubleSide; // Make visible from both sides
-            const frond = new THREE.Mesh(frondGeom, frondMaterial);
-            frond.castShadow = true;
-            frond.receiveShadow = true;
-
-            // Position at top center of trunk (all fronds start from same point)
-            frond.position.y = trunkHeight;
-            frond.position.x = 0;
-            frond.position.z = 0;
-
-            // Rotate to extend outward and droop downward
-            // Frond shape is in XY plane (Y is length, X is width)
-            // We want it to extend outward horizontally and droop down
-            frond.rotation.order = 'YXZ';
-            frond.rotation.y = angle; // Rotate around Y to face outward direction (each frond different)
-            
-            // Varying droop angles - some droop more than others
-            const droopVariation = (Math.random() - 0.5) * Math.PI / 3; // ±30° variation
-            frond.rotation.x = -Math.PI / 2 - Math.PI / 6 + droopVariation; // Horizontal then droop down with variation
-            
-            tree.add(frond);
-        }
-        tree.userData.treeHeight = trunkHeight + 6;
-
-    } else if (variant.base === 'mangrove') {
-        // Mangrove tree - trunk with exposed root system
-        const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        trunk.position.y = trunkHeight / 2 + (variant.rootHeight || 4);
-        tree.add(trunk);
-
-        // Add visible arching roots from base
-        const rootCount = 4;
-        const rootHeight = variant.rootHeight || 4;
-        for (let i = 0; i < rootCount; i++) {
-            const angle = (i / rootCount) * Math.PI * 2;
-            const rootCurve = new THREE.QuadraticBezierCurve3(
-                new THREE.Vector3(0, rootHeight, 0), // Start at trunk base
-                new THREE.Vector3(Math.cos(angle) * 3, rootHeight / 2, Math.sin(angle) * 3), // Arc out
-                new THREE.Vector3(Math.cos(angle) * 4, 0, Math.sin(angle) * 4) // End at ground
-            );
-            const rootGeometry = new THREE.TubeGeometry(rootCurve, 8, 0.4, 4, false);
-            const root = new THREE.Mesh(rootGeometry, trunkMaterial);
-            root.castShadow = true;
-            root.receiveShadow = true;
-            tree.add(root);
-        }
-
-        // Add canopy foliage on top
-        const layers = variant.foliageLayers || 2;
-        const baseRadius = variant.foliageRadius || 8;
-        for (let j = 0; j < layers; j++) {
-            const radius = baseRadius - j * 2;
-            const foliageGeometry = new THREE.IcosahedronGeometry(radius, 0);
-            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterials[j % foliageMaterials.length]);
-            foliage.castShadow = true;
-            foliage.receiveShadow = true;
-            foliage.position.y = trunkHeight + rootHeight + 2 + j * 3;
-            foliage.position.x = (Math.random() - 0.5) * 3;
-            foliage.position.z = (Math.random() - 0.5) * 3;
-            foliage.scale.set(1.5, 0.8, 1.5);
-            tree.add(foliage);
-        }
-        tree.userData.treeHeight = trunkHeight + rootHeight + baseRadius + 5;
-
-    } else if (variant.base === 'bamboo') {
-        // Bamboo - tall segmented stalk with small leafy top
-        const segments = variant.segments || 8;
-        const segmentHeight = trunkHeight / segments;
-
-        for (let i = 0; i < segments; i++) {
-            const segmentGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], segmentHeight * 0.85, 8);
-            const segment = new THREE.Mesh(segmentGeometry, trunkMaterial);
-            segment.castShadow = true;
-            segment.receiveShadow = true;
-            segment.position.y = i * segmentHeight + segmentHeight / 2;
-            tree.add(segment);
-
-            // Add ring at segment joint
-            const ringGeometry = new THREE.TorusGeometry(radiusRange[1] * 1.1, 0.15, 4, 8);
-            const ringMaterial = new THREE.MeshLambertMaterial({ color: 0x4A5F23, flatShading: true });
-            const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-            ring.position.y = i * segmentHeight;
-            ring.rotation.x = Math.PI / 2;
-            tree.add(ring);
-        }
-
-        // Small leafy top
-        const topFoliageRadius = variant.topFoliageRadius || 3;
-        const topFoliage = new THREE.IcosahedronGeometry(topFoliageRadius, 0);
-        const foliage = new THREE.Mesh(topFoliage, foliageMaterials[0]);
-        foliage.castShadow = true;
-        foliage.receiveShadow = true;
-        foliage.position.y = trunkHeight + topFoliageRadius;
-        foliage.scale.set(1.5, 0.6, 1.5);
-        tree.add(foliage);
-
-        tree.userData.treeHeight = trunkHeight + topFoliageRadius * 2;
-
-    } else if (variant.base === 'mushroom') {
-        // Giant mushroom - thick stem with large cap
-        const stemGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 8);
-        const stem = new THREE.Mesh(stemGeometry, trunkMaterial);
-        stem.castShadow = true;
-        stem.receiveShadow = true;
-        stem.position.y = trunkHeight / 2;
-        tree.add(stem);
-
-        // Mushroom cap - flat cylinder with rounded top
-        const capRadius = variant.capRadius || 12;
-        const capHeight = variant.capHeight || 6;
-        const capGeometry = new THREE.CylinderGeometry(capRadius * 0.9, capRadius, capHeight, 12);
-        const cap = new THREE.Mesh(capGeometry, foliageMaterials[0]);
-        cap.castShadow = true;
-        cap.receiveShadow = true;
-        cap.position.y = trunkHeight + capHeight / 2;
-        tree.add(cap);
-
-        // Add spots on cap (optional decorative touch)
-        const spotCount = 5 + Math.floor(Math.random() * 5);
-        for (let i = 0; i < spotCount; i++) {
-            const spotRadius = 0.8 + Math.random() * 1.2;
-            const spotGeometry = new THREE.SphereGeometry(spotRadius, 6, 6);
-            const spotMaterial = new THREE.MeshLambertMaterial({
-                color: 0xFFFFCC,
-                flatShading: true
-            });
-            const spot = new THREE.Mesh(spotGeometry, spotMaterial);
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * capRadius * 0.7;
-            spot.position.x = Math.cos(angle) * distance;
-            spot.position.y = trunkHeight + capHeight - spotRadius * 0.3;
-            spot.position.z = Math.sin(angle) * distance;
-            tree.add(spot);
-        }
-
-        tree.userData.treeHeight = trunkHeight + capHeight;
-
-    } else if (variant.base === 'oak') {
-        // Deciduous tree - trunk with blob foliage
-        const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        trunk.position.y = trunkHeight / 2;
-        tree.add(trunk);
-
-        const layers = variant.foliageLayers || 2;
-        const baseRadius = variant.foliageRadius || 10;
-
-        if (variant.flatTop) {
-            // Acacia-style flat canopy
-            const canopyGeom = new THREE.CylinderGeometry(baseRadius, baseRadius * 0.8, 4, 8);
-            const canopy = new THREE.Mesh(canopyGeom, foliageMaterials[0]);
-            canopy.position.y = trunkHeight + 2;
-            tree.add(canopy);
-            tree.userData.treeHeight = trunkHeight + 6;
-        } else {
-            // Standard blob foliage
-            for (let j = 0; j < layers; j++) {
-                const radius = baseRadius - j * 2;
-                const foliageGeometry = new THREE.IcosahedronGeometry(radius, 0);
-                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterials[j % foliageMaterials.length]);
-                foliage.castShadow = true;
-                foliage.receiveShadow = true;
-                foliage.position.y = trunkHeight + 2 + j * 3;
-                foliage.position.x = (Math.random() - 0.5) * 3;
-                foliage.position.z = (Math.random() - 0.5) * 3;
-                foliage.scale.set(1.5, 0.8, 1.5);
-                tree.add(foliage);
-            }
-            tree.userData.treeHeight = trunkHeight + baseRadius + 5;
-        }
-
-    } else {
-        // Conifer tree - trunk with cone layers
-        const trunkGeometry = new THREE.CylinderGeometry(radiusRange[0], radiusRange[1], trunkHeight, 6);
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        trunk.position.y = trunkHeight / 2;
-        tree.add(trunk);
-
-        let foliageHeight = trunkHeight;
-        const layers = variant.foliageLayers || 3;
-        const baseRadius = variant.foliageRadius || 6;
-        const coneHeight = variant.coneHeight || 9;
-
-        for (let j = 0; j < layers; j++) {
-            const radiusBase = baseRadius - j * (baseRadius / layers);
-            const foliageGeometry = new THREE.ConeGeometry(radiusBase, coneHeight, 6);
-            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterials[j % foliageMaterials.length]);
-            foliage.position.y = foliageHeight + 1;
-            tree.add(foliage);
-            foliageHeight += coneHeight * 0.45;
-        }
-
-        tree.userData.treeHeight = trunkHeight + layers * coneHeight * 0.5;
+// Collects parts of one tree model and merges them into a single geometry
+class TreeModel {
+    constructor(r) {
+        this.r = r;
+        this.parts = [];
     }
 
-    tree.position.set(x, 0, z);
-    tree.userData.isTree = true;
-    tree.userData.variant = variantName;
+    // Add a geometry with a base color; shade darkens toward the bottom of the part
+    add(geometry, color, { position, quaternion, scale, jitter, shade = 0.3, faceVar = 0.08 } = {}) {
+        let g = geometry.index ? geometry.toNonIndexed() : geometry;
+        if (jitter) jitterGeometry(g, jitter, this.r() * 100);
+        const m = new THREE.Matrix4().compose(
+            position || new THREE.Vector3(),
+            quaternion || new THREE.Quaternion(),
+            scale || new THREE.Vector3(1, 1, 1)
+        );
+        g.applyMatrix4(m);
+        g.computeVertexNormals();
 
-    // Enable shadows on all meshes in the tree
-    tree.traverse((child) => {
-        if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
+        const pos = g.attributes.position;
+        g.computeBoundingBox();
+        const minY = g.boundingBox.min.y, span = Math.max(0.001, g.boundingBox.max.y - minY);
+        const base = new THREE.Color(color);
+        const colors = new Float32Array(pos.count * 3);
+        for (let f = 0; f < pos.count; f += 3) {
+            const fv = 1 + (this.r() - 0.5) * 2 * faceVar;
+            for (let v = f; v < f + 3 && v < pos.count; v++) {
+                const t = (pos.getY(v) - minY) / span;
+                const k = (1 - shade + shade * t) * fv;
+                colors[v * 3] = base.r * k;
+                colors[v * 3 + 1] = base.g * k;
+                colors[v * 3 + 2] = base.b * k;
+            }
+        }
+        g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        g.deleteAttribute('uv');
+        this.parts.push(g);
+        return this;
+    }
+
+    // Cylinder between two points (trunks, branches, roots)
+    limb(from, to, rBottom, rTop, color, segs = 6, opts = {}) {
+        const dir = new THREE.Vector3().subVectors(to, from);
+        const len = dir.length();
+        const g = new THREE.CylinderGeometry(rTop, rBottom, len, segs, 1);
+        g.translate(0, len / 2, 0);
+        const q = new THREE.Quaternion().setFromUnitVectors(_up, dir.normalize());
+        return this.add(g, color, { position: from, quaternion: q, shade: 0.25, ...opts });
+    }
+
+    // Jittered blob of foliage
+    clump(center, radius, color, detail = 1, squash = 0.8, opts = {}) {
+        const g = new THREE.IcosahedronGeometry(1, detail);
+        return this.add(g, color, {
+            position: center,
+            scale: new THREE.Vector3(radius, radius * squash, radius),
+            jitter: 0.18,
+            shade: 0.45,
+            ...opts
+        });
+    }
+
+    merge() {
+        let count = 0;
+        for (const p of this.parts) count += p.attributes.position.count;
+        const position = new Float32Array(count * 3);
+        const normal = new Float32Array(count * 3);
+        const color = new Float32Array(count * 3);
+        let offset = 0;
+        let top = 0;
+        for (const p of this.parts) {
+            position.set(p.attributes.position.array, offset * 3);
+            normal.set(p.attributes.normal.array, offset * 3);
+            color.set(p.attributes.color.array, offset * 3);
+            offset += p.attributes.position.count;
+            p.computeBoundingBox();
+            top = Math.max(top, p.boundingBox.max.y);
+            p.dispose();
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(position, 3));
+        g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+        g.setAttribute('color', new THREE.BufferAttribute(color, 3));
+        g.computeBoundingSphere();
+        g.userData.height = top;
+        return g;
+    }
+}
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const range = (r, a, b) => a + r() * (b - a);
+const pick = (r, list) => list[Math.floor(r() * list.length)];
+
+// A slightly crooked trunk as a chain of limbs; returns the top point
+function crookedTrunk(m, height, rBottom, rTop, color, bend, steps, segs) {
+    const r = m.r;
+    let p = V(0, -0.5, 0);
+    const lean = V(range(r, -1, 1), 0, range(r, -1, 1)).normalize().multiplyScalar(bend);
+    for (let i = 0; i < steps; i++) {
+        const t0 = i / steps, t1 = (i + 1) / steps;
+        const next = V(
+            lean.x * t1 * t1 + range(r, -0.3, 0.3) * bend,
+            height * t1,
+            lean.z * t1 * t1 + range(r, -0.3, 0.3) * bend
+        );
+        m.limb(p, next, rBottom + (rTop - rBottom) * t0, rBottom + (rTop - rBottom) * t1, color, segs);
+        p = next;
+    }
+    return p;
+}
+
+// Ring of tapering cones (conifer tiers); snow adds white caps
+function coniferTiers(m, startY, height, baseR, tiers, colors, segs, snow) {
+    const r = m.r;
+    for (let i = 0; i < tiers; i++) {
+        const t = i / tiers;
+        const radius = baseR * (1 - t * 0.8) * range(r, 0.9, 1.1);
+        const h = height / tiers * 1.9;
+        const y = startY + height * t;
+        const g = new THREE.ConeGeometry(radius, h, segs, 1);
+        g.translate(0, h / 2, 0);
+        m.add(g, colors[i % colors.length], { position: V(0, y, 0), jitter: 0.08, shade: 0.5, quaternion: new THREE.Quaternion().setFromAxisAngle(_up, r() * 6) });
+        if (snow) {
+            const sg = new THREE.ConeGeometry(radius * 0.75, h * 0.45, segs, 1);
+            sg.translate(0, h * 0.55 + h * 0.225, 0);
+            m.add(sg, 0xF2F6FA, { position: V(0, y, 0), jitter: 0.06, shade: 0.15 });
+        }
+    }
+}
+
+// Branches with foliage clumps at their tips (deciduous canopy)
+function branchyCanopy(m, trunkTop, opts) {
+    const r = m.r;
+    const { branches, spread, rise, branchR, barkColor, leafColors, clumpR, detail, extraClumps = 2, squash = 0.75 } = opts;
+    const tips = [];
+    for (let i = 0; i < branches; i++) {
+        const a = (i / branches) * Math.PI * 2 + range(r, -0.4, 0.4);
+        const from = V(trunkTop.x, trunkTop.y - range(r, 0, rise * 0.6), trunkTop.z);
+        const tip = V(trunkTop.x + Math.cos(a) * spread * range(r, 0.6, 1), trunkTop.y + rise * range(r, 0.4, 1), trunkTop.z + Math.sin(a) * spread * range(r, 0.6, 1));
+        if (branchR > 0) m.limb(from, tip, branchR, branchR * 0.5, barkColor, 5);
+        tips.push(tip);
+    }
+    for (const tip of tips) m.clump(tip, clumpR * range(r, 0.8, 1.15), pick(r, leafColors), detail, squash);
+    for (let i = 0; i < extraClumps; i++) {
+        m.clump(V(trunkTop.x + range(r, -1, 1) * spread * 0.4, trunkTop.y + rise * range(r, 0.6, 1.2), trunkTop.z + range(r, -1, 1) * spread * 0.4), clumpR * range(r, 0.9, 1.2), pick(r, leafColors), detail, squash);
+    }
+    return tips;
+}
+
+// Thin hanging strands (willow, moss, vines, aerial roots)
+function strands(m, center, radius, y, count, minLen, maxLen, color, thickness = 0.12) {
+    const r = m.r;
+    for (let i = 0; i < count; i++) {
+        const a = r() * Math.PI * 2, d = radius * Math.sqrt(range(r, 0.4, 1));
+        const top = V(center.x + Math.cos(a) * d, y - range(r, 0, 1), center.z + Math.sin(a) * d);
+        const bottom = V(top.x * 1.03, top.y - range(r, minLen, maxLen), top.z * 1.03);
+        m.limb(bottom, top, thickness, thickness, color, 3, { shade: 0.2 });
+    }
+}
+
+// ============================================================================
+// Tree types - build(m, lod) where lod 0 = near/detailed, 1 = far/simple
+// ============================================================================
+
+const TREE_TYPES = {
+    // --- Conifers ---
+    pine: {
+        radius: 1.2,
+        build(m, lod) {
+            const r = m.r, h = range(r, 24, 34);
+            crookedTrunk(m, h * 0.55, 1.3, 0.8, 0x6B4423, 0.6, lod ? 1 : 2, lod ? 5 : 7);
+            coniferTiers(m, h * 0.3, h * 0.7, range(r, 6, 7.5), lod ? 3 : 5, [0x1F5A2A, 0x2A6A32, 0x245F2C], lod ? 6 : 8, false);
+        }
+    },
+    spruce: {
+        radius: 1,
+        build(m, lod) {
+            const r = m.r, h = range(r, 30, 44);
+            crookedTrunk(m, h * 0.4, 1.1, 0.6, 0x4E3A2C, 0.3, 1, lod ? 5 : 6);
+            coniferTiers(m, h * 0.12, h * 0.88, range(r, 5, 6), lod ? 4 : 7, [0x1C4A3A, 0x22564A, 0x1A4234], lod ? 6 : 8, false);
+        }
+    },
+    snowyPine: {
+        radius: 1.1,
+        build(m, lod) {
+            const r = m.r, h = range(r, 20, 30);
+            crookedTrunk(m, h * 0.45, 1.2, 0.7, 0x5E4E40, 0.4, 1, lod ? 5 : 6);
+            coniferTiers(m, h * 0.2, h * 0.8, range(r, 5, 6), lod ? 3 : 5, [0x3A5A4A, 0x44664F], lod ? 6 : 8, true);
+        }
+    },
+    redwood: {
+        radius: 2.4,
+        build(m, lod) {
+            const r = m.r, h = range(r, 48, 62);
+            crookedTrunk(m, h * 0.92, 3.2, 1.2, 0x8A3E24, 0.6, lod ? 2 : 4, lod ? 6 : 9);
+            const n = lod ? 6 : 16;
+            for (let i = 0; i < n; i++) {
+                const t = i / n, y = h * (0.42 + t * 0.55), a = r() * Math.PI * 2, d = range(r, 1.5, 3.5) * (1.1 - t * 0.6);
+                m.clump(V(Math.cos(a) * d, y, Math.sin(a) * d), range(r, 5.5, 8) * (1.15 - t * 0.6), pick(r, [0x2A4A2A, 0x355A30, 0x2E522C]), lod ? 0 : 1, 0.6);
+            }
+            m.clump(V(0, h * 0.98, 0), 3.2, 0x2E522C, lod ? 0 : 1, 1.3);
+        }
+    },
+    cypress: {
+        radius: 0.8,
+        build(m, lod) {
+            const r = m.r, h = range(r, 22, 30);
+            m.limb(V(0, -0.5, 0), V(0, h * 0.3, 0), 0.8, 0.6, 0x5A4030, 5);
+            const n = lod ? 3 : 6;
+            for (let i = 0; i < n; i++) {
+                const t = i / n;
+                m.clump(V(range(r, -0.3, 0.3), h * (0.2 + t * 0.75), range(r, -0.3, 0.3)), 3.2 * (1 - t * 0.55), pick(r, [0x1E4A24, 0x24542A]), lod ? 0 : 1, 1.6);
+            }
+        }
+    },
+    deadwood: {
+        radius: 0.9,
+        build(m, lod) {
+            const r = m.r, h = range(r, 14, 24);
+            const top = crookedTrunk(m, h, 1.1, 0.35, 0x5A5450, 2.5, lod ? 2 : 4, 5);
+            for (let i = 0; i < (lod ? 3 : 6); i++) {
+                const from = V(top.x * 0.6, h * range(r, 0.45, 0.9), top.z * 0.6), a = r() * Math.PI * 2, len = range(r, 4, 8);
+                const tip = V(from.x + Math.cos(a) * len, from.y + range(r, 1, 5), from.z + Math.sin(a) * len);
+                m.limb(from, tip, 0.35, 0.1, 0x625C56, 4);
+                if (!lod) m.limb(tip, V(tip.x + range(r, -2, 2), tip.y + range(r, 1, 3), tip.z + range(r, -2, 2)), 0.12, 0.05, 0x625C56, 3);
+            }
+        }
+    },
+    charred: {
+        radius: 1,
+        build(m, lod) {
+            const r = m.r, h = range(r, 16, 26);
+            const top = crookedTrunk(m, h, 1.3, 0.4, 0x1E1A1A, 1.5, lod ? 2 : 3, 5);
+            for (let i = 0; i < (lod ? 2 : 4); i++) {
+                const from = V(top.x * 0.5, h * range(r, 0.5, 0.85), top.z * 0.5), a = r() * Math.PI * 2;
+                m.limb(from, V(from.x + Math.cos(a) * 4, from.y + 2, from.z + Math.sin(a) * 4), 0.35, 0.15, 0x262020, 4);
+            }
+            if (!lod) for (let i = 0; i < 6; i++) {
+                const y = range(r, 1, h * 0.7), a = r() * Math.PI * 2;
+                m.add(new THREE.BoxGeometry(0.5, 0.8, 0.3), pick(r, [0xE0601E, 0xF08A2A]), { position: V(Math.cos(a) * 1.1, y, Math.sin(a) * 1.1), shade: 0 });
+            }
+        }
+    },
+
+    // --- Deciduous ---
+    oak: {
+        radius: 1.6,
+        build(m, lod) {
+            const r = m.r, h = range(r, 13, 18);
+            const top = crookedTrunk(m, h, 1.9, 1.2, 0x4A3728, 1, lod ? 1 : 3, lod ? 5 : 7);
+            branchyCanopy(m, top, { branches: lod ? 3 : 5, spread: range(r, 6, 8), rise: 5, branchR: lod ? 0 : 0.7, barkColor: 0x4A3728, leafColors: [0x2F6A2A, 0x3A7A30, 0x2A5E26], clumpR: range(r, 5, 6.5), detail: lod ? 0 : 1, extraClumps: lod ? 1 : 3 });
+        }
+    },
+    maple: {
+        radius: 1.4,
+        build(m, lod) {
+            const r = m.r, h = range(r, 14, 19);
+            const palette = pick(r, [[0xC0392B, 0xD9502E, 0xA8302A], [0xE07B24, 0xF09A30, 0xD06A1E], [0xE8B52E, 0xD99A26, 0xF0C850]]);
+            const top = crookedTrunk(m, h, 1.5, 0.9, 0x4A3A30, 0.8, lod ? 1 : 3, lod ? 5 : 7);
+            branchyCanopy(m, top, { branches: lod ? 3 : 5, spread: range(r, 5, 6.5), rise: 6, branchR: lod ? 0 : 0.55, barkColor: 0x4A3A30, leafColors: palette, clumpR: range(r, 4.5, 5.5), detail: lod ? 0 : 1, extraClumps: lod ? 1 : 3, squash: 0.85 });
+        }
+    },
+    birch: {
+        radius: 0.9,
+        build(m, lod) {
+            const r = m.r, h = range(r, 18, 25);
+            const top = crookedTrunk(m, h, 0.95, 0.6, 0xE4DED0, 1.2, lod ? 1 : 3, lod ? 5 : 7);
+            if (!lod) for (let i = 0; i < 9; i++) {
+                const y = range(r, 1, h * 0.9), t = y / h;
+                m.add(new THREE.CylinderGeometry(0.98 - t * 0.35, 0.98 - t * 0.35, 0.35, 7, 1), 0x2A2624, { position: V(top.x * t * t, y, top.z * t * t), shade: 0 });
+            }
+            branchyCanopy(m, top, { branches: lod ? 2 : 4, spread: range(r, 3, 4.5), rise: 5, branchR: 0, leafColors: [0x7AA83A, 0x8AB84A, 0x6A9A32], clumpR: range(r, 3.5, 4.5), detail: lod ? 0 : 1, extraClumps: 2, squash: 1.1 });
+        }
+    },
+    aspen: {
+        radius: 0.8,
+        build(m, lod) {
+            const r = m.r, h = range(r, 16, 22);
+            const top = crookedTrunk(m, h, 0.8, 0.5, 0xD8D4C4, 0.6, lod ? 1 : 2, lod ? 5 : 6);
+            if (!lod) for (let i = 0; i < 6; i++) m.add(new THREE.CylinderGeometry(0.82, 0.82, 0.3, 6, 1), 0x3A3634, { position: V(top.x * 0.3, range(r, 1, h * 0.8), top.z * 0.3), shade: 0 });
+            branchyCanopy(m, top, { branches: lod ? 2 : 3, spread: 2.5, rise: 6, branchR: 0, leafColors: [0xE8C232, 0xF0D24A, 0xD8AE26], clumpR: range(r, 3, 3.8), detail: lod ? 0 : 1, extraClumps: 2, squash: 1.4 });
+        }
+    },
+    cherry: {
+        radius: 1.3,
+        build(m, lod) {
+            const r = m.r, h = range(r, 12, 17);
+            const top = crookedTrunk(m, h, 1.4, 0.8, 0x3A2620, 2, lod ? 1 : 3, lod ? 5 : 7);
+            branchyCanopy(m, top, { branches: lod ? 3 : 6, spread: range(r, 6, 8), rise: 4, branchR: lod ? 0 : 0.5, barkColor: 0x3A2620, leafColors: [0xF2A8C4, 0xF7C0D4, 0xE88AB0], clumpR: range(r, 4, 5), detail: lod ? 0 : 1, extraClumps: lod ? 1 : 3, squash: 0.7 });
+        }
+    },
+    acacia: {
+        radius: 1.2,
+        build(m, lod) {
+            const r = m.r, h = range(r, 11, 16);
+            const fork = crookedTrunk(m, h * 0.5, 1.4, 1, 0x6B4423, 1.5, lod ? 1 : 2, 6);
+            const crowns = lod ? 2 : 3;
+            for (let i = 0; i < crowns; i++) {
+                const a = (i / crowns) * Math.PI * 2 + r(), d = range(r, 3, 6);
+                const tip = V(fork.x + Math.cos(a) * d, h + range(r, -1, 2), fork.z + Math.sin(a) * d);
+                m.limb(fork, tip, 0.8, 0.5, 0x6B4423, 5);
+                m.clump(tip, range(r, 6, 8), pick(r, [0x6A7A2A, 0x7A8A30, 0x5E6E26]), lod ? 0 : 1, 0.28);
+            }
+        }
+    },
+    baobab: {
+        radius: 3,
+        build(m, lod) {
+            const r = m.r, h = range(r, 16, 22);
+            const pts = [];
+            const w = range(r, 3.5, 4.5);
+            for (const [t, k] of [[0, 1.05], [0.15, 1.15], [0.5, 1.0], [0.8, 0.7], [1, 0.45]]) pts.push(new THREE.Vector2(w * k, h * t - 0.5));
+            m.add(new THREE.LatheGeometry(pts, lod ? 7 : 11), 0x9A8070, { jitter: 0.04, shade: 0.3 });
+            const top = V(0, h, 0);
+            for (let i = 0; i < (lod ? 3 : 6); i++) {
+                const a = (i / 6) * Math.PI * 2 + r(), tip = V(Math.cos(a) * range(r, 4, 6), h + range(r, 2, 5), Math.sin(a) * range(r, 4, 6));
+                m.limb(V(Math.cos(a) * 1.2, h - 0.5, Math.sin(a) * 1.2), tip, 0.7, 0.3, 0x8A7064, 4);
+                m.clump(tip, range(r, 1.8, 2.6), 0x5A7A2A, 0, 0.6);
+            }
+            m.clump(top, 2.2, 0x5A7A2A, 0, 0.5);
+        }
+    },
+    willow: {
+        radius: 1.5,
+        build(m, lod) {
+            const r = m.r, h = range(r, 12, 16);
+            const top = crookedTrunk(m, h, 1.8, 1.1, 0x4A3E2E, 1.5, lod ? 1 : 3, 6);
+            m.clump(V(top.x, top.y + 2, top.z), range(r, 7, 8.5), 0x6A9A3A, lod ? 0 : 1, 0.65);
+            strands(m, top, 7.5, top.y + 1, lod ? 10 : 40, 6, h * 0.75, lod ? 0x6A9A3A : 0x7AAA44, lod ? 0.6 : 0.22);
+        }
+    },
+    swampTree: {
+        radius: 1.8,
+        build(m, lod) {
+            const r = m.r, h = range(r, 18, 26);
+            const top = crookedTrunk(m, h, 2.4, 1.2, 0x3D3A2A, 2, lod ? 2 : 3, 6);
+            if (!lod) for (let i = 0; i < 5; i++) { const a = r() * 6.28; m.limb(V(0, 2.5, 0), V(Math.cos(a) * 4, -0.5, Math.sin(a) * 4), 0.7, 0.3, 0x3D3A2A, 4); }
+            branchyCanopy(m, top, { branches: lod ? 3 : 4, spread: 7, rise: 3, branchR: lod ? 0 : 0.6, barkColor: 0x3D3A2A, leafColors: [0x4A5E2E, 0x55682F, 0x405428], clumpR: 5.5, detail: lod ? 0 : 1, extraClumps: 1, squash: 0.6 });
+            if (!lod) strands(m, top, 7, top.y + 1, 24, 3, 9, 0x8A947A, 0.18);
+        }
+    },
+    jungleTree: {
+        radius: 2.2,
+        build(m, lod) {
+            const r = m.r, h = range(r, 28, 38);
+            const top = crookedTrunk(m, h, 2.4, 1.4, 0x4A3A28, 1.5, lod ? 2 : 4, lod ? 6 : 8);
+            if (!lod) for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.28 + r(); m.add(new THREE.BoxGeometry(0.4, 5, 3.2), 0x4A3A28, { position: V(Math.cos(a) * 2.2, 1.8, Math.sin(a) * 2.2), quaternion: new THREE.Quaternion().setFromAxisAngle(_up, -a), shade: 0.3 }); }
+            branchyCanopy(m, top, { branches: lod ? 3 : 5, spread: range(r, 8, 10), rise: 3, branchR: lod ? 0 : 0.8, barkColor: 0x4A3A28, leafColors: [0x1E6A24, 0x2A7A2A, 0x1A5A20], clumpR: range(r, 5.5, 7), detail: lod ? 0 : 1, extraClumps: lod ? 1 : 3, squash: 0.5 });
+            if (!lod) strands(m, top, 8, top.y, 16, 6, 16, 0x3A6A2A, 0.15);
+        }
+    },
+    banyan: {
+        radius: 3,
+        build(m, lod) {
+            const r = m.r, h = range(r, 16, 22);
+            const top = crookedTrunk(m, h, 3, 2, 0x6A5A48, 1, lod ? 1 : 3, 7);
+            branchyCanopy(m, top, { branches: lod ? 4 : 7, spread: range(r, 11, 14), rise: 2, branchR: lod ? 0 : 0.9, barkColor: 0x6A5A48, leafColors: [0x2A6A2A, 0x357A30, 0x245E24], clumpR: range(r, 5, 6), detail: lod ? 0 : 1, extraClumps: 2, squash: 0.55 });
+            strands(m, top, 12, top.y - 1, lod ? 4 : 14, h - 2, h, 0x7A6A54, lod ? 0.5 : 0.35);
+        }
+    },
+    mangrove: {
+        radius: 1.4,
+        build(m, lod) {
+            const r = m.r, h = range(r, 10, 15), rootH = 4;
+            for (let i = 0; i < (lod ? 4 : 7); i++) {
+                const a = (i / 7) * 6.28 + r(), d = range(r, 3.5, 5);
+                const curve = new THREE.QuadraticBezierCurve3(V(0, rootH, 0), V(Math.cos(a) * d * 0.7, rootH * 0.9, Math.sin(a) * d * 0.7), V(Math.cos(a) * d, -0.6, Math.sin(a) * d));
+                m.add(new THREE.TubeGeometry(curve, lod ? 3 : 6, 0.35, 4, false), 0x4A3C2A, { shade: 0.3 });
+            }
+            const top = crookedTrunk(m, h, 1.2, 0.9, 0x4A3C2A, 1, 2, 6);
+            m.limb(V(0, rootH - 0.5, 0), V(0, rootH + 1, 0), 1.2, 1.2, 0x4A3C2A, 6);
+            branchyCanopy(m, V(top.x, top.y + rootH, top.z), { branches: lod ? 3 : 4, spread: 5, rise: 3, branchR: 0, leafColors: [0x2F4F2F, 0x3A5F3A], clumpR: 4.5, detail: lod ? 0 : 1, extraClumps: 2, squash: 0.65 });
+        }
+    },
+    palm: {
+        radius: 0.9,
+        build(m, lod) {
+            const r = m.r, h = range(r, 18, 26);
+            const lean = V(range(r, -1, 1), 0, range(r, -1, 1)).normalize();
+            let p = V(0, -0.5, 0);
+            const steps = lod ? 4 : 9;
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const next = V(lean.x * 5 * t * t, h * t, lean.z * 5 * t * t);
+                m.limb(p, next, 0.95 - t * 0.3, 0.95 - t * 0.3, i % 2 ? 0x8A7458 : 0x7A6448, 6);
+                p = next;
+            }
+            const fronds = lod ? 6 : 10;
+            for (let i = 0; i < fronds; i++) {
+                const a = (i / fronds) * Math.PI * 2 + r() * 0.3;
+                let q = p.clone();
+                const segs = lod ? 2 : 4;
+                for (let s = 1; s <= segs; s++) {
+                    const t = s / segs;
+                    const next = V(p.x + Math.cos(a) * 9 * t, p.y + 2 * t - 7 * t * t, p.z + Math.sin(a) * 9 * t);
+                    const len = q.distanceTo(next);
+                    const g = new THREE.BoxGeometry(2.4 * (1 - t * 0.6), 0.15, len);
+                    g.translate(0, 0, len / 2);
+                    const dir = new THREE.Vector3().subVectors(next, q).normalize();
+                    m.add(g, pick(r, [0x3A8A3A, 0x2F7A30, 0x48963E]), { position: q, quaternion: new THREE.Quaternion().setFromUnitVectors(V(0, 0, 1), dir), shade: 0.2 });
+                    q = next;
+                }
+            }
+            if (!lod) for (let i = 0; i < 3; i++) m.add(new THREE.IcosahedronGeometry(0.6, 0), 0x5A4028, { position: V(p.x + range(r, -0.8, 0.8), p.y - 0.8, p.z + range(r, -0.8, 0.8)) });
+        }
+    },
+    joshuaTree: {
+        radius: 0.9,
+        build(m, lod) {
+            const r = m.r, h = range(r, 8, 12);
+            const top = crookedTrunk(m, h, 1, 0.7, 0x7A6A50, 1, 2, 6);
+            const arms = lod ? 3 : 5;
+            for (let i = 0; i < arms; i++) {
+                const a = (i / arms) * 6.28 + r();
+                const mid = V(top.x + Math.cos(a) * 3, top.y + range(r, 0, 2), top.z + Math.sin(a) * 3);
+                const tip = V(mid.x + Math.cos(a) * 2, mid.y + range(r, 2, 4), mid.z + Math.sin(a) * 2);
+                m.limb(V(top.x, top.y - 1, top.z), mid, 0.6, 0.5, 0x7A6A50, 5);
+                m.limb(mid, tip, 0.5, 0.45, 0x7A6A50, 5);
+                for (let s = 0; s < (lod ? 1 : 3); s++) {
+                    const g = new THREE.ConeGeometry(1.4, 2.6, 6, 1);
+                    m.add(g, pick(r, [0x5A7A3A, 0x6A8A44]), { position: V(tip.x, tip.y + 1, tip.z), quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(range(r, -0.5, 0.5), r() * 6, range(r, -0.5, 0.5))), jitter: 0.2, shade: 0.4 });
+                }
+            }
+        }
+    },
+    bamboo: {
+        radius: 1.5,
+        build(m, lod) {
+            const r = m.r;
+            const stalks = lod ? 3 : 6;
+            for (let s = 0; s < stalks; s++) {
+                const a = r() * 6.28, d = range(r, 0, 1.8), h = range(r, 30, 45);
+                const base = V(Math.cos(a) * d, -0.5, Math.sin(a) * d), top = V(base.x + range(r, -2, 2), h, base.z + range(r, -2, 2));
+                const nodes = lod ? 2 : 7;
+                for (let i = 0; i < nodes; i++) {
+                    const p0 = base.clone().lerp(top, i / nodes), p1 = base.clone().lerp(top, (i + 1) / nodes);
+                    m.limb(p0, p1, 0.45, 0.4, i % 2 ? 0x7AA040 : 0x6A9038, 5, { shade: 0.15 });
+                }
+                for (let i = 0; i < (lod ? 1 : 3); i++) {
+                    const p = base.clone().lerp(top, range(r, 0.6, 1));
+                    m.clump(p, range(r, 1.6, 2.4), pick(r, [0x4A9A30, 0x5AAA3A]), 0, 0.5);
+                }
+            }
+        }
+    },
+
+    // --- Fantasy ---
+    giantMushroom: {
+        radius: 2,
+        build(m, lod) {
+            const r = m.r, h = range(r, 14, 22);
+            const top = crookedTrunk(m, h, 2.4, 1.8, 0xE8DCC8, 1.5, lod ? 1 : 3, lod ? 6 : 8);
+            const capR = range(r, 9, 12);
+            const cap = new THREE.SphereGeometry(capR, lod ? 8 : 14, lod ? 4 : 7, 0, Math.PI * 2, 0, Math.PI / 2);
+            m.add(cap, pick(r, [0xB82A2A, 0xA82424, 0xC23A2A]), { position: V(top.x, top.y - 1, top.z), scale: V(1, 0.55, 1), shade: 0.35 });
+            m.add(new THREE.CircleGeometry(capR * 0.98, lod ? 8 : 14).rotateX(Math.PI / 2), 0xEADCC0, { position: V(top.x, top.y - 1.05, top.z), shade: 0 });
+            if (!lod) for (let i = 0; i < 10; i++) {
+                const a = r() * 6.28, d = range(r, 0.2, 0.85) * capR, y = Math.sqrt(Math.max(0, 1 - (d / capR) ** 2)) * capR * 0.55;
+                m.add(new THREE.IcosahedronGeometry(range(r, 0.7, 1.3), 0), 0xF6F0DC, { position: V(top.x + Math.cos(a) * d, top.y - 1 + y, top.z + Math.sin(a) * d), scale: V(1, 0.4, 1), shade: 0 });
+            }
+        }
+    },
+    glowShroomTree: {
+        radius: 1.2,
+        build(m, lod) {
+            const r = m.r, h = range(r, 16, 24);
+            const top = crookedTrunk(m, h, 1.2, 0.8, 0xD8D0E8, 3, lod ? 2 : 4, 6);
+            const capR = range(r, 5, 7);
+            const bell = new THREE.ConeGeometry(capR, capR * 1.2, lod ? 7 : 12, 1);
+            m.add(bell, pick(r, [0x8A4AE0, 0x4AC8D8, 0xB05AE8]), { position: V(top.x, top.y + capR * 0.4, top.z), shade: 0.2 });
+            if (!lod) strands(m, top, capR * 0.9, top.y, 10, 2, 5, 0x9AF0F0, 0.12);
+        }
+    },
+    crystalTree: {
+        radius: 1,
+        build(m, lod) {
+            const r = m.r, h = range(r, 12, 18);
+            const top = crookedTrunk(m, h, 1, 0.5, 0xA8C8D8, 1, 2, 5);
+            for (let i = 0; i < (lod ? 4 : 9); i++) {
+                const a = r() * 6.28, d = range(r, 1, 4), y = top.y + range(r, -3, 3);
+                m.add(new THREE.OctahedronGeometry(1, 0), pick(r, [0xA8E0F0, 0xC8F0FA, 0x88C8E8]), { position: V(top.x + Math.cos(a) * d, y, top.z + Math.sin(a) * d), scale: V(range(r, 0.8, 1.4), range(r, 2, 3.5), range(r, 0.8, 1.4)), quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(range(r, -0.4, 0.4), r() * 6, range(r, -0.4, 0.4))), shade: 0.2 });
+            }
+        }
+    }
+};
+
+// Biome planting: density scales candidates per chunk; types are [type, weight]
+const BIOME_TREES = {
+    // Frozen
+    snowyPeaks: { density: 0.02, types: [['snowyPine', 1]] },
+    snowySlopes: { density: 0.08, types: [['snowyPine', 0.65], ['spruce', 0.35]] },
+    tundra: { density: 0.03, types: [['deadwood', 0.5], ['snowyPine', 0.5]] },
+    taiga: { density: 0.6, types: [['spruce', 0.5], ['snowyPine', 0.25], ['pine', 0.25]] },
+    iceSpikes: { density: 0.06, types: [['crystalTree', 0.7], ['snowyPine', 0.3]] },
+
+    // Cold
+    coldForest: { density: 0.65, types: [['spruce', 0.3], ['birch', 0.2], ['redwood', 0.2], ['maple', 0.2], ['pine', 0.1]] },
+    coldPlains: { density: 0.15, types: [['aspen', 0.45], ['birch', 0.35], ['spruce', 0.2]] },
+
+    // Temperate
+    mountains: { density: 0.08, types: [['spruce', 0.6], ['pine', 0.3], ['deadwood', 0.1]] },
+    highlands: { density: 0.2, types: [['pine', 0.35], ['spruce', 0.25], ['aspen', 0.2], ['oak', 0.2]] },
+    forest: { density: 0.8, types: [['oak', 0.4], ['maple', 0.2], ['birch', 0.25], ['pine', 0.15]] },
+    plains: { density: 0.12, types: [['oak', 0.5], ['birch', 0.2], ['willow', 0.15], ['cypress', 0.15]] },
+    meadow: { density: 0.08, types: [['birch', 0.4], ['oak', 0.3], ['willow', 0.2], ['aspen', 0.1]] },
+    cherryGrove: { density: 0.7, types: [['cherry', 0.85], ['birch', 0.15]] },
+    mushroomFields: { density: 0.4, types: [['giantMushroom', 0.55], ['glowShroomTree', 0.45]] },
+
+    // Warm
+    grassland: { density: 0.1, types: [['oak', 0.4], ['acacia', 0.4], ['cypress', 0.2]] },
+    savanna: { density: 0.15, types: [['acacia', 0.7], ['baobab', 0.3]] },
+    warmForest: { density: 0.7, types: [['oak', 0.45], ['jungleTree', 0.25], ['cypress', 0.3]] },
+
+    // Hot
+    desert: { density: 0.04, types: [['joshuaTree', 0.5], ['palm', 0.4], ['deadwood', 0.1]] },
+    badlands: { density: 0.02, types: [['deadwood', 0.6], ['joshuaTree', 0.4]] },
+    jungle: { density: 0.9, types: [['jungleTree', 0.55], ['banyan', 0.25], ['palm', 0.2]] },
+    bambooJungle: { density: 0.8, types: [['bamboo', 0.85], ['jungleTree', 0.15]] },
+    volcanicPeaks: { density: 0.05, types: [['charred', 0.75], ['deadwood', 0.25]] },
+
+    // Coastal & wetlands
+    beach: { density: 0.04, types: [['palm', 1]] },
+    stonyShore: { density: 0, types: [] },
+    swamp: { density: 0.55, types: [['swampTree', 0.45], ['willow', 0.4], ['oak', 0.15]] },
+    mangroveSwamp: { density: 0.65, types: [['mangrove', 0.9], ['swampTree', 0.1]] }
+};
+
+const TREE_CONFIG = {
+    modelVariants: 3,
+    candidatesPerChunk: 130,
+    minSpacing: 9,
+    nearChunkRadius: 1,     // Detailed models + shadows + landing in this block of chunks
+    scaleMin: 0.85,
+    scaleMax: 1.2,
+    trunkSink: 0.4
+};
+
+// ============================================================================
+// Models, material, instancing
+// ============================================================================
+
+let treeMaterial = null;
+const treeModels = {};          // type -> [{ lod0, lod1, height }] per variant
+const treeMeshes = new Map();   // "type|variant|lod" -> InstancedMesh
+const chunkTrees = new Map();   // chunk key -> { cx, cz, trees: [...] }
+let treeLandingProxies = [];
+let treesDirty = false;
+let lastTreeCenter = null;
+
+function buildTreeModels() {
+    for (const [type, def] of Object.entries(TREE_TYPES)) {
+        treeModels[type] = [];
+        for (let v = 0; v < TREE_CONFIG.modelVariants; v++) {
+            const seed = [...type].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 11) + v * 7919;
+            const near = new TreeModel(makeRngTrees(seed));
+            def.build(near, 0);
+            const far = new TreeModel(makeRngTrees(seed));
+            def.build(far, 1);
+            const lod0 = near.merge(), lod1 = far.merge();
+            treeModels[type].push({ lod0, lod1, height: lod0.userData.height });
+        }
+    }
+}
+
+function buildTreeMaterial() {
+    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    // Gentle wind sway that grows with height above the trunk base
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.time = { value: 0 };
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', `#include <common>
+            uniform float time;`)
+            .replace('#include <begin_vertex>', `#include <begin_vertex>
+            #ifdef USE_INSTANCING
+            vec3 treeBase = instanceMatrix[3].xyz;
+            float bend = max(0.0, position.y - 6.0) * 0.012;
+            transformed.x += sin(time * 0.9 + treeBase.x * 0.05) * bend;
+            transformed.z += cos(time * 0.7 + treeBase.z * 0.05) * bend;
+            #endif`);
+        material.userData.shader = shader;
+    };
+    return material;
+}
+
+function getTreeMesh(type, variant, lod, capacity) {
+    const key = `${type}|${variant}|${lod}`;
+    let mesh = treeMeshes.get(key);
+    if (mesh && mesh.instanceMatrix.count >= capacity) return mesh;
+
+    if (mesh) {
+        scene.remove(mesh);
+        mesh.dispose();
+    }
+    const model = treeModels[type][variant];
+    const size = Math.max(16, Math.ceil(capacity * 1.5));
+    mesh = new THREE.InstancedMesh(lod === 0 ? model.lod0 : model.lod1, treeMaterial, size);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.castShadow = lod === 0;
+    mesh.receiveShadow = true;
+    mesh.name = `trees_${key}`;
+    mesh.count = 0;
+    scene.add(mesh);
+    treeMeshes.set(key, mesh);
+    return mesh;
+}
+
+// Rebuild all instance buffers (after chunks load/unload or the player changes chunk)
+function rebuildTreeInstances() {
+    treesDirty = false;
+    const player = typeof character !== 'undefined' && character ? character.position : null;
+    const pc = player && Number.isFinite(player.x) ? worldToChunk(player.x, player.z) : { x: 0, z: 0 };
+    lastTreeCenter = `${pc.x},${pc.z}`;
+
+    const groups = new Map(); // key -> [tree]
+    const nearTrees = [];
+    chunkTrees.forEach(chunk => {
+        const near = Math.abs(chunk.cx - pc.x) <= TREE_CONFIG.nearChunkRadius && Math.abs(chunk.cz - pc.z) <= TREE_CONFIG.nearChunkRadius;
+        const lod = near ? 0 : 1;
+        for (const t of chunk.trees) {
+            const key = `${t.type}|${t.variant}|${lod}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(t);
+            if (near) nearTrees.push(t);
         }
     });
 
-    return tree;
-}
+    treeMeshes.forEach((mesh, key) => { if (!groups.has(key)) mesh.count = 0; });
 
-// Create a 2D billboard sprite for distant trees with variant support
-function create2DSprite(x, z, variantName = 'pine') {
-    const spriteGroup = new THREE.Group();
-    const variant = TREE_VARIANTS[variantName] || TREE_VARIANTS.pine;
-
-    const heightRange = variant.trunkHeight;
-    const trunkHeight = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
-    const radiusRange = variant.trunkRadius;
-
-    const trunkMaterial = new THREE.MeshBasicMaterial({
-        color: variant.trunkColor,
-        transparent: true,
-        opacity: 0.9,
-        side: THREE.DoubleSide
+    const matrix = new THREE.Matrix4();
+    const quat = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const color = new THREE.Color();
+    groups.forEach((trees, key) => {
+        const [type, variant, lod] = key.split('|');
+        const mesh = getTreeMesh(type, +variant, +lod, trees.length);
+        trees.forEach((t, i) => {
+            quat.setFromAxisAngle(_up, t.yaw);
+            scale.setScalar(t.scale);
+            matrix.compose(t.position, quat, scale);
+            mesh.setMatrixAt(i, matrix);
+            mesh.setColorAt(i, color.setScalar(t.tint));
+        });
+        mesh.count = trees.length;
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     });
 
-    // Draw trunk
-    const trunkShape = new THREE.Shape();
-    const topWidth = radiusRange[0];
-    const bottomWidth = radiusRange[1];
-    trunkShape.moveTo(-topWidth, trunkHeight / 2);
-    trunkShape.lineTo(topWidth, trunkHeight / 2);
-    trunkShape.lineTo(bottomWidth, -trunkHeight / 2);
-    trunkShape.lineTo(-bottomWidth, -trunkHeight / 2);
-    trunkShape.lineTo(-topWidth, trunkHeight / 2);
-
-    const trunkGeometry = new THREE.ShapeGeometry(trunkShape);
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = trunkHeight / 2;
-    spriteGroup.add(trunk);
-
-    if (variant.base === 'palm') {
-        // Palm fronds as drooping leaves from top of trunk
-        const foliageMaterial = new THREE.MeshBasicMaterial({
-            color: variant.foliageColors[0],
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        // Draw several fronds drooping down from center
-        const frondShape = new THREE.Shape();
-        // Left frond
-        frondShape.moveTo(0, trunkHeight);
-        frondShape.quadraticCurveTo(-8, trunkHeight + 4, -10, trunkHeight - 2);
-        frondShape.lineTo(-8, trunkHeight - 1);
-        frondShape.quadraticCurveTo(-6, trunkHeight + 2, 0, trunkHeight);
-        // Right frond
-        frondShape.moveTo(0, trunkHeight);
-        frondShape.quadraticCurveTo(8, trunkHeight + 4, 10, trunkHeight - 2);
-        frondShape.lineTo(8, trunkHeight - 1);
-        frondShape.quadraticCurveTo(6, trunkHeight + 2, 0, trunkHeight);
-        // Top fronds
-        frondShape.moveTo(0, trunkHeight);
-        frondShape.lineTo(-3, trunkHeight + 8);
-        frondShape.lineTo(0, trunkHeight + 6);
-        frondShape.lineTo(3, trunkHeight + 8);
-        frondShape.lineTo(0, trunkHeight);
-
-        const frondGeom = new THREE.ShapeGeometry(frondShape);
-        const frond = new THREE.Mesh(frondGeom, foliageMaterial);
-        spriteGroup.add(frond);
-
-    } else if (variant.base === 'mangrove') {
-        // Mangrove sprite - trunk with visible roots and canopy
-        const foliageMaterial = new THREE.MeshBasicMaterial({
-            color: variant.foliageColors[0],
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        const rootHeight = variant.rootHeight || 4;
-
-        // Draw arching roots
-        const rootShape = new THREE.Shape();
-        rootShape.moveTo(-4, 0);
-        rootShape.quadraticCurveTo(-3, rootHeight / 2, -1, rootHeight);
-        rootShape.lineTo(1, rootHeight);
-        rootShape.quadraticCurveTo(3, rootHeight / 2, 4, 0);
-        rootShape.lineTo(3.5, 0);
-        rootShape.quadraticCurveTo(2.5, rootHeight / 2, 0.5, rootHeight);
-        rootShape.lineTo(-0.5, rootHeight);
-        rootShape.quadraticCurveTo(-2.5, rootHeight / 2, -3.5, 0);
-
-        const rootGeom = new THREE.ShapeGeometry(rootShape);
-        const rootMesh = new THREE.Mesh(rootGeom, trunkMaterial);
-        spriteGroup.add(rootMesh);
-
-        // Canopy blob on top
-        const radius = variant.foliageRadius || 8;
-        const foliageShape = new THREE.Shape();
-        const segments = 8;
-        for (let i = 0; i <= segments; i++) {
-            const theta = (i / segments) * Math.PI * 2;
-            const px = Math.cos(theta) * radius * 1.2;
-            const py = Math.sin(theta) * radius * 0.8;
-            if (i === 0) foliageShape.moveTo(px, py + trunkHeight + rootHeight + radius * 0.8);
-            else foliageShape.lineTo(px, py + trunkHeight + rootHeight + radius * 0.8);
-        }
-        const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-        spriteGroup.add(foliage);
-
-    } else if (variant.base === 'bamboo') {
-        // Bamboo sprite - tall thin stalk with segments and small top
-        const foliageMaterial = new THREE.MeshBasicMaterial({
-            color: variant.foliageColors[0],
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        // Draw segmented trunk (vertical lines for segments)
-        const segments = variant.segments || 8;
-        const segmentHeight = trunkHeight / segments;
-
-        // Main stalk outline
-        const bambooShape = new THREE.Shape();
-        bambooShape.moveTo(-topWidth * 0.6, 0);
-        bambooShape.lineTo(-topWidth * 0.6, trunkHeight);
-        bambooShape.lineTo(topWidth * 0.6, trunkHeight);
-        bambooShape.lineTo(topWidth * 0.6, 0);
-        bambooShape.lineTo(-topWidth * 0.6, 0);
-
-        const bambooGeom = new THREE.ShapeGeometry(bambooShape);
-        const bambooMesh = new THREE.Mesh(bambooGeom, trunkMaterial);
-        spriteGroup.add(bambooMesh);
-
-        // Add segment lines
-        const segmentMaterial = new THREE.MeshBasicMaterial({
-            color: 0x4A5F23,
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-        for (let i = 1; i < segments; i++) {
-            const lineShape = new THREE.Shape();
-            const y = i * segmentHeight;
-            lineShape.moveTo(-topWidth * 0.8, y);
-            lineShape.lineTo(topWidth * 0.8, y);
-            lineShape.lineTo(topWidth * 0.8, y + 0.3);
-            lineShape.lineTo(-topWidth * 0.8, y + 0.3);
-            const lineGeom = new THREE.ShapeGeometry(lineShape);
-            const line = new THREE.Mesh(lineGeom, segmentMaterial);
-            spriteGroup.add(line);
-        }
-
-        // Small leafy top
-        const topRadius = variant.topFoliageRadius || 3;
-        const topShape = new THREE.Shape();
-        topShape.moveTo(0, trunkHeight + topRadius * 1.5);
-        topShape.lineTo(-topRadius, trunkHeight);
-        topShape.lineTo(topRadius, trunkHeight);
-        topShape.lineTo(0, trunkHeight + topRadius * 1.5);
-
-        const topGeom = new THREE.ShapeGeometry(topShape);
-        const topMesh = new THREE.Mesh(topGeom, foliageMaterial);
-        spriteGroup.add(topMesh);
-
-    } else if (variant.base === 'mushroom') {
-        // Giant mushroom sprite - stem with flat cap
-        const foliageMaterial = new THREE.MeshBasicMaterial({
-            color: variant.foliageColors[0],
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        const capRadius = variant.capRadius || 12;
-        const capHeight = variant.capHeight || 6;
-
-        // Mushroom cap (wide oval/dome)
-        const capShape = new THREE.Shape();
-        capShape.moveTo(-capRadius, trunkHeight);
-        capShape.quadraticCurveTo(-capRadius, trunkHeight + capHeight, 0, trunkHeight + capHeight);
-        capShape.quadraticCurveTo(capRadius, trunkHeight + capHeight, capRadius, trunkHeight);
-        capShape.lineTo(capRadius * 0.8, trunkHeight);
-        capShape.quadraticCurveTo(capRadius * 0.8, trunkHeight + capHeight * 0.7, 0, trunkHeight + capHeight * 0.7);
-        capShape.quadraticCurveTo(-capRadius * 0.8, trunkHeight + capHeight * 0.7, -capRadius * 0.8, trunkHeight);
-        capShape.lineTo(-capRadius, trunkHeight);
-
-        const capGeom = new THREE.ShapeGeometry(capShape);
-        const cap = new THREE.Mesh(capGeom, foliageMaterial);
-        spriteGroup.add(cap);
-
-        // Add some spots
-        const spotMaterial = new THREE.MeshBasicMaterial({
-            color: 0xFFFFCC,
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-        for (let i = 0; i < 4; i++) {
-            const spotRadius = 0.8 + Math.random() * 0.8;
-            const spotX = (Math.random() - 0.5) * capRadius * 1.2;
-            const spotY = trunkHeight + capHeight * 0.6 + Math.random() * capHeight * 0.3;
-
-            const spotShape = new THREE.Shape();
-            const segments = 6;
-            for (let j = 0; j <= segments; j++) {
-                const theta = (j / segments) * Math.PI * 2;
-                const px = spotX + Math.cos(theta) * spotRadius;
-                const py = spotY + Math.sin(theta) * spotRadius;
-                if (j === 0) spotShape.moveTo(px, py);
-                else spotShape.lineTo(px, py);
-            }
-            const spotGeom = new THREE.ShapeGeometry(spotShape);
-            const spot = new THREE.Mesh(spotGeom, spotMaterial);
-            spriteGroup.add(spot);
-        }
-
-    } else if (variant.base === 'oak') {
-        // Deciduous - blob/oval shape
-        const foliageMaterial = new THREE.MeshBasicMaterial({
-            color: variant.foliageColors[0],
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide
-        });
-
-        const radius = variant.foliageRadius || 10;
-        const foliageShape = new THREE.Shape();
-        const segments = 8;
-
-        if (variant.flatTop) {
-            // Flat acacia-style
-            foliageShape.moveTo(-radius * 1.5, trunkHeight);
-            foliageShape.lineTo(-radius * 1.5, trunkHeight + 4);
-            foliageShape.lineTo(radius * 1.5, trunkHeight + 4);
-            foliageShape.lineTo(radius * 1.5, trunkHeight);
-            foliageShape.lineTo(-radius * 1.5, trunkHeight);
-        } else {
-            // Blob shape
-            for (let i = 0; i <= segments; i++) {
-                const theta = (i / segments) * Math.PI * 2;
-                const px = Math.cos(theta) * radius * 1.2;
-                const py = Math.sin(theta) * radius * 0.8;
-                if (i === 0) foliageShape.moveTo(px, py + trunkHeight + radius * 0.8);
-                else foliageShape.lineTo(px, py + trunkHeight + radius * 0.8);
-            }
-        }
-
-        const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-        spriteGroup.add(foliage);
-
-    } else {
-        // Conifer - stacked triangles
-        let foliageY = trunkHeight;
-        const layers = variant.foliageLayers || 3;
-        const baseRadius = variant.foliageRadius || 6;
-        const coneHeight = variant.coneHeight || 9;
-
-        for (let j = 0; j < layers; j++) {
-            const coneRadius = baseRadius - j * (baseRadius / layers);
-
-            const foliageMaterial = new THREE.MeshBasicMaterial({
-                color: variant.foliageColors[j % variant.foliageColors.length],
-                transparent: true,
-                opacity: 0.85,
-                side: THREE.DoubleSide
-            });
-
-            const foliageShape = new THREE.Shape();
-            foliageShape.moveTo(0, coneHeight / 2);
-            foliageShape.lineTo(coneRadius, -coneHeight / 2);
-            foliageShape.lineTo(-coneRadius, -coneHeight / 2);
-            foliageShape.lineTo(0, coneHeight / 2);
-
-            const foliageGeometry = new THREE.ShapeGeometry(foliageShape);
-            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-            foliage.position.y = foliageY + 1;
-            spriteGroup.add(foliage);
-
-            foliageY += coneHeight * 0.45;
-        }
-    }
-
-    spriteGroup.position.set(x, 0, z);
-    spriteGroup.userData.isSprite = true;
-    spriteGroup.userData.variant = variantName;
-
-    return spriteGroup;
+    updateTreeLandingProxies(nearTrees);
 }
 
-// Create trees with LOD support - biome-aware with variants
+// Lightweight stand-ins so the character can still land on nearby treetops
+function updateTreeLandingProxies(nearTrees) {
+    if (typeof GAME === 'undefined' || !GAME.world || !GAME.world.objects) return;
+    const objects = GAME.world.objects;
+    const old = new Set(treeLandingProxies);
+    for (let i = objects.length - 1; i >= 0; i--) if (old.has(objects[i])) objects.splice(i, 1);
+    treeLandingProxies = nearTrees.map(t => ({
+        position: t.position,
+        userData: { isTree: true, absoluteTreeHeight: t.position.y + t.height }
+    }));
+    objects.push(...treeLandingProxies);
+}
+
+// ============================================================================
+// Placement
+// ============================================================================
+
+function treeChunkSeed(cx, cz) {
+    let h = 2166136261;
+    for (const n of [cx, cz, 0x7a3e]) {
+        h = Math.imul(h ^ (n & 0xffff), 16777619);
+        h = Math.imul(h ^ (n >>> 16), 16777619);
+    }
+    return h >>> 0;
+}
+
+function pickTreeType(types, roll) {
+    let total = 0;
+    for (const t of types) total += t[1];
+    let x = roll * total;
+    for (const t of types) {
+        x -= t[1];
+        if (x <= 0) return t[0];
+    }
+    return types[0][0];
+}
+
+// Ground height under a trunk: lowest point of its footprint, so it never floats
+function treeBaseHeight(chunkData, x, z, radius) {
+    let h = chunkSurfaceHeight(chunkData, x, z);
+    for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        h = Math.min(h, chunkSurfaceHeight(chunkData, x + Math.cos(a) * radius, z + Math.sin(a) * radius));
+    }
+    return h - TREE_CONFIG.trunkSink;
+}
+
+function addChunkTrees(cx, cz, chunkData) {
+    if (!treeMaterial || !Number.isFinite(cx) || !Number.isFinite(cz)) return;
+    const key = `${cx},${cz}`;
+    if (chunkTrees.has(key)) return;
+
+    const r = makeRngTrees(treeChunkSeed(cx, cz));
+    const size = CHUNK_CONFIG.size, segments = CHUNK_CONFIG.segments, step = size / segments;
+    const b = chunkData.bounds;
+    const trees = [];
+    const spacing2 = TREE_CONFIG.minSpacing * TREE_CONFIG.minSpacing;
+
+    for (let i = 0; i < TREE_CONFIG.candidatesPerChunk; i++) {
+        const x = b.minX + r() * size, z = b.minZ + r() * size;
+        const roll = r(), typeRoll = r(), blendRoll = r(), variantRoll = r(), yaw = r() * Math.PI * 2, sRoll = r(), tRoll = r();
+
+        // Keep the spawn plateau clear
+        if (x * x + z * z < 50 * 50) continue;
+
+        const data = chunkData.biomeData[Math.round((z - b.minZ) / step)][Math.round((x - b.minX) / step)];
+        if (!data || data.isWater || data.isCaveEntrance || !data.biome) continue;
+
+        let biome = data.biome;
+        if (data.blendBiome && blendRoll < data.blendWeight) biome = data.blendBiome;
+        const table = BIOME_TREES[biome.id] || BIOME_TREES.plains;
+        if (!table.types.length || roll > table.density) continue;
+
+        // No trees on cliff faces
+        const hx = chunkSurfaceHeight(chunkData, x + 1.5, z) - chunkSurfaceHeight(chunkData, x - 1.5, z);
+        const hz = chunkSurfaceHeight(chunkData, x, z + 1.5) - chunkSurfaceHeight(chunkData, x, z - 1.5);
+        if (Math.sqrt(hx * hx + hz * hz) / 3 > 1.1) continue;
+
+        if (trees.some(t => (t.position.x - x) ** 2 + (t.position.z - z) ** 2 < spacing2)) continue;
+
+        const type = pickTreeType(table.types, typeRoll);
+        const def = TREE_TYPES[type];
+        if (!def) continue;
+        const variant = Math.floor(variantRoll * TREE_CONFIG.modelVariants);
+        const scale = TREE_CONFIG.scaleMin + sRoll * (TREE_CONFIG.scaleMax - TREE_CONFIG.scaleMin);
+        const y = treeBaseHeight(chunkData, x, z, def.radius * scale);
+
+        trees.push({
+            type, variant, yaw, scale,
+            tint: 0.88 + tRoll * 0.2,
+            position: new THREE.Vector3(x, y, z),
+            height: treeModels[type][variant].height * scale,
+            radius: def.radius * scale,
+            biome: biome.id
+        });
+    }
+
+    chunkTrees.set(key, { cx, cz, data: chunkData, trees });
+    treesDirty = true;
+}
+
+function removeChunkTrees(key) {
+    if (chunkTrees.delete(key)) treesDirty = true;
+}
+
+// Re-seat trees after terraforming changes the ground
+function updateTreesInBounds(minX, maxX, minZ, maxZ) {
+    chunkTrees.forEach(chunk => {
+        for (const t of chunk.trees) {
+            if (t.position.x < minX || t.position.x > maxX || t.position.z < minZ || t.position.z > maxZ) continue;
+            t.position.y = treeBaseHeight(chunk.data, t.position.x, t.position.z, t.radius);
+            treesDirty = true;
+        }
+    });
+}
+
+// Set up models/material and plant every chunk that is already loaded
 function createMoreComplexTrees() {
-    if (!sharedMaterials.trunk) {
-        initSharedMaterials();
+    if (!treeMaterial) {
+        buildTreeModels();
+        treeMaterial = buildTreeMaterial();
     }
-
-    const treeSettings = getTreeSettings();
-    const maxAttempts = treeSettings.maxAttempts;
-    const targetCount = treeSettings.targetCount;
-    const treeRadius = treeSettings.radius;
-    const minDistanceFromCenter = treeSettings.exclusionRadius;
-    const minSpacing = treeSettings.minSpacing;
-    const useBiomes = treeSettings.useBiomes && typeof calculateTerrainHeight === 'function';
-
-    const detail = PERFORMANCE.treeDetail;
-    const lodDistance = PERFORMANCE.rendering.lodDistance;
-
-    treeData = [];
-    let placedCount = 0;
-    let attempts = 0;
-    let skippedByDensity = 0;
-
-    // Creating trees
-
-    // Spatial hash for collision detection
-    const cellSize = minSpacing;
-    const spatialHash = {};
-
-    function hashKey(x, z) {
-        return `${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`;
+    if (typeof loadedChunks !== 'undefined') {
+        loadedChunks.forEach(chunk => addChunkTrees(chunk.cx, chunk.cz, chunk.data));
     }
-
-    function checkOverlap(x, z) {
-        const cx = Math.floor(x / cellSize);
-        const cz = Math.floor(z / cellSize);
-
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dz = -1; dz <= 1; dz++) {
-                const cell = spatialHash[`${cx + dx},${cz + dz}`];
-                if (cell) {
-                    for (const tree of cell) {
-                        const dist = Math.sqrt(Math.pow(x - tree.x, 2) + Math.pow(z - tree.z, 2));
-                        if (dist < minSpacing) return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    function addToHash(x, z) {
-        const key = hashKey(x, z);
-        if (!spatialHash[key]) spatialHash[key] = [];
-        spatialHash[key].push({ x, z });
-    }
-
-    while (placedCount < targetCount && attempts < maxAttempts) {
-        attempts++;
-
-        const angle = Math.random() * Math.PI * 2;
-        const distance = minDistanceFromCenter + Math.random() * (treeRadius - minDistanceFromCenter);
-        const x = Math.cos(angle) * distance;
-        const z = Math.sin(angle) * distance;
-
-        if (checkOverlap(x, z)) continue;
-
-        // Get terrain data
-        let terrainHeight = 0;
-        let climate = null;
-        let biome = null;
-
-        if (typeof calculateTerrainHeight === 'function') {
-            const heightData = calculateTerrainHeight(x, z);
-            terrainHeight = heightData.height;
-            climate = heightData.climate;
-            biome = heightData.biome;
-        }
-
-        // Skip water areas
-        if (typeof isRiver === 'function' && isRiver(x, z)) continue;
-        if (terrainHeight < -5) continue;
-        if (climate && climate.continentalness < -0.4) continue;
-
-        // Get biome-specific tree config
-        const biomeId = biome ? biome.id : 'plains';
-        const biomeTreeConfig = BIOME_TREES[biomeId] || BIOME_TREES.plains;
-
-        // Check density
-        if (Math.random() > biomeTreeConfig.density) {
-            skippedByDensity++;
-            continue;
-        }
-
-        // Select tree variant for this biome
-        const treeVariant = selectBiomeTreeType(biomeId);
-        if (!treeVariant) continue;
-
-        const y = terrainHeight;
-        const position = new THREE.Vector3(x, y, z);
-        const charPos = character ? character.position : new THREE.Vector3(0, 0, 0);
-        const distFromChar = position.distanceTo(charPos);
-
-        let treeGroup, sprite;
-        let is3D = distFromChar < lodDistance;
-
-        if (is3D) {
-            treeGroup = create3DTree(x, z, detail, treeVariant);
-            treeGroup.position.y = y;
-            scene.add(treeGroup);
-            GAME.world.objects.push(treeGroup);
-            treeGroup.userData.absoluteTreeHeight = y + treeGroup.userData.treeHeight;
-        } else {
-            sprite = create2DSprite(x, z, treeVariant);
-            sprite.position.y = y;
-            scene.add(sprite);
-        }
-
-        addToHash(x, z);
-
-        treeData.push({
-            position: position,
-            group: treeGroup,
-            sprite: sprite,
-            is3D: is3D,
-            variant: treeVariant,
-            biome: biomeId
-        });
-
-        placedCount++;
-    }
-
-    // Log results
-    const variantCounts = {};
-    const biomeCounts = {};
-    treeData.forEach(t => {
-        variantCounts[t.variant] = (variantCounts[t.variant] || 0) + 1;
-        biomeCounts[t.biome] = (biomeCounts[t.biome] || 0) + 1;
-    });
-
-    // Trees placed
+    rebuildTreeInstances();
 }
 
-// Update LOD based on distance from character
+// Called on a throttle from the game loop: rebuild when chunks changed or the
+// player moved into a different chunk (near/far detail follows the player)
 function updateTreeLOD() {
-    if (!PERFORMANCE.rendering.lodEnabled || !character) return;
-
-    const lodDistance = PERFORMANCE.rendering.lodDistance;
-    const charPos = character.position;
-
-    treeData.forEach((tree) => {
-        const distance = tree.position.distanceTo(charPos);
-        const shouldBe3D = distance < lodDistance;
-
-        if (shouldBe3D !== tree.is3D) {
-            if (shouldBe3D) {
-                if (tree.sprite) {
-                    scene.remove(tree.sprite);
-                    tree.sprite = null;
-                }
-                if (!tree.group) {
-                    tree.group = create3DTree(tree.position.x, tree.position.z, PERFORMANCE.treeDetail, tree.variant);
-                    tree.group.position.y = getTerrainHeightAt(tree.position.x, tree.position.z);
-                    tree.group.userData.absoluteTreeHeight = tree.group.position.y + tree.group.userData.treeHeight;
-                    scene.add(tree.group);
-                    GAME.world.objects.push(tree.group);
-                }
-                tree.is3D = true;
-            } else {
-                if (tree.group) {
-                    scene.remove(tree.group);
-                    const groupIndex = GAME.world.objects.indexOf(tree.group);
-                    if (groupIndex > -1) {
-                        GAME.world.objects.splice(groupIndex, 1);
-                    }
-                    tree.group = null;
-                }
-                if (!tree.sprite) {
-                    tree.sprite = create2DSprite(tree.position.x, tree.position.z, tree.variant);
-                    const y = getTerrainHeightAt(tree.position.x, tree.position.z);
-                    tree.sprite.position.y = y;
-                    scene.add(tree.sprite);
-                }
-                tree.is3D = false;
-            }
-        }
-    });
+    if (!treeMaterial) return;
+    const player = typeof character !== 'undefined' && character ? character.position : null;
+    if (player && Number.isFinite(player.x)) {
+        const pc = worldToChunk(player.x, player.z);
+        if (`${pc.x},${pc.z}` !== lastTreeCenter) treesDirty = true;
+    }
+    if (treesDirty) rebuildTreeInstances();
 }
 
-// Reusable vector for billboard calculations - no allocations in hot loop
-const _billboardDir = new THREE.Vector3();
+// Kept for callers of the old sprite system
+function updateSpriteBillboards() {}
 
-// Update sprite billboards to face camera
-function updateSpriteBillboards() {
-    if (!camera || !character) return;
-
-    const camX = camera.position.x;
-    const camZ = camera.position.z;
-
-    for (let i = 0; i < treeData.length; i++) {
-        const tree = treeData[i];
-        if (tree.sprite && !tree.is3D) {
-            // Direct math instead of vector operations
-            const dx = camX - tree.sprite.position.x;
-            const dz = camZ - tree.sprite.position.z;
-            tree.sprite.rotation.y = Math.atan2(dx, dz);
-        }
-    }
+// Flat list of all trees currently planted (for external queries)
+function getTreeData() {
+    const all = [];
+    chunkTrees.forEach(chunk => all.push(...chunk.trees));
+    return all;
 }
 
 // Make available globally
 window.createMoreComplexTrees = createMoreComplexTrees;
 window.updateTreeLOD = updateTreeLOD;
 window.updateSpriteBillboards = updateSpriteBillboards;
+window.addChunkTrees = addChunkTrees;
+window.removeChunkTrees = removeChunkTrees;
+window.updateTreesInBounds = updateTreesInBounds;
 window.TreeSystem = TreeSystem;
-
-// Expose treeData for terraforming vegetation updates
-window.getTreeData = () => treeData;
+window.TREE_TYPES = TREE_TYPES;
+window.getTreeData = getTreeData;
