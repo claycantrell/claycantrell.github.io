@@ -947,7 +947,7 @@ function addChunkTrees(cx, cz, chunkData) {
         let biome = data.biome;
         if (data.blendBiome && blendRoll < data.blendWeight) biome = data.blendBiome;
         const ground = chunkSurfaceHeight(chunkData, x, z);
-        const table = typeof isShoreHeight === 'function' && isShoreHeight(ground, 3) && !SHORE_BIOMES.has(biome.id)
+        const table = typeof isShoreHeight === 'function' && isShoreHeight(ground, 3, data.waterLevel ?? -5) && !SHORE_BIOMES.has(biome.id)
             ? SHORE_TREES[getShoreClass(data.climate, ground)]
             : (BIOME_TREES[biome.id] || BIOME_TREES.plains);
 
@@ -957,8 +957,7 @@ function addChunkTrees(cx, cz, chunkData) {
         if (!table.types.length || roll > table.density * altitude) continue;
 
         // Dry land only
-        const seaLevel = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
-        if (chunkSurfaceHeight(chunkData, x, z) < seaLevel + 0.6) continue;
+        if (chunkSurfaceHeight(chunkData, x, z) < (data.waterLevel ?? -5) + 0.6) continue;
 
         // No trees on cliff faces
         const hx = chunkSurfaceHeight(chunkData, x + 1.5, z) - chunkSurfaceHeight(chunkData, x - 1.5, z);

@@ -647,10 +647,6 @@ function spriteBaseHeight(chunkData, x, z, halfWidth) {
     return h - SHRUB_CONFIG.baseSink;
 }
 
-function SHRUB_SEA_LEVEL() {
-    return (typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5) + 0.15;
-}
-
 function pickWeighted(types, r) {
     let total = 0;
     for (const t of types) total += t[1];
@@ -692,7 +688,8 @@ function buildShrubLayer(cx, cz, chunkData, layerName) {
         if (!data || data.isWater || data.isCaveEntrance || !data.biome) continue;
 
         // Dry land only
-        if (chunkSurfaceHeight(chunkData, x, z) < SHRUB_SEA_LEVEL()) continue;
+        const waterLevel = data.waterLevel ?? -5;
+        if (chunkSurfaceHeight(chunkData, x, z) < waterLevel + 0.15) continue;
 
         // No plants on cliff faces
         const hx = chunkSurfaceHeight(chunkData, x + 1, z) - chunkSurfaceHeight(chunkData, x - 1, z);
@@ -705,7 +702,7 @@ function buildShrubLayer(cx, cz, chunkData, layerName) {
         const ground = chunkSurfaceHeight(chunkData, x, z);
         let table;
         if ((data.snow || 0) > 0.5) table = ALPINE_SHRUBS;
-        else if (typeof isShoreHeight === 'function' && isShoreHeight(ground) && !SHORE_BIOMES.has(biome.id)) table = SHORE_SHRUBS[getShoreClass(data.climate, ground)];
+        else if (typeof isShoreHeight === 'function' && isShoreHeight(ground, 2.5, waterLevel) && !SHORE_BIOMES.has(biome.id)) table = SHORE_SHRUBS[getShoreClass(data.climate, ground)];
         else table = BIOME_SHRUBS[biome.id] || BIOME_SHRUBS.plains;
         const types = table[layerName];
         if (types.length === 0 || roll > table.density) continue;

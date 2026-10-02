@@ -148,8 +148,10 @@ function updateCharacterMovement(delta) {
     // Water: deep enough to swim, or shallow wading
     const waterCfg = typeof getWaterConfig === 'function' ? getWaterConfig() : null;
     const groundHere = typeof getTerrainHeightAt === 'function' ? getTerrainHeightAt(character.position.x, character.position.z) : 0;
-    const waterDepthHere = waterCfg ? Math.max(0, waterCfg.seaLevel - groundHere) : 0;
-    const isSwimming = !isFlying && waterDepthHere > waterCfg?.swimDepth && character.position.y < waterCfg.seaLevel + 1;
+    const waterLevelHere = !waterCfg ? 0 : (typeof getWaterLevelAt === 'function'
+        ? getWaterLevelAt(character.position.x, character.position.z) : waterCfg.seaLevel);
+    const waterDepthHere = waterCfg ? Math.max(0, waterLevelHere - groundHere) : 0;
+    const isSwimming = !isFlying && waterDepthHere > waterCfg?.swimDepth && character.position.y < waterLevelHere + 1;
     const isWading = !isFlying && !isSwimming && waterDepthHere > 0.3;
 
     // Flying mode - use increased speed (4x normal, ~2.7x sprint)
@@ -334,7 +336,7 @@ function updateCharacterMovement(delta) {
 
         // Swimming: float at the surface with a gentle bob
         if (isSwimming && !onBlock && !onTree) {
-            const surfaceY = waterCfg.seaLevel - 1.6 + Math.sin(performance.now() * 0.003) * 0.12;
+            const surfaceY = waterLevelHere - 1.6 + Math.sin(performance.now() * 0.003) * 0.12;
             if (character.position.y > surfaceY + 0.05 && verticalVelocity !== 0) {
                 // Falling/jumping into water: gravity, damped
                 verticalVelocity = Math.max(verticalVelocity - gravity * delta, -6);
