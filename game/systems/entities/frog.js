@@ -116,7 +116,8 @@ function updateFrogs(delta) {
             moveEntityTowardTarget(frog, speed, delta, config.collisionRadius, false);
 
             // Hop animation
-            const hopFreq = frog.isFleeing ? config.animation.hopFrequencyFlee : config.animation.hopFrequency;
+            // Hop rate follows speed so each hop covers a realistic distance
+            const hopFreq = hopRate(speed, frog.isFleeing ? config.animation.hopLengthFlee : config.animation.hopLength);
             const hopOffset = animateHop(frog, baseHeight, delta, hopFreq, config.animation.hopHeight);
             frog.group.position.y = Math.max(baseHeight + hopOffset, currentTerrainY + 0.1);
 

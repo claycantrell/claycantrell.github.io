@@ -1,13 +1,13 @@
 // Native riders - small groups on horseback that roam open country.
 // They sometimes stop to watch the player from a distance, but whenever the
 // player gets close they gallop away - faster than the player can ride, so
-// they can never be caught.
+// they can never be caught. Speeds are real m/s (mps, 2.5 units = 1 m).
 // Horse model comes from createHorseModel (engine/utils/character-types.js)
 
 const RIDER_CONFIG = {
-    walkSpeed: 7,           // Ambling across the plains
-    canterSpeed: 16,
-    fleeSpeed: 64,          // Faster than the player's gallop (54)
+    walkSpeed: mps(1.8),    // Ambling across the plains
+    canterSpeed: mps(7),
+    fleeSpeed: mps(15),     // Full gallop, faster than the player's (13 m/s)
     fleeRadius: 120,        // Closer than this: always run
     safeRadius: 420,        // Stop running once this far away
     watchMin: 140,          // Will stop and watch from this far...
@@ -195,12 +195,15 @@ function updateRiders(delta) {
         if (rider.speed > 0) moveEntityTowardTarget(rider, rider.speed, delta, 1.2);
         rotateEntityTowardTarget(rider, delta, rider.state === 'FLEE' ? 8 : RIDER_CONFIG.rotationSpeed);
 
-        // Horse gait follows speed; rider's head turns toward the player while watching
+        // Horse gait follows speed (hooves don't skate); rider's head turns toward the player while watching
         const horse = rider.horse;
         if (rider.speed > 0) {
-            const gallop = rider.speed > 30;
-            animateQuadrupedLegs(horse.legs, time, gallop ? 14 : (rider.speed > 10 ? 10 : 6), gallop ? 0.8 : 0.5);
-            horse.body.position.y = horse.bodyBaseY + Math.abs(Math.sin(time * (gallop ? 14 : 8))) * (gallop ? 0.22 : 0.08);
+            const gallop = rider.speed > mps(10);
+            const canter = !gallop && rider.speed > mps(3);
+            const swing = gallop ? 0.8 : (canter ? 0.55 : 0.45);
+            const stride = legCycleRate(rider.speed, 2.9, swing, 5, gallop ? 2 : (canter ? 1.6 : 1));
+            animateQuadrupedLegs(horse.legs, time, stride, swing);
+            horse.body.position.y = horse.bodyBaseY + Math.abs(Math.sin(time * stride)) * (gallop ? 0.22 : 0.08);
             horse.neck.rotation.x = horse.neckBaseRot;
         } else {
             resetLegsToNeutral(horse.legs, delta);

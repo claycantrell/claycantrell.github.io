@@ -61,7 +61,7 @@
   },
 
   "character": {
-    "moveSpeed": 20.0,
+    "moveSpeed": 7.5,
     "rotationSpeed": 2.0,
     "flySpeed": 15.0,
     "gravity": 25.0

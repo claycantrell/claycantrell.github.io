@@ -222,30 +222,28 @@ function getMovementSpeed(entityType, state, isFleeing = false) {
         return state === 'IDLE' ? 0 : 10.0;
     }
 
+    const flee = isFleeing && config.fleeSpeed ? config.fleeSpeed : null;
+
     switch (entityType) {
         case 'bunny':
             if (state !== 'HOP') return 0;
-            return isFleeing ? (config.fleeSpeed || 17.0) : (config.speed || 8.0);
+            return flee || config.speed;
 
         case 'deer':
-            if (state === 'RUN') return config.speed || 18.0;
-            if (state === 'WALK') return config.walkSpeed || 6.0;
+        case 'horse':
+            if (state === 'RUN') return flee || config.speed;
+            if (state === 'WALK') return config.walkSpeed;
             return 0;
 
         case 'cow':
-            if (state === 'WALK') return config.speed || 5.0;
-            return 0;
-
-        case 'horse':
-            if (state === 'RUN') return config.speed || 22.0;
-            if (state === 'WALK') return config.walkSpeed || 4.0;
+            if (state === 'WALK') return flee || config.speed;
             return 0;
 
         case 'bird':
-            return config.speed || 12.0;
+            return config.speed;
 
         default:
-            return state === 'IDLE' ? 0 : (config.speed || 10.0);
+            return state === 'IDLE' ? 0 : (flee || config.speed || 10.0);
     }
 }
 

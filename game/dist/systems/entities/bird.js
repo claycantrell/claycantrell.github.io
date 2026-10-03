@@ -107,8 +107,9 @@ function updateBirds(delta) {
                 bird.circleCenter.y = 0;
                 bird.circleRadius = flightConfig.circleRadius.min +
                     Math.random() * (flightConfig.circleRadius.max - flightConfig.circleRadius.min);
-                bird.circleSpeed = flightConfig.circleSpeed.min +
-                    Math.random() * (flightConfig.circleSpeed.max - flightConfig.circleSpeed.min);
+                // Angular speed around the circle gives the bird its cruise speed
+                bird.cruiseSpeed = config.speed * (1 + (Math.random() * 2 - 1) * (flightConfig.speedVariation || 0));
+                bird.circleSpeed = bird.cruiseSpeed / bird.circleRadius;
                 bird.flyHeight = flightConfig.minHeight +
                     Math.random() * (flightConfig.maxHeight - flightConfig.minHeight);
                 bird.flyPhase = Math.random() * Math.PI * 2;
@@ -135,8 +136,13 @@ function updateBirds(delta) {
                 bird.circleCenter.x += Math.cos(fleeAngle) * fleeConfig.distance;
                 bird.circleCenter.z += Math.sin(fleeAngle) * fleeConfig.distance;
                 bird.flyHeight += fleeConfig.fleeHeight;
-                bird.circleSpeed = flightConfig.circleSpeed.max;
+                bird.circleSpeed = (config.fleeSpeed || config.speed) / bird.circleRadius;
                 bird.fleeTimer = fleeConfig.duration;
+            }
+
+            // Settle back to cruise speed once the scare is over
+            if (bird.fleeTimer <= 0 && bird.cruiseSpeed) {
+                bird.circleSpeed = bird.cruiseSpeed / bird.circleRadius;
             }
 
             // Gradually return to normal height
@@ -175,8 +181,10 @@ function updateBirds(delta) {
             applyBanking(bird.group, targetAngle, bird.group.rotation.y);
         }
 
-        // Wing flapping animation
-        animateWings(bird.leftWing, bird.rightWing, time, animConfig.wingSpeed, animConfig.wingAmplitude);
+        // Wing flapping animation - faster wingbeats at higher flight speed
+        const flightSpeed = bird.circleSpeed && bird.circleRadius ? bird.circleSpeed * bird.circleRadius : config.speed;
+        const wingRate = animConfig.wingSpeed * Math.min(2, Math.max(0.75, flightSpeed / config.speed));
+        animateWings(bird.leftWing, bird.rightWing, time, wingRate, animConfig.wingAmplitude);
     });
 }
 

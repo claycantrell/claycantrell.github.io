@@ -6,6 +6,7 @@
 let characterAnimState = 'IDLE';
 let lastMoveX = 0;
 let lastMoveZ = 0;
+let lastMoveSpeed = 0;
 
 // Animation config for knight
 const KNIGHT_ANIM_CONFIG = {
@@ -55,8 +56,12 @@ function getCharacterSettings() {
     const defaultBoundary = worldSize / 2;
 
     return {
-        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
-        mountSpeed: useConfig ? CONFIG.get('character.mountSpeed', 36.0) : 36.0,
+        // Real speeds at 2.5 units = 1 m: on foot a 3 m/s jog (sprint doubles it to 6 m/s);
+        // riding a 7 m/s canter, sprinting a 13 m/s gallop
+        moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 7.5) : 7.5,
+        sprintMultiplier: useConfig ? CONFIG.get('character.sprintMultiplier', 2.0) : 2.0,
+        mountSpeed: useConfig ? CONFIG.get('character.mountSpeed', 17.5) : 17.5,
+        mountGallopSpeed: useConfig ? CONFIG.get('character.mountGallopSpeed', 32.5) : 32.5,
         flySpeed: useConfig ? CONFIG.get('character.flySpeed', 80.0) : 80.0,
         rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
         gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
@@ -142,7 +147,7 @@ function updateCharacterMovement(delta) {
 
     // Get movement parameters from config
     const charConfig = getCharacterSettings();
-    // Riding: a horse is much faster than walking (36 = 14.4 blocks/s, Minecraft's fastest horse)
+    // Riding: canter normally, gallop when sprinting (2.5 units = 1 m)
     const isMounted = !!character.userData.mount;
     let moveSpeed = isMounted ? charConfig.mountSpeed : charConfig.moveSpeed;
     const flySpeed = charConfig.flySpeed;
@@ -166,7 +171,8 @@ function updateCharacterMovement(delta) {
         moveSpeed *= 0.5;
     }
     else if (isSprinting) {
-        moveSpeed *= isWading ? 1.1 : 1.5;
+        if (isWading) moveSpeed *= 1.1;
+        else moveSpeed = isMounted ? charConfig.mountGallopSpeed : moveSpeed * charConfig.sprintMultiplier;
     }
     else if (isWading) {
         moveSpeed *= 0.75;
@@ -213,6 +219,7 @@ function updateCharacterMovement(delta) {
     // Track movement for animation state
     lastMoveX = moveX;
     lastMoveZ = moveZ;
+    lastMoveSpeed = delta > 0 ? Math.sqrt(moveX * moveX + moveZ * moveZ) / delta : 0;
 
     // Determine animation state based on movement
     const isMoving = moveX !== 0 || moveZ !== 0;
@@ -520,10 +527,15 @@ function animateMountedRider(parts, time, delta) {
     const horse = parts.mount;
     const moving = characterAnimState !== 'IDLE';
     const gallop = characterAnimState === 'SPRINT';
-    const stride = gallop ? 13 : (characterAnimState === 'RUN' ? 10 : 7);
+    const canter = characterAnimState === 'RUN';
+    // Leg cycle follows actual ground speed so hooves don't skate (horse legs are 2.9 units)
+    const swing = gallop ? 0.8 : (canter ? 0.55 : 0.45);
+    const stride = typeof legCycleRate === 'function'
+        ? Math.max(4, legCycleRate(lastMoveSpeed, 2.9, swing, 1, gallop ? 2 : (canter ? 1.6 : 1)))
+        : (gallop ? 13 : (canter ? 10 : 7));
 
     if (moving && typeof animateQuadrupedLegs === 'function') {
-        animateQuadrupedLegs(horse.legs, time, stride, gallop ? 0.8 : 0.55);
+        animateQuadrupedLegs(horse.legs, time, stride, swing);
     } else {
         for (const leg of horse.legs) leg.rotation.x *= Math.max(0, 1 - delta * 8);
     }

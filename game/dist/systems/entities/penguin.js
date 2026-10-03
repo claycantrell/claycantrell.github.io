@@ -149,7 +149,7 @@ function updatePenguins(delta) {
         }
 
         // Movement
-        const moveSpeed = getMovementSpeed('penguin', penguin.state);
+        const moveSpeed = getMovementSpeed('penguin', penguin.state, penguin.fleeTimer > 0);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(penguin, moveSpeed, delta, config.collisionRadius);
         }
@@ -159,7 +159,8 @@ function updatePenguins(delta) {
             rotateEntityTowardTarget(penguin, delta, config.animation.rotationSpeed);
             // Waddle animation - rock side to side
             if (penguin.flippers && penguin.flippers.length >= 2) {
-                const waddle = Math.sin(time * 8) * 0.2;
+                // Hurried waddle rocks faster when fleeing
+                const waddle = Math.sin(time * (penguin.fleeTimer > 0 ? 13 : 8)) * 0.2;
                 penguin.group.rotation.z = waddle;
             }
         } else {

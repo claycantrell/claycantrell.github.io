@@ -114,7 +114,7 @@ function updateSalamanders(delta) {
             }
         }
 
-        const moveSpeed = getMovementSpeed('salamander', salamander.state);
+        const moveSpeed = getMovementSpeed('salamander', salamander.state, salamander.fleeTimer > 0);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(salamander, moveSpeed, delta, config.collisionRadius);
         }

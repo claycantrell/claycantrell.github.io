@@ -88,7 +88,7 @@ function updateCrabs(delta) {
             }
         }
 
-        const moveSpeed = getMovementSpeed('crab', crab.state);
+        const moveSpeed = getMovementSpeed('crab', crab.state, crab.fleeTimer > 0);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(crab, moveSpeed, delta, config.collisionRadius);
         }

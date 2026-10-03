@@ -30,6 +30,32 @@ function animateQuadrupedLegs(legs, time, speed, amplitude) {
 }
 
 /**
+ * Leg cycle rate that keeps feet planted at a given movement speed.
+ * While a leg is on the ground its foot sweeps 2 * legLength * sin(swing) per
+ * half cycle, so one full cycle covers 4 * legLength * sin(swing). Gaits with
+ * an airborne phase (canter ~1.6, gallop ~2) cover more ground per cycle.
+ * @param {number} speed - Movement speed (units/s)
+ * @param {number} legLength - Hip/shoulder pivot to foot (units)
+ * @param {number} swing - Swing amplitude (radians)
+ * @param {number} timeScale - Scale of the animation clock the rate is used with (getAnimTime(scale))
+ * @param {number} flight - Stride multiplier for airborne gaits (default 1)
+ * @returns {number} Rate to pass as animateQuadrupedLegs' speed
+ */
+function legCycleRate(speed, legLength, swing, timeScale = 1, flight = 1) {
+    if (!(speed > 0)) return 0;
+    const stride = 4 * legLength * Math.sin(swing) * flight;
+    return (2 * Math.PI * speed / stride) / timeScale;
+}
+
+/**
+ * Hop rate (radians/s for animateHop) so each hop covers hopLength at this speed
+ */
+function hopRate(speed, hopLength) {
+    if (!(speed > 0) || !(hopLength > 0)) return 0;
+    return 2 * Math.PI * speed / hopLength;
+}
+
+/**
  * Reset legs to neutral position (smoothly)
  * @param {Array} legs - Array of leg groups
  * @param {number} delta - Time delta
@@ -245,6 +271,8 @@ function resetBipedLimbsToNeutral(leftLimb, rightLimb, delta, lerpSpeed = 3) {
 // Make available globally
 window.getAnimTime = getAnimTime;
 window.animateQuadrupedLegs = animateQuadrupedLegs;
+window.legCycleRate = legCycleRate;
+window.hopRate = hopRate;
 window.resetLegsToNeutral = resetLegsToNeutral;
 window.animateWings = animateWings;
 window.animateTailSwish = animateTailSwish;

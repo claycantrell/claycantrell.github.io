@@ -119,7 +119,8 @@ function updateBunnies(delta) {
             moveEntityTowardTarget(bunny, speed, delta, config.collisionRadius, false);
 
             // Hop animation
-            const hopFreq = bunny.isFleeing ? config.animation.hopFrequencyFlee : config.animation.hopFrequency;
+            // Hop rate follows speed so each hop covers a realistic distance
+            const hopFreq = hopRate(speed, bunny.isFleeing ? config.animation.hopLengthFlee : config.animation.hopLength);
             const hopOffset = animateHop(bunny, baseHeight, delta, hopFreq, config.animation.hopHeight);
             bunny.group.position.y = Math.max(baseHeight + hopOffset, currentTerrainY + 0.2);
 
