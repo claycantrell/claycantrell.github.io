@@ -12,11 +12,10 @@ const ShrubSystem = {
     },
 
     update(delta) {
-        for (const m of [shrubMaterial, carpetMaterial]) {
-            if (m && m.userData.shader) m.userData.shader.uniforms.time.value += delta;
+        if (shrubMaterial && shrubMaterial.userData.shader) {
+            shrubMaterial.userData.shader.uniforms.time.value += delta;
         }
         if (shrubMaterial) updateDetailLayers();
-        updateGrassCarpet(delta);
     }
 };
 
@@ -31,7 +30,7 @@ if (typeof Systems !== 'undefined') {
 
 const SPRITE_PX = 32;
 const ATLAS_COLS = 16;
-const ATLAS_ROWS = 10;
+const ATLAS_ROWS = 8;
 const SPRITE_VARIANTS = 2;
 
 // Pixel drawing helpers for a 32x32 tile
@@ -161,25 +160,6 @@ function drawMushroom(p, cx, h, capR, cap, spot, stem) {
 // Sprite library: draw(p, r) paints one variant; w/h are world size in units;
 // sway is how much wind moves the top (0 for rocks)
 const SPRITES = {
-    // --- Tiny ground cover (the grass carpet around the player) ---
-    tinyGrass: { w: 1.0, h: 0.9, sway: 1, draw: (p, r) => drawGrass(p, r, 9, 30, ['#5d9b3a', '#4c8a2f', '#6aa844'], 26) },
-    tinyGrassLight: { w: 1.0, h: 0.9, sway: 1, draw: (p, r) => drawGrass(p, r, 9, 30, ['#7fb24a', '#93c25a', '#6fa23e'], 26) },
-    tinyGrassDark: { w: 1.0, h: 0.9, sway: 1, draw: (p, r) => drawGrass(p, r, 9, 30, ['#3f7a2c', '#356a26', '#4a862f'], 26) },
-    tinyDryGrass: { w: 1.0, h: 0.9, sway: 1, draw: (p, r) => drawGrass(p, r, 8, 30, Object.assign(['#c2a95e', '#a98f48', '#d6c07a'], { tip: '#e3d49a' }), 26) },
-    tinyFrostGrass: { w: 1.0, h: 0.8, sway: 0.7, draw: (p, r) => drawGrass(p, r, 8, 28, Object.assign(['#7d9a86', '#6b8a76'], { tip: '#eef4f8' }), 24) },
-    tinyClover: {
-        w: 1.0, h: 0.5, sway: 0.4, draw: (p, r) => {
-            for (let i = 0; i < 9; i++) { const x = 4 + r() * 24, y = 20 + r() * 9; p.ellipse(x, y, 2.2, 1.6, r() > 0.5 ? '#4f9a3a' : '#5eaa44'); }
-            for (let i = 0; i < 3; i++) p.ellipse(6 + r() * 20, 19 + r() * 6, 1.2, 1.2, '#f2f0e6');
-        }
-    },
-    tinyFlowerSpecks: {
-        w: 1.0, h: 0.9, sway: 0.9, draw: (p, r) => {
-            drawGrass(p, r, 7, 28, ['#5d9b3a', '#6aa844'], 24);
-            for (let i = 0; i < 5; i++) p.ellipse(4 + r() * 24, 4 + r() * 14, 1.3, 1.3, ['#f2d23a', '#f6f4ea', '#d8608a', '#8a6ad8'][Math.floor(r() * 4)]);
-        }
-    },
-
     // --- Grasses ---
     grassTuft: { w: 1.8, h: 1.6, sway: 1, draw: (p, r) => drawGrass(p, r, 12, 14, ['#5d9b3a', '#4c8a2f', '#71ad45']) },
     tallGrass: { w: 1.6, h: 2.8, sway: 1.2, draw: (p, r) => drawGrass(p, r, 10, 28, ['#6a9a3c', '#5a8a30', '#7fae4a']) },
@@ -592,7 +572,7 @@ function buildShrubAtlas() {
     return texture;
 }
 
-function buildShrubMaterial(atlas, fade = null) {
+function buildShrubMaterial(atlas) {
     const material = new THREE.MeshLambertMaterial({
         map: atlas,
         alphaTest: 0.5,
@@ -617,13 +597,10 @@ function buildShrubMaterial(atlas, fade = null) {
             vec2 toCam = cameraPosition.xz - instPos.xz;
             float ang = atan(toCam.x, toCam.y);
             float sway = sin(time * 1.6 + instPos.x * 0.35 + instPos.z * 0.25) * spriteSway * position.y * 0.12;
-            transformed = vec3((position.x + sway) * cos(ang), position.y, -(position.x + sway) * sin(ang));
-            ${fade ? `transformed *= 1.0 - smoothstep(${fade.start.toFixed(1)}, ${fade.end.toFixed(1)}, length(toCam));` : ''}`);
+            transformed = vec3((position.x + sway) * cos(ang), position.y, -(position.x + sway) * sin(ang));`);
 
         material.userData.shader = shader;
     };
-    // Same onBeforeCompile source for both variants: give the faded one its own program
-    material.customProgramCacheKey = () => fade ? `shrub-fade-${fade.start}-${fade.end}` : 'shrub';
 
     return material;
 }
@@ -747,13 +724,7 @@ function buildShrubLayer(cx, cz, chunkData, layerName) {
     }
 
     if (placed.length === 0) return { mesh: null, entries: [] };
-    for (const sp of placed) sp.y = spriteBaseHeight(chunkData, sp.x, sp.z, sp.w * 0.35);
-    const { mesh, entries } = makeSpriteMesh(placed, shrubMaterial, `shrubs_${layerName}_${cx},${cz}`);
-    return { mesh, entries };
-}
 
-// Build one InstancedMesh of camera-facing sprites from placed { x, y, z, w, h, tile, sway, tint, name }
-function makeSpriteMesh(placed, material, name) {
     // Per-layer geometry shares the quad buffers and adds per-instance attributes
     const tileAttr = new Float32Array(placed.length * 2);
     const swayAttr = new Float32Array(placed.length);
@@ -763,13 +734,13 @@ function makeSpriteMesh(placed, material, name) {
     geometry.setAttribute('spriteTile', new THREE.InstancedBufferAttribute(tileAttr, 2));
     geometry.setAttribute('spriteSway', new THREE.InstancedBufferAttribute(swayAttr, 1));
 
-    const mesh = new THREE.InstancedMesh(geometry, material, placed.length);
+    const mesh = new THREE.InstancedMesh(geometry, shrubMaterial, placed.length);
     const matrix = new THREE.Matrix4();
     const color = new THREE.Color();
     const entries = [];
 
     placed.forEach((sp, i) => {
-        const y = sp.y;
+        const y = spriteBaseHeight(chunkData, sp.x, sp.z, sp.w * 0.35);
         matrix.makeScale(sp.w, sp.h, sp.w).setPosition(sp.x, y, sp.z);
         mesh.setMatrixAt(i, matrix);
         mesh.setColorAt(i, color.setScalar(sp.tint));
@@ -783,7 +754,7 @@ function makeSpriteMesh(placed, material, name) {
     mesh.boundingSphere.radius += 8;
     mesh.receiveShadow = true;
     mesh.castShadow = false;
-    mesh.name = name;
+    mesh.name = `shrubs_${layerName}_${cx},${cz}`;
     scene.add(mesh);
     return { mesh, entries };
 }
@@ -841,130 +812,6 @@ function updateDetailLayers() {
     });
 }
 
-// ============================================================================
-// Grass carpet: dense tiny grass sprites in a circle around the player, built
-// in seeded 64-unit cells that follow the player and fade out at the edge.
-// The ground's detail comes from these sprites rather than the textures.
-// ============================================================================
-
-const CARPET_CONFIG = {
-    cellSize: 64,          // One draw call per cell
-    radius: 150,
-    fadeStart: 100,
-    fadeEnd: 145,
-    perCell: 1120,         // ~1 tuft per 3.7 square units at full density
-    scaleMin: 0.8,
-    scaleMax: 1.4,
-    retryInterval: 2       // Seconds between rebuilding cells whose chunk wasn't loaded yet
-};
-
-const CARPET_GREEN = [['tinyGrass', 4], ['tinyGrassLight', 2], ['tinyGrassDark', 2]];
-const CARPET_BIOMES = {
-    plains: { density: 1.0, types: [...CARPET_GREEN, ['tinyClover', 0.6], ['tinyFlowerSpecks', 0.4]] },
-    grassland: { density: 1.0, types: [...CARPET_GREEN, ['tinyGrassLight', 1], ['tinyClover', 0.5], ['tinyFlowerSpecks', 0.4]] },
-    meadow: { density: 1.0, types: [...CARPET_GREEN, ['tinyFlowerSpecks', 1.5], ['tinyClover', 0.8]] },
-    cherryGrove: { density: 0.85, types: [...CARPET_GREEN, ['tinyFlowerSpecks', 1], ['tinyClover', 0.5]] },
-    coldPlains: { density: 0.85, types: [...CARPET_GREEN, ['tinyDryGrass', 0.6]] },
-    highlands: { density: 0.75, types: [...CARPET_GREEN, ['tinyDryGrass', 1]] },
-    savanna: { density: 0.85, types: [['tinyDryGrass', 4], ['tinyGrassLight', 1]] },
-    forest: { density: 0.6, types: [['tinyGrassDark', 4], ['tinyGrass', 2], ['tinyClover', 1]] },
-    warmForest: { density: 0.6, types: [['tinyGrassDark', 3], ['tinyGrass', 2], ['tinyClover', 1]] },
-    coldForest: { density: 0.45, types: [['tinyGrassDark', 3], ['tinyGrass', 1], ['tinyFrostGrass', 1]] },
-    taiga: { density: 0.3, types: [['tinyGrassDark', 2], ['tinyFrostGrass', 2]] },
-    jungle: { density: 0.5, types: [['tinyGrassDark', 3], ['tinyGrass', 1]] },
-    bambooJungle: { density: 0.5, types: [['tinyGrassDark', 2], ['tinyGrass', 2]] },
-    swamp: { density: 0.7, types: [['tinyGrassDark', 3], ['tinyGrass', 1]] },
-    mangroveSwamp: { density: 0.3, types: [['tinyGrassDark', 1]] },
-    mushroomFields: { density: 0.4, types: [['tinyGrassDark', 2], ['tinyClover', 1]] },
-    tundra: { density: 0.5, types: [['tinyFrostGrass', 3], ['tinyDryGrass', 1]] },
-    snowySlopes: { density: 0.15, types: [['tinyFrostGrass', 1]] },
-    mountains: { density: 0.2, types: [['tinyDryGrass', 1], ['tinyGrass', 1]] },
-    stonyShore: { density: 0.1, types: [['tinyDryGrass', 1]] },
-    desert: { density: 0.04, types: [['tinyDryGrass', 1]] },
-    badlands: { density: 0.08, types: [['tinyDryGrass', 1]] }
-};
-
-let carpetMaterial = null;
-const carpetCells = new Map(); // "gx,gz" -> { gx, gz, mesh, incomplete }
-let carpetCenterKey = null;
-let carpetRetryTimer = 0;
-
-function buildCarpetCell(gx, gz) {
-    const size = CARPET_CONFIG.cellSize;
-    const r = makeRng(chunkSeed(gx, gz) ^ 0x6a55);
-    const step = CHUNK_CONFIG.size / CHUNK_CONFIG.segments;
-    const placed = [];
-    let incomplete = false;
-
-    for (let i = 0; i < CARPET_CONFIG.perCell; i++) {
-        const x = gx * size + r() * size, z = gz * size + r() * size;
-        const roll = r(), pickRoll = r(), sRoll = r(), tRoll = r(), tileRoll = r();
-        const tc = worldToChunk(x, z);
-        const chunk = loadedChunks.get(`${tc.x},${tc.z}`);
-        if (!chunk) { incomplete = true; continue; }
-        const cd = chunk.data, b = cd.bounds;
-        const data = cd.biomeData[Math.round((z - b.minZ) / step)][Math.round((x - b.minX) / step)];
-        if (!data || !data.biome || (data.snow || 0) > 0.35) continue;
-        const table = CARPET_BIOMES[data.biome.id];
-        if (!table || roll > table.density) continue;
-        const y = chunkSurfaceHeight(cd, x, z);
-        if (y < (data.waterLevel ?? -5) + 0.1) continue;
-
-        const name = pickWeighted(table.types, () => pickRoll);
-        const def = SPRITES[name], tiles = spriteTiles[name];
-        if (!def || !tiles || !tiles.length) continue;
-        const sc = CARPET_CONFIG.scaleMin + sRoll * (CARPET_CONFIG.scaleMax - CARPET_CONFIG.scaleMin);
-        placed.push({ x, y: y - 0.05, z, w: def.w * sc, h: def.h * sc, tile: tiles[Math.floor(tileRoll * tiles.length)], sway: def.sway, tint: 0.85 + tRoll * 0.25, name });
-    }
-
-    const mesh = placed.length ? makeSpriteMesh(placed, carpetMaterial, `grass_${gx},${gz}`).mesh : null;
-    return { gx, gz, mesh, incomplete };
-}
-
-function disposeCarpetCell(cell) {
-    if (cell && cell.mesh) disposeShrubLayer({ mesh: cell.mesh });
-}
-
-// Keep the carpet centered on the player
-function updateGrassCarpet(delta) {
-    if (!carpetMaterial || typeof loadedChunks === 'undefined') return;
-    const player = typeof character !== 'undefined' && character ? character.position : null;
-    if (!player || !Number.isFinite(player.x)) return;
-
-    const size = CARPET_CONFIG.cellSize;
-    const pgx = Math.floor(player.x / size), pgz = Math.floor(player.z / size);
-    const key = `${pgx},${pgz}`;
-    carpetRetryTimer += delta;
-    const retry = carpetRetryTimer >= CARPET_CONFIG.retryInterval;
-    if (key === carpetCenterKey && !retry) return;
-    if (retry) carpetRetryTimer = 0;
-    carpetCenterKey = key;
-
-    const reach = Math.ceil(CARPET_CONFIG.radius / size) + 1;
-    const keepDist = CARPET_CONFIG.radius + size;
-    // Drop cells that are out of range
-    carpetCells.forEach((cell, k) => {
-        const cxw = (cell.gx + 0.5) * size, czw = (cell.gz + 0.5) * size;
-        if (Math.hypot(cxw - player.x, czw - player.z) > keepDist) {
-            disposeCarpetCell(cell);
-            carpetCells.delete(k);
-        }
-    });
-    // Add missing cells (and rebuild ones whose chunk has loaded since)
-    for (let dz = -reach; dz <= reach; dz++) {
-        for (let dx = -reach; dx <= reach; dx++) {
-            const gx = pgx + dx, gz = pgz + dz;
-            const cxw = (gx + 0.5) * size, czw = (gz + 0.5) * size;
-            if (Math.hypot(cxw - player.x, czw - player.z) > CARPET_CONFIG.radius + size * 0.71) continue;
-            const k = `${gx},${gz}`;
-            const existing = carpetCells.get(k);
-            if (existing && !existing.incomplete) continue;
-            if (existing) disposeCarpetCell(existing);
-            carpetCells.set(k, buildCarpetCell(gx, gz));
-        }
-    }
-}
-
 // Re-seat shrubs after terraforming changes the ground
 function updateShrubsInBounds(minX, maxX, minZ, maxZ) {
     const matrix = new THREE.Matrix4();
@@ -982,14 +829,6 @@ function updateShrubsInBounds(minX, maxX, minZ, maxZ) {
             if (changed) layer.mesh.instanceMatrix.needsUpdate = true;
         }
     });
-    // Grass carpet cells in the area are simply rebuilt
-    const size = CARPET_CONFIG.cellSize;
-    carpetCells.forEach((cell, k) => {
-        const x0 = cell.gx * size, z0 = cell.gz * size;
-        if (x0 + size < minX || x0 > maxX || z0 + size < minZ || z0 > maxZ) return;
-        disposeCarpetCell(cell);
-        carpetCells.set(k, buildCarpetCell(cell.gx, cell.gz));
-    });
 }
 
 // Set up the shared atlas/material and plant every chunk that is already loaded
@@ -997,7 +836,6 @@ function createShrubs() {
     if (!shrubMaterial) {
         shrubAtlas = buildShrubAtlas();
         shrubMaterial = buildShrubMaterial(shrubAtlas);
-        carpetMaterial = buildShrubMaterial(shrubAtlas, { start: CARPET_CONFIG.fadeStart, end: CARPET_CONFIG.fadeEnd });
         shrubGeometry = buildShrubGeometry();
     }
     if (typeof loadedChunks !== 'undefined') {
