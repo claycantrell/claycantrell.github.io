@@ -23,8 +23,9 @@ const WATER_CONFIG = {
     oceanDeep: -0.6,           // Deepest ocean
     lakeScale: 0.0007,         // Large inland lakes
     lakeThreshold: 0.52,
-    pondScale: 0.004,          // Small ponds
+    pondScale: 0.0025,         // Small ponds
     pondThreshold: 0.72,
+    pondEdge: 0.25,            // Noise range over which a pond deepens (gentle enough for a dry rim)
     lakeMaxRelief: 30,         // Lakes and ponds form where the land is within this of their surface
     shallowColor: 0x4FB3BF,
     deepColor: 0x14506E,
@@ -53,7 +54,7 @@ function waterSmoothstep(a, b, x) {
 // River shape at a point: valley (0-1) pulls land down to the banks, channel
 // (0-1) cuts below sea level. Warped ridged noise gives meandering lines.
 function getRiverShape(x, z, relief = 0) {
-    if (!riverNoise) return { valley: 0, channel: 0 };
+    if (!riverNoise) return { valley: 0, channel: 0, levee: 0 };
     const s = WATER_CONFIG.riverNoiseScale;
     const wx = x + riverWarp.noise2D(x * s * 2, z * s * 2) * 120;
     const wz = z + riverWarp.noise2D(x * s * 2 + 400, z * s * 2 + 400) * 120;
@@ -62,6 +63,9 @@ function getRiverShape(x, z, relief = 0) {
     return {
         // Wider valley where it cuts through higher ground (banks stay ~1:3 or gentler)
         valley: 1 - waterSmoothstep(WATER_CONFIG.riverWidth, WATER_CONFIG.riverValley + Math.min(0.3, relief * 0.005), d),
+        // Levees: the land right beside the channel, raised to bank height so the river is contained
+        // (at least ~2 terrain grid cells wide so the grid always sees it)
+        levee: 1 - waterSmoothstep(WATER_CONFIG.riverWidth * 1.6, WATER_CONFIG.riverWidth * 2.8, d),
         channel: 1 - waterSmoothstep(WATER_CONFIG.riverWidth * 0.55, WATER_CONFIG.riverWidth, d)
     };
 }
@@ -81,15 +85,17 @@ function applyWaterBodies(x, z, height, baseLevel, mountainous) {
 
     const lake = waterSmoothstep(WATER_CONFIG.lakeThreshold, WATER_CONFIG.lakeThreshold + 0.12,
         lakeNoise.noise2D(x * WATER_CONFIG.lakeScale + 900, z * WATER_CONFIG.lakeScale + 900));
-    const pond = waterSmoothstep(WATER_CONFIG.pondThreshold, WATER_CONFIG.pondThreshold + 0.1,
+    const pond = waterSmoothstep(WATER_CONFIG.pondThreshold, WATER_CONFIG.pondThreshold + WATER_CONFIG.pondEdge,
         lakeNoise.noise2D(x * WATER_CONFIG.pondScale - 300, z * WATER_CONFIG.pondScale - 300));
     const basin = Math.max(lake, pond * 0.8) * allowed;
     if (basin <= 0) return { height, waterLevel: sea };
 
-    const bed = surface - 1 - 6 * basin;
-    let h = height;
-    if (h > bed) h = h + (bed - h) * Math.min(1, basin * 1.6);
-    return { height: h, waterLevel: surface };
+    // The basin replaces the ground with a bowl: a dry rim above the water line
+    // (basin < 0.3) and a bed below it, so the water is always held in no
+    // matter how low the land around it is
+    const bowl = surface + 3 - 10 * basin;
+    const h = height + (bowl - height) * waterSmoothstep(0, 0.12, basin);
+    return { height: h, waterLevel: basin > 0.3 ? surface : sea };
 }
 
 // Carve a river into a terrain height. Returns { height, river, waterLevel }
@@ -110,15 +116,21 @@ function getRiverCarve(x, z, height, baseLevel, mountainous, waterLevel) {
     const bank = surface + WATER_CONFIG.bankHeight;
     const bed = surface - WATER_CONFIG.riverDepth;
 
-    // Only ever lower the land: a wide floodplain down to the banks, then the channel
+    // A wide floodplain lowered to the banks, levees raised to bank height right
+    // beside the channel (so the river never spills onto lower ground), then the channel
+    const leveeStrength = Math.min(1, strength * 1.5);
     let h = height;
     if (h > bank) h = h + (bank - h) * shape.valley * strength;
-    if (h > bed) h = h + (bed - h) * shape.channel * strength;
+    if (h < bank) h = h + (bank - h) * shape.levee * leveeStrength;
+    // The channel is only cut where the levees can hold water; where the river
+    // fades out it becomes a dry valley at bank height, so water ends at a bank
+    if (leveeStrength >= 1 && h > bed) h = h + (bed - h) * shape.channel * strength;
+    const inChannel = shape.channel * strength > 0.3 && leveeStrength >= 1;
     return {
         height: h,
         river: shape.channel * strength,
-        // Inside the valley the water level is the river's
-        waterLevel: shape.valley * strength > 0.05 ? surface : waterLevel
+        // Water stands only in the channel, where the levees hold it
+        waterLevel: inChannel ? surface : waterLevel
     };
 }
 

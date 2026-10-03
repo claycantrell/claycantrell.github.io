@@ -101,12 +101,64 @@ function generateChunkData(cx, cz) {
                 blendWeight: data.blendWeight || 0,
                 isWater: isWaterPoint,
                 waterLevel: waterLevel,
+                inRiver: (data.river || 0) > 0.3,
                 waterType: waterType
             };
         }
     }
 
+    // Water can't stand higher than the lowest point it could spill over
+    hasWater = containWater(heightmap, biomeData);
+
     return { heightmap, biomeData, bounds, hasWater };
+}
+
+// Cap every raised (river/lake) water level by its neighbours: water at a
+// level L would spill onto a neighbour whose ground and water are both lower,
+// so L <= max(neighbour ground, neighbour water level) - except along a river
+// channel, whose surface slopes downstream. Repeated until stable,
+// a lake with a gap in its rim drains to the gap's height. Returns hasWater.
+function containWater(heightmap, biomeData) {
+    const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
+    const n = heightmap.length;
+    let changed = true;
+    for (let iter = 0; changed && iter < 200; iter++) {
+        changed = false;
+        for (let z = 0; z < n; z++) {
+            for (let x = 0; x < n; x++) {
+                const d = biomeData[z][x];
+                if (d.waterLevel <= sea + 0.01) continue;
+                let cap = d.waterLevel;
+                for (let dz = -1; dz <= 1; dz++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const zz = z + dz, xx = x + dx;
+                        if ((dx === 0 && dz === 0) || zz < 0 || xx < 0 || zz >= n || xx >= n) continue;
+                        // Rivers flow downhill: their surface may slope along the channel
+                        // (only between river points that both hold water)
+                        const nb = biomeData[zz][xx];
+                        if (d.inRiver && nb.inRiver && heightmap[zz][xx] < nb.waterLevel) continue;
+                        const spill = Math.max(heightmap[zz][xx], biomeData[zz][xx].waterLevel);
+                        if (spill < cap) cap = spill;
+                    }
+                }
+                if (cap < d.waterLevel - 0.01) {
+                    d.waterLevel = Math.max(sea, cap);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    let hasWater = false;
+    for (let z = 0; z < n; z++) {
+        for (let x = 0; x < n; x++) {
+            const d = biomeData[z][x];
+            d.isWater = heightmap[z][x] < d.waterLevel;
+            if (!d.isWater) d.waterType = null;
+            else hasWater = true;
+        }
+    }
+    return hasWater;
 }
 
 // Create mesh for a chunk
