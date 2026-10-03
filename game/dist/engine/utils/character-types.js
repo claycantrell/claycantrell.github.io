@@ -365,6 +365,141 @@ function createKnightCharacter() {
 }
 
 // ============================================
+// HORSE MODEL (wild horses and the player's mount)
+// ============================================
+
+// Coat and mane colors
+const HORSE_COATS = [
+    { name: 'bay', coat: 0x7A4A2A, mane: 0x1E1612, socks: 0x1E1612 },
+    { name: 'chestnut', coat: 0x8E4A22, mane: 0x5A2A12, socks: 0x8E4A22 },
+    { name: 'black', coat: 0x2A2624, mane: 0x141210, socks: 0x2A2624 },
+    { name: 'grey', coat: 0x8C8A86, mane: 0x4A4846, socks: 0x6A6864 },
+    { name: 'white', coat: 0xDAD6CE, mane: 0xBCB6AA, socks: 0xDAD6CE },
+    { name: 'palomino', coat: 0xC9A35A, mane: 0xF0E6C8, socks: 0xC9A35A }
+];
+
+// A horse at real proportions next to the 4.5-unit (1.8 m) rider: ~4 units at
+// the shoulder, ~5 long. Hooves at y = 0, facing +z. Legs are groups pivoting
+// at the shoulder/hip, ordered [front left, front right, back left, back right].
+function createHorseModel(coatDef, { saddle = false } = {}) {
+    const c = coatDef || HORSE_COATS[0];
+    const flat = color => new THREE.MeshLambertMaterial({ color, flatShading: true });
+    const coatMat = flat(c.coat), maneMat = flat(c.mane), sockMat = flat(c.socks);
+    const hoofMat = flat(0x2A2420), muzzleMat = flat(0x3A302A);
+
+    const group = new THREE.Group();
+    const body = new THREE.Group();
+    group.add(body);
+
+    // Barrel, chest and rump
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.0, 3.6, 8), coatMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 3.3, 0);
+    body.add(barrel);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(1.0, 8, 6), coatMat);
+    chest.position.set(0, 3.35, 1.7);
+    body.add(chest);
+    const rump = new THREE.Mesh(new THREE.SphereGeometry(1.05, 8, 6), coatMat);
+    rump.position.set(0, 3.45, -1.7);
+    body.add(rump);
+
+    // Neck (pivots at the withers) and head
+    const neck = new THREE.Group();
+    neck.position.set(0, 3.9, 1.9);
+    neck.rotation.x = -0.75;
+    body.add(neck);
+    const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.7, 2.4, 7), coatMat);
+    neckMesh.position.y = 1.1;
+    neck.add(neckMesh);
+    const mane = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.4, 0.35), maneMat);
+    mane.position.set(0, 1.15, -0.5);
+    neck.add(mane);
+    const head = new THREE.Group();
+    head.position.set(0, 2.3, 0);
+    head.rotation.x = 1.6;
+    neck.add(head);
+    const skull = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 1.7), coatMat);
+    skull.position.set(0, 0, 0.7);
+    head.add(skull);
+    const muzzle = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.5), muzzleMat);
+    muzzle.position.set(0, -0.05, 1.6);
+    head.add(muzzle);
+    for (const side of [-1, 1]) {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 4), coatMat);
+        ear.position.set(side * 0.2, 0.5, 0.05);
+        head.add(ear);
+        const eye = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.12), flat(0x0A0808));
+        eye.position.set(side * 0.31, 0.12, 0.55);
+        head.add(eye);
+    }
+
+    // Tail
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.35, 2.2, 6), maneMat);
+    tail.position.set(0, 2.6, -2.75);
+    tail.rotation.x = -0.35;
+    body.add(tail);
+
+    // Legs: upper, lower, hoof
+    const legs = [];
+    for (const [lx, lz] of [[0.55, 1.6], [-0.55, 1.6], [0.55, -1.6], [-0.55, -1.6]]) {
+        const leg = new THREE.Group();
+        leg.position.set(lx, 2.9, lz);
+        const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 1.5, 6), coatMat);
+        upper.position.y = -0.75;
+        leg.add(upper);
+        const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 1.2, 6), sockMat);
+        lower.position.y = -2.05;
+        leg.add(lower);
+        const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.25, 6), hoofMat);
+        hoof.position.y = -2.78;
+        leg.add(hoof);
+        group.add(leg);
+        legs.push(leg);
+    }
+
+    if (saddle) {
+        const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.12, 1.8), flat(0x6A1E1E));
+        blanket.position.set(0, 4.32, 0.2);
+        body.add(blanket);
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 1.4), flat(0x4A2E1A));
+        seat.position.set(0, 4.5, 0.2);
+        body.add(seat);
+        const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.25), flat(0x4A2E1A));
+        pommel.position.set(0, 4.75, 0.85);
+        body.add(pommel);
+    }
+
+    group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    return { group, body, bodyBaseY: body.position.y, neck, neckBaseRot: neck.rotation.x, head, tail, legs };
+}
+
+// Height of the saddle seat above the hooves
+const HORSE_SADDLE_HEIGHT = 4.65;
+
+// Put a rider on a saddled horse. The character group's origin sits 1 unit
+// above the ground (the rider's feet), so the horse goes 1 unit down and the
+// rider is lifted until the hips sit on the saddle.
+function mountCharacter(char) {
+    const hipY = 1.45; // Knight hip joint height (leg groups)
+    const lift = (HORSE_SADDLE_HEIGHT - 1.0) - hipY;
+    char.children.slice().forEach(child => { child.position.y += lift; });
+
+    const horse = createHorseModel(HORSE_COATS[0], { saddle: true });
+    horse.group.position.y = -1.0;
+    char.add(horse.group);
+    char.userData.mount = horse;
+    char.userData.riderLift = lift;
+
+    // Animation parts belong to this character: remember the mount there too
+    const parts = typeof GAME !== 'undefined' ? GAME.characterParts : null;
+    if (parts && parts.torso && parts.torso.parent === char) {
+        parts.mount = horse;
+        parts.torsoBaseY += lift;
+    }
+    return char;
+}
+
+// ============================================
 // CHARACTER FACTORY & SWITCHING
 // ============================================
 
@@ -376,6 +511,11 @@ function createKnightCharacter() {
 function createCharacterOfType(type) {
     const createFn = CHARACTER_TYPES[type] || CHARACTER_TYPES[DEFAULT_CHARACTER_TYPE];
     const char = createFn();
+
+    // For now every character rides a horse
+    if (char.userData.characterType === 'knight') {
+        mountCharacter(char);
+    }
 
     // Add to objects for collision detection
     if (typeof GAME !== 'undefined' && GAME.world) {
@@ -468,5 +608,8 @@ window.createCharacterOfType = createCharacterOfType;
 window.disposeCharacter = disposeCharacter;
 window.switchCharacterType = switchCharacterType;
 window.getCharacterTypes = getCharacterTypes;
+window.createHorseModel = createHorseModel;
+window.mountCharacter = mountCharacter;
+window.HORSE_COATS = HORSE_COATS;
 window.CHARACTER_TYPES = CHARACTER_TYPES;
 window.DEFAULT_CHARACTER_TYPE = DEFAULT_CHARACTER_TYPE;
