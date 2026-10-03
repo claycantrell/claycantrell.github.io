@@ -60,6 +60,33 @@ const ENTITY_CONFIG = {
         }
     },
 
+    // Wild horse configuration (herds on plains, grassland, meadow, savanna)
+    horse: {
+        speed: 22.0,            // Gallop when spooked
+        walkSpeed: 4.0,         // Grazing amble
+        collisionRadius: 1.2,
+        heightOffset: 0,
+        flee: {
+            detectRadius: 14,
+            panicRadius: 6,
+            duration: 3,
+            distance: 35,
+            panicBonus: 15
+        },
+        wander: {
+            minDistance: 8,
+            maxDistance: 25,
+            idleDuration: { min: 3, max: 8 },
+            moveDuration: { min: 3, max: 7 }
+        },
+        animation: {
+            walkLegSpeed: 6,
+            runLegSpeed: 13,
+            legSwing: 0.55,
+            rotationSpeed: 2.5
+        }
+    },
+
     // Cow configuration (slow, docile)
     cow: {
         count: 12,

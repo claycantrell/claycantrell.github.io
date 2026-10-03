@@ -40,16 +40,17 @@ const SPAWN_CONFIG = {
 //   sheep/pig/cow/mooshroom -> cows, chicken/parrot -> birds,
 //   horse/donkey/llama/goat/wolf/fox/camel -> deer, rabbit -> bunnies,
 //   turtle -> crabs, polar bear -> penguins, armadillo -> salamanders,
-//   frog -> frogs, panda -> pandas.
+//   frog -> frogs, panda -> pandas. Wild horses follow Minecraft's horse
+//   entries (plains 5, savanna 1-2, meadow donkeys) alongside the deer.
 // Butterflies stand in for bees, which Minecraft spawns from nests on trees in
 // plains, meadows, flower forests and cherry groves rather than from these lists.
 // Entries: [species, weight, minGroup, maxGroup]
 const STANDARD = [['cows', 30, 4, 4], ['birds', 10, 4, 4]]; // sheep 12 + pig 10 + cow 8, chicken 10
 const MC_SPAWNS = {
-    plains:         { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6], ['butterflies', 2, 2, 4]] },
-    grassland:      { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6], ['butterflies', 2, 2, 4]] },
-    coldPlains:     { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6]] },
-    meadow:         { p: 0.1,  list: [['bunnies', 2, 2, 6], ['cows', 2, 4, 4], ['deer', 1, 1, 2], ['butterflies', 2, 2, 4]] },
+    plains:         { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6], ['horses', 5, 2, 6], ['butterflies', 2, 2, 4]] },
+    grassland:      { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6], ['horses', 5, 2, 6], ['butterflies', 2, 2, 4]] },
+    coldPlains:     { p: 0.1,  list: [...STANDARD, ['deer', 6, 2, 6], ['horses', 5, 2, 6]] },
+    meadow:         { p: 0.1,  list: [['bunnies', 2, 2, 6], ['cows', 2, 4, 4], ['deer', 1, 1, 2], ['horses', 1, 1, 2], ['butterflies', 2, 2, 4]] },
     cherryGrove:    { p: 0.1,  list: [['cows', 3, 1, 4], ['bunnies', 2, 2, 6], ['butterflies', 4, 2, 4]] },
     forest:         { p: 0.1,  list: [...STANDARD, ['deer', 5, 4, 4], ['butterflies', 1, 2, 4]] },
     warmForest:     { p: 0.1,  list: [...STANDARD, ['deer', 5, 4, 4], ['butterflies', 1, 2, 4]] },
@@ -61,7 +62,7 @@ const MC_SPAWNS = {
     snowyPeaks:     { p: 0.1,  list: [['deer', 5, 1, 3]] },
     mountains:      { p: 0.1,  list: [...STANDARD, ['deer', 5, 4, 6]] },
     highlands:      { p: 0.1,  list: [...STANDARD, ['deer', 5, 4, 6]] },
-    savanna:        { p: 0.1,  list: [...STANDARD, ['deer', 2, 2, 6], ['salamanders', 10, 2, 3]] },
+    savanna:        { p: 0.1,  list: [...STANDARD, ['deer', 2, 2, 6], ['horses', 2, 2, 6], ['salamanders', 10, 2, 3]] },
     desert:         { p: 0.1,  list: [['bunnies', 12, 2, 3], ['deer', 1, 1, 1]] },
     badlands:       { p: 0.03, list: [['salamanders', 6, 1, 2]] },
     jungle:         { p: 0.1,  list: [['birds', 60, 1, 4], ['cows', 30, 4, 4], ['pandas', 1, 1, 2]] },
@@ -76,6 +77,7 @@ const MC_SPAWNS = {
 
 const SPECIES = {
     deer:        { list: () => typeof deerList !== 'undefined' ? deerList : null, create: () => typeof createDeer === 'function' ? createDeer : null },
+    horses:      { list: () => typeof horseList !== 'undefined' ? horseList : null, create: () => typeof createHorse === 'function' ? createHorse : null },
     cows:        { list: () => typeof cowList !== 'undefined' ? cowList : null, create: () => typeof createCow === 'function' ? createCow : null },
     bunnies:     { list: () => typeof bunnyList !== 'undefined' ? bunnyList : null, create: () => typeof createBunny === 'function' ? createBunny : null },
     birds:       { list: () => typeof birdList !== 'undefined' ? birdList : null, create: () => typeof createBird === 'function' ? createBird : null },
@@ -88,6 +90,14 @@ const SPECIES = {
 };
 
 const SERVER_SPECIES = new Set(['deer', 'cows', 'bunnies', 'birds']);
+
+// Builds made before horses existed don't list horse.js in their script list:
+// load it here if it isn't already loaded
+if (typeof createHorse === 'undefined' && typeof document !== 'undefined') {
+    const horseScript = document.createElement('script');
+    horseScript.src = './systems/entities/horse.js';
+    document.body.appendChild(horseScript);
+}
 
 const chunkAnimals = new Map(); // terrain chunk key -> { packs: [pack] }
 let periodicTimer = 0;

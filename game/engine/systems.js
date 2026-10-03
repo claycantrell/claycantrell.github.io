@@ -16,6 +16,7 @@ const Systems = {
         'animalSpawner',
         'npc',
         'deer',
+        'horses',
         'cows',
         'bunnies',
         'birds',

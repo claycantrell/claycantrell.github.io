@@ -56,6 +56,7 @@ function getCharacterSettings() {
 
     return {
         moveSpeed: useConfig ? CONFIG.get('character.moveSpeed', 20.0) : 20.0,
+        mountSpeed: useConfig ? CONFIG.get('character.mountSpeed', 36.0) : 36.0,
         flySpeed: useConfig ? CONFIG.get('character.flySpeed', 80.0) : 80.0,
         rotationSpeed: useConfig ? CONFIG.get('character.rotationSpeed', 2.0) : 2.0,
         gravity: useConfig ? CONFIG.get('character.gravity', 25.0) : 25.0,
@@ -141,7 +142,9 @@ function updateCharacterMovement(delta) {
 
     // Get movement parameters from config
     const charConfig = getCharacterSettings();
-    let moveSpeed = charConfig.moveSpeed;
+    // Riding: a horse is much faster than walking (36 = 14.4 blocks/s, Minecraft's fastest horse)
+    const isMounted = !!character.userData.mount;
+    let moveSpeed = isMounted ? charConfig.mountSpeed : charConfig.moveSpeed;
     const flySpeed = charConfig.flySpeed;
     const gravity = charConfig.gravity;
 
@@ -472,7 +475,7 @@ function updateCharacterMovement(delta) {
         // First-person: camera at character's eye level, mouse controls view
         character.visible = false;
 
-        const eyeHeight = 2.5; // Higher eye level for better view
+        const eyeHeight = 2.5 + (character.userData.riderLift || 0); // Higher eye level for better view (in the saddle when riding)
         camera.position.set(
             character.position.x,
             character.position.y + eyeHeight,
@@ -495,15 +498,16 @@ function updateCharacterMovement(delta) {
         // Third-person: camera orbits around character based on mouse
         character.visible = true;
 
-        const cameraDistance = 15;
-        const cameraHeight = 7;
+        // Pull back and up to frame horse and rider
+        const cameraDistance = isMounted ? 20 : 15;
+        const cameraHeight = isMounted ? 10 : 7;
 
         const camX = character.position.x - Math.sin(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
         const camY = character.position.y + cameraHeight - Math.sin(cameraPitch) * cameraDistance;
         const camZ = character.position.z - Math.cos(cameraYaw) * cameraDistance * Math.cos(cameraPitch);
 
         camera.position.set(camX, camY, camZ);
-        camera.lookAt(character.position.x, character.position.y + 5, character.position.z);
+        camera.lookAt(character.position.x, character.position.y + (isMounted ? 6.5 : 5), character.position.z);
     }
 }
 
@@ -515,6 +519,11 @@ function updateCharacterAnimation(delta) {
 
     const parts = GAME.characterParts;
     const time = typeof getAnimTime === 'function' ? getAnimTime() : Date.now() * 0.001;
+
+    if (parts.mount) {
+        animateMountedRider(parts, time, delta);
+        return;
+    }
 
     // Get animation config based on state
     let animConfig;
@@ -575,6 +584,31 @@ function updateCharacterAnimation(delta) {
             animateArmWithShield(parts.leftArm, time, 0.03);
         }
     }
+}
+
+// Riding: the horse walks, canters or gallops; the rider sits astride holding the reins
+function animateMountedRider(parts, time, delta) {
+    const horse = parts.mount;
+    const moving = characterAnimState !== 'IDLE';
+    const gallop = characterAnimState === 'SPRINT';
+    const stride = gallop ? 13 : (characterAnimState === 'RUN' ? 10 : 7);
+
+    if (moving && typeof animateQuadrupedLegs === 'function') {
+        animateQuadrupedLegs(horse.legs, time, stride, gallop ? 0.8 : 0.55);
+    } else {
+        for (const leg of horse.legs) leg.rotation.x *= Math.max(0, 1 - delta * 8);
+    }
+    const beat = Math.sin(time * stride);
+    horse.body.position.y = horse.bodyBaseY + (moving ? Math.abs(beat) * (gallop ? 0.22 : 0.1) : 0);
+    horse.neck.rotation.x = horse.neckBaseRot + (moving ? beat * (gallop ? 0.12 : 0.06) : Math.sin(time * 0.8) * 0.03);
+    horse.tail.rotation.x = -0.35 - (moving ? 0.3 + beat * 0.1 : 0);
+
+    // Rider astride: thighs forward and out around the horse, hands forward on the reins
+    if (parts.leftLeg) parts.leftLeg.rotation.set(-1.15, 0, 0.5);
+    if (parts.rightLeg) parts.rightLeg.rotation.set(-1.15, 0, -0.5);
+    if (parts.leftArm) parts.leftArm.rotation.set(-0.8, 0, 0);
+    if (parts.rightArm) parts.rightArm.rotation.set(-0.8, 0, 0);
+    if (parts.torso) parts.torso.rotation.x = gallop ? 0.25 : (moving ? 0.1 : 0);
 }
 
 // Make available globally

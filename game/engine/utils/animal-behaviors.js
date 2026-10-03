@@ -236,6 +236,11 @@ function getMovementSpeed(entityType, state, isFleeing = false) {
             if (state === 'WALK') return config.speed || 5.0;
             return 0;
 
+        case 'horse':
+            if (state === 'RUN') return config.speed || 22.0;
+            if (state === 'WALK') return config.walkSpeed || 4.0;
+            return 0;
+
         case 'bird':
             return config.speed || 12.0;
 
