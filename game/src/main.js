@@ -152,6 +152,7 @@ const scripts = [
     './systems/entities/npc.js',
     './systems/entities/deer.js',
     './systems/entities/horse.js',
+    './systems/entities/rider.js',
     './systems/entities/cow.js',
     './systems/entities/bunny.js',
     './systems/entities/bird.js',
