@@ -35,6 +35,16 @@ function getDayNightPhase() {
     return phase;
 }
 
+// Time of day as a fraction of the cycle (0..1, always moving forward): the
+// same cycle getDayNightPhase comes from. The sun's height is
+// -sin(2pi * dayTime): it crosses the horizon at 0 and 0.5, is highest at 0.75
+// and lowest at 0.25 - so darkness phase = (1 - sun height) / 2.
+function getDayTime() {
+    const time = getSharedTime();
+    const rawPhase = (time % FOG_CYCLE_DURATION) / FOG_CYCLE_DURATION;
+    return Math.pow(rawPhase, 0.8);
+}
+
 // If connected to multiplayer, we can sync the offset
 function setServerTime(serverTimestamp) {
     const now = Date.now();
@@ -46,5 +56,6 @@ function setServerTime(serverTimestamp) {
 
 // Make available globally
 window.getDayNightPhase = getDayNightPhase;
+window.getDayTime = getDayTime;
 window.setServerTime = setServerTime;
 window.getSharedTime = getSharedTime;
