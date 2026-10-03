@@ -79,15 +79,20 @@ function updateHorses(delta) {
             }
         }
 
-        const moveSpeed = getMovementSpeed('horse', horse.state);
+        const fleeing = horse.fleeTimer > 0;
+        const moveSpeed = getMovementSpeed('horse', horse.state, fleeing);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(horse, moveSpeed, delta, config.collisionRadius);
         }
 
         if (horse.state === 'WALK' || horse.state === 'RUN') {
             rotateEntityTowardTarget(horse, delta, config.animation.rotationSpeed);
-            const legSpeed = horse.state === 'RUN' ? config.animation.runLegSpeed : config.animation.walkLegSpeed;
-            animateQuadrupedLegs(horse.legs, time, legSpeed, config.animation.legSwing);
+            // Walk, canter or gallop: cycle rate follows movement speed so hooves don't skate
+            const anim = config.animation;
+            const running = horse.state === 'RUN';
+            const swing = !running ? anim.legSwing : (fleeing ? anim.fleeLegSwing : anim.runLegSwing);
+            const flight = !running ? 1 : (fleeing ? 2 : 1.6);
+            animateQuadrupedLegs(horse.legs, time, legCycleRate(moveSpeed, anim.legLength, swing, 5, flight), swing);
             horse.neck.rotation.x = horse.neckBaseRot;
         } else {
             resetLegsToNeutral(horse.legs, delta);

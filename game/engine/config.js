@@ -35,7 +35,7 @@ const CONFIG = {
     // Default values for all configurable settings
     defaults: {
         character: {
-            moveSpeed: 20.0,
+            moveSpeed: 7.5,         // 3 m/s jog at 2.5 units = 1 m (riding speeds live in character.js)
             flySpeed: 80.0,
             rotationSpeed: 2.0,
             gravity: 25.0,

@@ -125,7 +125,7 @@ function updatePandas(delta) {
         }
 
         // Movement
-        const moveSpeed = getMovementSpeed('panda', panda.state);
+        const moveSpeed = getMovementSpeed('panda', panda.state, panda.fleeTimer > 0);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(panda, moveSpeed, delta, config.collisionRadius);
         }
@@ -137,7 +137,8 @@ function updatePandas(delta) {
 
         // Leg animation
         if (panda.state === 'WALK' && panda.legs) {
-            animateQuadrupedLegs(panda.legs, time, config.animation.walkLegSpeed, config.animation.legSwing);
+            animateQuadrupedLegs(panda.legs, time,
+                legCycleRate(moveSpeed, config.animation.legLength, config.animation.legSwing, 5), config.animation.legSwing);
         } else if (panda.legs) {
             resetLegsToNeutral(panda.legs, delta);
         }

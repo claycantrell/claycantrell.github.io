@@ -237,7 +237,8 @@ function updateCows(delta) {
         }
 
         // Movement
-        const speed = getMovementSpeed('cow', cow.state);
+        const fleeing = cow.fleeTimer > 0;
+        const speed = getMovementSpeed('cow', cow.state, fleeing);
         if (speed > 0) {
             moveEntityTowardTarget(cow, speed, delta, config.collisionRadius);
         }
@@ -250,7 +251,8 @@ function updateCows(delta) {
         // Animations - from config
         const tailAnim = config.animation.tailSwish;
         if (cow.state === 'WALK') {
-            animateQuadrupedLegs(cow.legs, time, config.animation.legSpeed, config.animation.legSwing);
+            const swing = fleeing ? config.animation.fleeLegSwing : config.animation.legSwing;
+            animateQuadrupedLegs(cow.legs, time, legCycleRate(speed, config.animation.legLength, swing), swing);
             animateTailSwish(cow.tail, time, tailAnim.walk.speed, tailAnim.walk.amplitude);
         } else if (cow.state === 'GRAZE') {
             animateGrazing(cow.headGroup, time);

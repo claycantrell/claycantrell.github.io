@@ -168,7 +168,8 @@ function updateDeer(delta) {
         }
 
         // Movement - uses ENTITY_CONFIG values via getMovementSpeed
-        const moveSpeed = getMovementSpeed('deer', deer.state);
+        const fleeing = deer.fleeTimer > 0;
+        const moveSpeed = getMovementSpeed('deer', deer.state, fleeing);
         if (moveSpeed > 0) {
             moveEntityTowardTarget(deer, moveSpeed, delta, config.collisionRadius);
         }
@@ -178,10 +179,13 @@ function updateDeer(delta) {
             rotateEntityTowardTarget(deer, delta, config.animation.rotationSpeed);
         }
 
-        // Leg animation - from config
+        // Leg animation - cycle rate follows movement speed so hooves don't skate
         if (deer.state === 'WALK' || deer.state === 'RUN') {
-            const legSpeed = deer.state === 'RUN' ? config.animation.runLegSpeed : config.animation.walkLegSpeed;
-            animateQuadrupedLegs(deer.legs, time, legSpeed, config.animation.legSwing);
+            const anim = config.animation;
+            const running = deer.state === 'RUN';
+            const swing = !running ? anim.legSwing : (fleeing ? anim.fleeLegSwing : anim.runLegSwing);
+            const flight = !running ? 1 : (fleeing ? 2 : 1.6);
+            animateQuadrupedLegs(deer.legs, time, legCycleRate(moveSpeed, anim.legLength, swing, 5, flight), swing);
         } else {
             resetLegsToNeutral(deer.legs, delta);
         }

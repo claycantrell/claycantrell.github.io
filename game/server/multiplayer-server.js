@@ -428,7 +428,7 @@ function createServerAnimal(kind, x, z, mapId) {
     const base = { id: `${kind}_${nextAnimalId++}`, mapId, x, z, timer: Math.random() * 5 };
     if (kind === 'birds') {
         return { ...base, y: 20, state: 'FLYING', homeX: x, homeZ: z,
-            targetPos: { x, y: 30, z }, speed: 8 + Math.random() * 4 };
+            targetPos: { x, y: 30, z }, speed: 20 + Math.random() * 10 }; // ~8-12 m/s (2.5 units = 1 m)
     }
     const animal = { ...base, state: 'IDLE', targetDir: { x: 0, z: 1 }, speed: 0 };
     if (kind === 'bunnies') animal.hopVelocityY = 0;
@@ -515,7 +515,7 @@ setInterval(() => {
 
         if (deer.state === 'RUN') {
              // ... existing run logic ...
-             deer.speed = 18.0;
+             deer.speed = 35.0; // 14 m/s bolt (2.5 units = 1 m)
              if (fleeSource) {
                  // Vector away from player
                  const dx = deer.x - fleeSource.x;
@@ -625,9 +625,9 @@ setInterval(() => {
                 }
             }
         } else if (cow.state === 'WALK') {
-            // Slow movement (speed 3)
-            const newX = cow.x + cow.targetDir.x * 3.0 * delta;
-            const newZ = cow.z + cow.targetDir.z * 3.0 * delta;
+            // Slow amble: 1.1 m/s (2.75 units/s)
+            const newX = cow.x + cow.targetDir.x * 2.75 * delta;
+            const newZ = cow.z + cow.targetDir.z * 2.75 * delta;
             if (!isWaterPosition(newX, newZ)) {
                 cow.x = newX;
                 cow.z = newZ;
@@ -689,7 +689,7 @@ setInterval(() => {
                 }
             }
         } else if (bunny.state === 'HOP') {
-            const speed = isThreat ? 15.0 : 4.0;
+            const speed = isThreat ? 35.0 : 6.25; // 14 m/s sprint, 2.5 m/s hop
             const newX = bunny.x + bunny.targetDir.x * speed * delta;
             const newZ = bunny.z + bunny.targetDir.z * speed * delta;
 
