@@ -122,15 +122,30 @@ function init() {
         // === AMBIENT LIGHT ===
         // Day: brighter (0.7), Night: dimmer (0.15)
         if (GAME.lighting.ambient) {
-            const ambientDay = 0.7;
-            const ambientNight = 0.15;
+            const ambientDay = 0.85;
+            const ambientNight = 0.22;
             GAME.lighting.ambient.intensity = ambientDay + (ambientNight - ambientDay) * phase;
+
+            // Fill light colors: blue sky / warm earth by day, pink-orange at
+            // golden hour, deep blue at night
+            if (GAME.lighting.ambient.isHemisphereLight) {
+                const day = { sky: [0.78, 0.88, 1.0], ground: [0.46, 0.37, 0.24] };
+                const gold = { sky: [1.0, 0.70, 0.62], ground: [0.48, 0.30, 0.22] };
+                const night = { sky: [0.32, 0.40, 0.72], ground: [0.10, 0.10, 0.17] };
+                let a = day, b = day, t = 0;
+                if (phase >= 0.3 && phase < 0.5) { a = day; b = gold; t = (phase - 0.3) / 0.2; }
+                else if (phase >= 0.5 && phase < 0.7) { a = gold; b = night; t = (phase - 0.5) / 0.2; }
+                else if (phase >= 0.7) { a = night; b = night; }
+                const mix = (x, y) => x + (y - x) * t;
+                GAME.lighting.ambient.color.setRGB(mix(a.sky[0], b.sky[0]), mix(a.sky[1], b.sky[1]), mix(a.sky[2], b.sky[2]));
+                GAME.lighting.ambient.groundColor.setRGB(mix(a.ground[0], b.ground[0]), mix(a.ground[1], b.ground[1]), mix(a.ground[2], b.ground[2]));
+            }
         }
 
         // === DIRECTIONAL LIGHT (SUN/MOON) ===
         if (GAME.lighting.directional) {
             // Intensity: Day (1.2) -> Night (0.2)
-            const sunIntensity = 1.2;
+            const sunIntensity = 1.35;
             const moonIntensity = 0.2;
             GAME.lighting.directional.intensity = sunIntensity + (moonIntensity - sunIntensity) * phase;
 
@@ -140,14 +155,14 @@ function init() {
             // Night (phase 0.5-1): Cool blue-white (180, 200, 255)
             let lightR, lightG, lightB;
             if (phase < 0.3) {
-                // Daytime - warm white
-                lightR = 255; lightG = 250; lightB = 230;
+                // Daytime - warm sunlight (contrasts with the cool sky fill)
+                lightR = 255; lightG = 242; lightB = 212;
             } else if (phase < 0.5) {
                 // Sunset transition (0.3 -> 0.5)
                 const t = (phase - 0.3) / 0.2;
                 lightR = 255;
-                lightG = 250 - (250 - 150) * t;
-                lightB = 230 - (230 - 100) * t;
+                lightG = 242 - (242 - 140) * t;
+                lightB = 212 - (212 - 80) * t;
             } else if (phase < 0.7) {
                 // Dusk to night transition (0.5 -> 0.7)
                 const t = (phase - 0.5) / 0.2;
@@ -165,8 +180,9 @@ function init() {
             if (!GAME.camera) return;
             const camPos = GAME.camera.position;
 
-            // Push to near camera far clip (900 of 1000) so unreachable
-            const orbitDistance = 900;
+            // Just inside the camera far clip (2500) so they sit behind distant
+            // mountain ranges instead of in front of them
+            const orbitDistance = 2250;
 
             // Time of day angle
             // phase 0 = noon (sun at zenith), phase 0.5 = midnight (sun below)
@@ -179,10 +195,13 @@ function init() {
             const sunDirZ = Math.cos(sunAngle) * 0.3; // Slight depth
 
             if (GAME.lighting.sun) {
+                // Normalize so the sun is always the full orbit distance away
+                // (the raw direction is shorter near the horizon)
+                const sunLen = Math.hypot(sunDirX, sunDirY, sunDirZ) || 1;
                 GAME.lighting.sun.position.set(
-                    camPos.x + sunDirX * orbitDistance,
-                    camPos.y + sunDirY * orbitDistance,
-                    camPos.z + sunDirZ * orbitDistance
+                    camPos.x + sunDirX / sunLen * orbitDistance,
+                    camPos.y + sunDirY / sunLen * orbitDistance,
+                    camPos.z + sunDirZ / sunLen * orbitDistance
                 );
                 GAME.lighting.sun.visible = sunDirY > -0.1;
 
@@ -218,10 +237,11 @@ function init() {
             const moonDirZ = Math.cos(moonAngle) * 0.3;
 
             if (GAME.lighting.moon) {
+                const moonLen = Math.hypot(moonDirX, moonDirY, moonDirZ) || 1;
                 GAME.lighting.moon.position.set(
-                    camPos.x + moonDirX * orbitDistance,
-                    camPos.y + moonDirY * orbitDistance,
-                    camPos.z + moonDirZ * orbitDistance
+                    camPos.x + moonDirX / moonLen * orbitDistance,
+                    camPos.y + moonDirY / moonLen * orbitDistance,
+                    camPos.z + moonDirZ / moonLen * orbitDistance
                 );
                 GAME.lighting.moon.visible = moonDirY > -0.1;
             }
@@ -287,7 +307,10 @@ function init() {
     // Add ambient light for general illumination (config-driven)
     const ambientIntensity = renderConfig.ambientLight?.intensity ?? 0.5;
     const ambientColor = renderConfig.ambientLight?.color || '#ffffff';
-    GAME.lighting.ambient = new THREE.AmbientLight(ambientColor, ambientIntensity);
+    // Hemisphere light instead of flat ambient: cool sky light from above, warm
+    // earth bounce from below, so low-poly shapes get form (colors follow the
+    // time of day in the day/night loop)
+    GAME.lighting.ambient = new THREE.HemisphereLight(0xCFE3FF, 0x6A5638, ambientIntensity);
     GAME.scene.add(GAME.lighting.ambient);
 
     // Add directional light (sun/moon) (config-driven)
@@ -316,29 +339,33 @@ function init() {
     GAME.scene.add(GAME.lighting.directional.target);
 
     // Create visual sun (bright glowing sphere at distance 900)
-    const sunGeometry = new THREE.SphereGeometry(50, 16, 16);
+    // Sized for its 2250-unit orbit (same apparent size as before); no fog so
+    // it isn't washed out at that distance
+    const sunGeometry = new THREE.SphereGeometry(125, 16, 16);
     const sunMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFEE88,
         transparent: true,
-        opacity: 1.0
+        opacity: 1.0,
+        fog: false
     });
     GAME.lighting.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     GAME.scene.add(GAME.lighting.sun);
 
     // Add sun glow (larger transparent sphere)
-    const sunGlowGeometry = new THREE.SphereGeometry(80, 16, 16);
+    const sunGlowGeometry = new THREE.SphereGeometry(200, 16, 16);
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFDD66,
         transparent: true,
         opacity: 0.3,
-        side: THREE.BackSide
+        side: THREE.BackSide,
+        fog: false
     });
     const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
     GAME.lighting.sun.add(sunGlow);
 
     // Create visual moon (pale sphere, starts hidden)
-    const moonGeometry = new THREE.SphereGeometry(30, 16, 16);
-    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xEEEEFF });
+    const moonGeometry = new THREE.SphereGeometry(75, 16, 16);
+    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xEEEEFF, fog: false });
     GAME.lighting.moon = new THREE.Mesh(moonGeometry, moonMaterial);
     GAME.lighting.moon.visible = false;
     GAME.scene.add(GAME.lighting.moon);
