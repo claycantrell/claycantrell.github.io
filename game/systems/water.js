@@ -236,11 +236,14 @@ function getWaterMaterial() {
         shader.vertexShader = shader.vertexShader
             .replace('#include <common>', `#include <common>
             attribute float waterDepth;
+            attribute float waterSlope;
             uniform float time;
             varying float vWaterDepth;
+            varying float vWaterSlope;
             varying vec2 vWaterPos;`)
             .replace('#include <begin_vertex>', `#include <begin_vertex>
             vWaterDepth = waterDepth;
+            vWaterSlope = waterSlope;
             vWaterPos = position.xz;
             transformed.y += sin(time * 1.3 + position.x * 0.15) * cos(time * 1.1 + position.z * 0.12) * 0.12 * clamp(waterDepth, 0.0, 1.0);`);
 
@@ -251,6 +254,7 @@ function getWaterMaterial() {
             uniform vec3 deepColor;
             uniform vec3 foamColor;
             varying float vWaterDepth;
+            varying float vWaterSlope;
             varying vec2 vWaterPos;`)
             .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
             float depthT = smoothstep(0.0, 7.0, vWaterDepth);
@@ -258,6 +262,9 @@ function getWaterMaterial() {
             float ripple = sin(vWaterPos.x * 0.35 + time * 1.7) * sin(vWaterPos.y * 0.31 - time * 1.3);
             float foamLine = 0.45 + 0.2 * sin(time * 1.5 + vWaterPos.x * 0.2 + vWaterPos.y * 0.17);
             float foam = (1.0 - smoothstep(0.1, foamLine, vWaterDepth)) * (0.6 + 0.4 * ripple);
+            // White water where the surface drops (rapids, falls between levels)
+            float rapids = smoothstep(0.08, 0.5, vWaterSlope) * (0.75 + 0.25 * sin(vWaterPos.y * 0.9 - time * 6.0));
+            foam = max(foam, rapids);
             waterCol = mix(waterCol, foamColor, clamp(foam, 0.0, 1.0) * 0.8);
             waterCol *= 1.0 + ripple * 0.05;
             vec4 diffuseColor = vec4(waterCol, mix(0.6, 0.9, depthT) + foam * 0.2);`)
@@ -272,7 +279,11 @@ function getWaterMaterial() {
     return waterMaterial;
 }
 
-// Water surface for a chunk: one quad per underwater grid cell, in world space
+// Water surface for a chunk: one quad per underwater cell, in world space.
+// Every grid point has exactly one surface height shared by all the cells
+// around it, so the surface is watertight: where levels differ (a river running
+// down into a lake or the sea) it slopes between them instead of splitting,
+// and the slope is drawn as white water.
 function createChunkWaterMesh(cx, cz, chunkData) {
     const segments = CHUNK_CONFIG.segments;
     const size = CHUNK_CONFIG.size;
@@ -280,30 +291,55 @@ function createChunkWaterMesh(cx, cz, chunkData) {
     const step = size / segments;
     const sea = WATER_CONFIG.seaLevel;
     const hm = chunkData.heightmap;
-
     const bd = chunkData.biomeData;
-    const levelAt = (gx, gz) => (bd[gz][gx].waterLevel ?? sea);
-    const positions = [];
-    const depths = [];
-    let cellLevel = sea;
-    // Corners inside a river/lake keep their own level so the surface slopes
-    // smoothly along the river; corners outside it follow the cell
+    const n = segments + 1;
+
+    // Surface height per grid point: its own level where it is under water;
+    // dry points (always above the surface after containment) take the highest
+    // neighbouring wet level so the sheet tucks under the bank
+    // Points just outside the chunk come from the neighbouring chunk, so both
+    // sides of a chunk border agree on the surface
+    const vertex = (x, z) => (x >= 0 && z >= 0 && x < n && z < n)
+        ? { h: hm[z][x], d: bd[z][x] }
+        : (typeof chunkVertexAt === 'function' ? chunkVertexAt(chunkData, x, z) : null);
+    const level = (x, z) => { const v = vertex(x, z); return v ? (v.d.waterLevel ?? sea) : sea; };
+    const wet = (x, z) => { const v = vertex(x, z); return !!v && v.h < (v.d.waterLevel ?? sea); };
+    const surface = new Float32Array(n * n);
+    const slope = new Float32Array(n * n);
+    for (let z = 0; z < n; z++) {
+        for (let x = 0; x < n; x++) {
+            if (wet(x, z)) { surface[z * n + x] = level(x, z); continue; }
+            let best = -Infinity;
+            for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+                if ((dx || dz) && wet(x + dx, z + dz)) best = Math.max(best, level(x + dx, z + dz));
+            }
+            surface[z * n + x] = best === -Infinity ? level(x, z) : best;
+        }
+    }
+    // How steeply the surface drops at each point (rapids / falls)
+    for (let z = 0; z < n; z++) {
+        for (let x = 0; x < n; x++) {
+            let sl = 0;
+            for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const xx = x + dx, zz = z + dz;
+                if (!wet(xx, zz)) continue;
+                const other = (xx >= 0 && zz >= 0 && xx < n && zz < n) ? surface[zz * n + xx] : level(xx, zz);
+                sl = Math.max(sl, Math.abs(other - surface[z * n + x]) / step);
+            }
+            slope[z * n + x] = sl;
+        }
+    }
+
+    const positions = [], depths = [], slopes = [];
     const pushVertex = (gx, gz) => {
-        const own = levelAt(gx, gz);
-        const y = Math.abs(own - cellLevel) < 3 ? own : cellLevel;
+        const y = surface[gz * n + gx];
         positions.push(b.minX + gx * step, y, b.minZ + gz * step);
         depths.push(y - hm[gz][gx]);
+        slopes.push(slope[gz * n + gx]);
     };
-
     for (let z = 0; z < segments; z++) {
         for (let x = 0; x < segments; x++) {
-            // Flat quad at the highest level among the cell's wet corners
-            cellLevel = -Infinity;
-            for (const [gx, gz] of [[x, z], [x + 1, z], [x, z + 1], [x + 1, z + 1]]) {
-                const level = levelAt(gx, gz);
-                if (hm[gz][gx] < level && level > cellLevel) cellLevel = level;
-            }
-            if (cellLevel === -Infinity) continue;
+            if (!wet(x, z) && !wet(x + 1, z) && !wet(x, z + 1) && !wet(x + 1, z + 1)) continue;
             // Two triangles, counter-clockwise seen from above
             pushVertex(x, z); pushVertex(x, z + 1); pushVertex(x + 1, z);
             pushVertex(x + 1, z); pushVertex(x, z + 1); pushVertex(x + 1, z + 1);
@@ -314,9 +350,8 @@ function createChunkWaterMesh(cx, cz, chunkData) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('waterDepth', new THREE.Float32BufferAttribute(depths, 1));
-    const normals = new Float32Array(positions.length);
-    for (let i = 1; i < normals.length; i += 3) normals[i] = 1;
-    geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geometry.setAttribute('waterSlope', new THREE.Float32BufferAttribute(slopes, 1));
+    geometry.computeVertexNormals();
     geometry.computeBoundingSphere();
 
     const mesh = new THREE.Mesh(geometry, getWaterMaterial());
@@ -324,6 +359,20 @@ function createChunkWaterMesh(cx, cz, chunkData) {
     mesh.receiveShadow = true;
     mesh.renderOrder = 1;
     return mesh;
+}
+
+// Redraw one loaded chunk's water (after its levels changed)
+function rebuildChunkWaterMesh(chunk) {
+    if (chunk.waterMesh) {
+        scene.remove(chunk.waterMesh);
+        chunk.waterMesh.geometry.dispose();
+        chunk.waterMesh = null;
+    }
+    const mesh = createChunkWaterMesh(chunk.cx, chunk.cz, chunk.data);
+    if (mesh) {
+        scene.add(mesh);
+        chunk.waterMesh = mesh;
+    }
 }
 
 // Old name kept for callers
@@ -392,5 +441,6 @@ window.SHORE_BIOMES = SHORE_BIOMES;
 window.createChunkWaterMesh = createChunkWaterMesh;
 window.createChunkWaterPlane = createChunkWaterPlane;
 window.updateWaterInBounds = updateWaterInBounds;
+window.rebuildChunkWaterMesh = rebuildChunkWaterMesh;
 window.getWaterConfig = getWaterConfig;
 window.setWaterConfig = setWaterConfig;
