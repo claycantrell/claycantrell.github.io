@@ -107,55 +107,142 @@ function generateChunkData(cx, cz) {
         }
     }
 
-    // Water can't stand higher than the lowest point it could spill over
-    hasWater = containWater(heightmap, biomeData);
+    // Water can't stand higher than the lowest point it could spill over -
+    // checked across chunk borders so one body of water has one level
+    const chunkData = { cx, cz, heightmap, biomeData, bounds, hasWater };
+    chunkData.hasWater = containChunkWater(chunkData, true);
+    return chunkData;
+}
 
-    return { heightmap, biomeData, bounds, hasWater };
+// Grid vertex at local index (x, z) of a chunk, reaching into the neighbouring
+// loaded chunk for indices just outside this one (-1 or segments+1)
+function chunkVertexAt(data, x, z) {
+    const n = data.heightmap.length, seg = n - 1;
+    if (x >= 0 && z >= 0 && x < n && z < n) return { h: data.heightmap[z][x], d: data.biomeData[z][x] };
+    let cx = data.cx, cz = data.cz, xx = x, zz = z;
+    if (x < 0) { cx--; xx = x + seg; } else if (x >= n) { cx++; xx = x - seg; }
+    if (z < 0) { cz--; zz = z + seg; } else if (z >= n) { cz++; zz = z - seg; }
+    const nb = loadedChunks.get(chunkKey(cx, cz));
+    if (!nb || zz < 0 || xx < 0 || zz >= n || xx >= n) return null;
+    return { h: nb.data.heightmap[zz][xx], d: nb.data.biomeData[zz][xx] };
 }
 
 // Cap every raised (river/lake) water level by its neighbours: water at a
 // level L would spill onto a neighbour whose ground and water are both lower,
 // so L <= max(neighbour ground, neighbour water level) - except along a river
-// channel, whose surface slopes downstream. Repeated until stable,
-// a lake with a gap in its rim drains to the gap's height. Returns hasWater.
-function containWater(heightmap, biomeData) {
+// channel, whose surface slopes downstream. Repeated until stable, a lake with
+// a gap in its rim drains to the gap's height. Neighbours in adjacent loaded
+// chunks count too.
+function relaxWaterLevels(data) {
     const sea = typeof getWaterConfig === 'function' ? getWaterConfig().seaLevel : -5;
-    const n = heightmap.length;
-    let changed = true;
+    const n = data.heightmap.length;
+    let changedAny = false, changed = true;
     for (let iter = 0; changed && iter < 200; iter++) {
         changed = false;
         for (let z = 0; z < n; z++) {
             for (let x = 0; x < n; x++) {
-                const d = biomeData[z][x];
+                const d = data.biomeData[z][x];
                 if (d.waterLevel <= sea + 0.01) continue;
                 let cap = d.waterLevel;
                 for (let dz = -1; dz <= 1; dz++) {
                     for (let dx = -1; dx <= 1; dx++) {
-                        const zz = z + dz, xx = x + dx;
-                        if ((dx === 0 && dz === 0) || zz < 0 || xx < 0 || zz >= n || xx >= n) continue;
+                        if (dx === 0 && dz === 0) continue;
+                        const nb = chunkVertexAt(data, x + dx, z + dz);
+                        if (!nb) continue;
                         // Rivers flow downhill: their surface may slope along the channel
                         // (only between river points that both hold water)
-                        const nb = biomeData[zz][xx];
-                        if (d.inRiver && nb.inRiver && heightmap[zz][xx] < nb.waterLevel) continue;
-                        const spill = Math.max(heightmap[zz][xx], biomeData[zz][xx].waterLevel);
+                        if (d.inRiver && nb.d.inRiver && nb.h < nb.d.waterLevel) continue;
+                        const spill = Math.max(nb.h, nb.d.waterLevel);
                         if (spill < cap) cap = spill;
                     }
                 }
                 if (cap < d.waterLevel - 0.01) {
                     d.waterLevel = Math.max(sea, cap);
-                    changed = true;
+                    changed = changedAny = true;
                 }
             }
         }
     }
+    return changedAny;
+}
 
+// Border vertices exist in two to four chunks: give every copy one level (the
+// lowest). Returns the neighbouring chunks whose levels were lowered.
+function syncWaterBorders(data) {
+    const n = data.heightmap.length, seg = n - 1;
+    const lowered = new Set();
+    const share = (x, z, ncx, ncz, nx, nz) => {
+        const nb = loadedChunks.get(chunkKey(ncx, ncz));
+        if (!nb) return;
+        const a = data.biomeData[z][x], bd = nb.data.biomeData[nz][nx];
+        const level = Math.min(a.waterLevel, bd.waterLevel);
+        a.waterLevel = level;
+        if (bd.waterLevel > level + 0.01) { bd.waterLevel = level; lowered.add(nb); }
+    };
+    for (let i = 0; i < n; i++) {
+        share(0, i, data.cx - 1, data.cz, seg, i);
+        share(seg, i, data.cx + 1, data.cz, 0, i);
+        share(i, 0, data.cx, data.cz - 1, i, seg);
+        share(i, seg, data.cx, data.cz + 1, i, 0);
+    }
+    for (const [x, z, dx, dz] of [[0, 0, -1, -1], [seg, 0, 1, -1], [0, seg, -1, 1], [seg, seg, 1, 1]]) {
+        share(x, z, data.cx + dx, data.cz + dz, x === 0 ? seg : 0, z === 0 ? seg : 0);
+    }
+    return lowered;
+}
+
+function updateWaterFlags(data) {
     let hasWater = false;
-    for (let z = 0; z < n; z++) {
-        for (let x = 0; x < n; x++) {
-            const d = biomeData[z][x];
-            d.isWater = heightmap[z][x] < d.waterLevel;
+    for (let z = 0; z < data.heightmap.length; z++) {
+        for (let x = 0; x < data.heightmap.length; x++) {
+            const d = data.biomeData[z][x];
+            d.isWater = data.heightmap[z][x] < d.waterLevel;
             if (!d.isWater) d.waterType = null;
             else hasWater = true;
+        }
+    }
+    data.hasWater = hasWater;
+    return hasWater;
+}
+
+// Contain this chunk's water, agree border levels with loaded neighbours and,
+// if that lowered a neighbour, settle and redraw the neighbour's water too.
+function containChunkWater(data, propagate) {
+    relaxWaterLevels(data);
+    let lowered = syncWaterBorders(data);
+    if (propagate) {
+        // Spread level drops chunk to chunk until every border agrees
+        const touched = new Set(lowered);
+        const queue = [...lowered];
+        for (let guard = 0; queue.length && guard < 64; guard++) {
+            const nb = queue.shift();
+            relaxWaterLevels(nb.data);
+            for (const next of syncWaterBorders(nb.data)) {
+                if (next.data === data) continue;
+                if (!touched.has(next)) touched.add(next);
+                queue.push(next);
+            }
+            updateWaterFlags(nb.data);
+        }
+        if (touched.size) { relaxWaterLevels(data); syncWaterBorders(data); }
+        lowered = touched;
+    }
+    const hasWater = updateWaterFlags(data);
+    if (propagate && typeof rebuildChunkWaterMesh === 'function') {
+        // Redraw neighbours whose levels changed or whose shared edge has water,
+        // so both sides of the border draw the same surface
+        const seg = data.heightmap.length - 1;
+        for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+            const nb = loadedChunks.get(chunkKey(data.cx + dx, data.cz + dz));
+            if (!nb) continue;
+            let edgeWet = lowered.has(nb);
+            for (let i = 0; i <= seg && !edgeWet; i++) {
+                const x = dx < 0 ? 0 : dx > 0 ? seg : i, z = dz < 0 ? 0 : dz > 0 ? seg : i;
+                const d = data.biomeData[z][x];
+                if (d.isWater) edgeWet = true;
+                if (dx && dz) break; // Corner neighbour: just the corner point
+            }
+            if (edgeWet || nb.data.hasWater) rebuildChunkWaterMesh(nb);
         }
     }
     return hasWater;
