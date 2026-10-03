@@ -77,8 +77,14 @@ function init() {
 
         if (!GAME.scene) return;
 
+        // How much daylight there is (0 night .. 1 full day). Phase 0.5 is the
+        // sun on the horizon: keep it dim there and ramp to full daylight only
+        // once the sun is well up, so sunrise doesn't arrive in broad daylight
+        const daylight = smoothstep(0.62, 0.3, phase);
+        const lightPhase = 1 - daylight;
+
         // === FOG DENSITY ===
-        const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * phase;
+        const currentDensity = minFogDensity + (maxFogDensity - minFogDensity) * lightPhase;
         if (GAME.scene.fog) {
             GAME.scene.fog.density = currentDensity;
         }
@@ -117,7 +123,7 @@ function init() {
         if (GAME.lighting.ambient) {
             const ambientDay = 0.85;
             const ambientNight = 0.22;
-            GAME.lighting.ambient.intensity = ambientDay + (ambientNight - ambientDay) * phase;
+            GAME.lighting.ambient.intensity = ambientDay + (ambientNight - ambientDay) * lightPhase;
 
             // Fill light colors: blue sky / warm earth by day, pink-orange at
             // golden hour, deep blue at night
@@ -140,7 +146,7 @@ function init() {
             // Intensity: Day (1.2) -> Night (0.2)
             const sunIntensity = 1.35;
             const moonIntensity = 0.2;
-            GAME.lighting.directional.intensity = sunIntensity + (moonIntensity - sunIntensity) * phase;
+            GAME.lighting.directional.intensity = sunIntensity + (moonIntensity - sunIntensity) * lightPhase;
 
             // Color transition:
             // Day (phase 0-0.3): Warm white (255, 250, 230)
@@ -177,10 +183,11 @@ function init() {
             // mountain ranges instead of in front of them
             const orbitDistance = 2250;
 
-            // Time of day angle
-            // phase 0 = noon (sun at zenith), phase 0.5 = midnight (sun below)
-            const timeAngle = phase * Math.PI * 2;
-            const sunAngle = Math.PI / 2 - timeAngle;
+            // Time of day angle, from the actual time of day (phase is a darkness level that goes
+            // 0 -> 1 -> 0, which put the sun overhead at midnight and over the
+            // horizon only once it was already bright): sun height = -sin(2pi t)
+            const dayTime = typeof getDayTime === 'function' ? getDayTime() : 0.75;
+            const sunAngle = -dayTime * Math.PI * 2;
 
             // Sun: circular arc in sky, always same distance from camera
             const sunDirX = Math.cos(sunAngle) * 0.7; // Horizontal component
