@@ -17,6 +17,7 @@ const Systems = {
         'npc',
         'deer',
         'horses',
+        'riders',
         'cows',
         'bunnies',
         'birds',
